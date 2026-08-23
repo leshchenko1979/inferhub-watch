@@ -1,6 +1,6 @@
 # InferHub Watch
 
-Daily probes of [InferHub](https://inferhub.dev/) Chat Completions streaming shapes. Public report: [alexeyleshchenko.github.io/inferhub-watch](https://alexeyleshchenko.github.io/inferhub-watch/).
+Daily probes of [InferHub](https://inferhub.dev/) Chat Completions streaming shapes. Public report: [leshchenko1979.github.io/inferhub-watch](https://leshchenko1979.github.io/inferhub-watch/).
 
 A red cell means InferHub’s JSON did not match the documented OpenAI Chat Completions shape for that check. It does not mean InferHub was down.
 

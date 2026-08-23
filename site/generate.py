@@ -19,9 +19,9 @@ import tmpl  # noqa: E402
 from probe.publishers import publisher_label  # noqa: E402
 from probe.registry import load_aliases, load_registry  # noqa: E402
 
-GITHUB = "https://github.com/alexeyleshchenko/inferhub-watch"
+GITHUB = "https://github.com/leshchenko1979/inferhub-watch"
 CLONE = (
-    f'Clone <a href="{GITHUB}">alexeyleshchenko/inferhub-watch</a>, '
+    f'Clone <a href="{GITHUB}">leshchenko1979/inferhub-watch</a>, '
     "set <code>INFERHUB_API_KEY</code>, run <code>python3 -m probe.run</code>."
 )
 FONTS = (

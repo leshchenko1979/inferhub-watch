@@ -63,7 +63,7 @@ jobs:
     if: >-
       always() &&
       github.event_name != 'pull_request' &&
-      github.repository == 'alexeyleshchenko/inferhub-watch'
+      github.repository == 'leshchenko1979/inferhub-watch'
     needs: [probe]
     runs-on: ubuntu-latest
     environment:
