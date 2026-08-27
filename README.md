@@ -14,6 +14,7 @@ Scoring checks: streaming **tool names**, and **prompt cache** on a streaming co
 | --- | --- |
 | [CONTEXT.md](CONTEXT.md) | Alias, resolved publisher, pass/fail language |
 | [models.toml](models.toml) | Aliases to probe (the table is the list; open a GitHub issue to propose another) |
+| [candidates.toml](candidates.toml) | Audition routes per model, probed after each board sweep and ranked in the Candidates section |
 | [checks/registry.toml](checks/registry.toml) | Check order, titles, scoring |
 | [checks/](checks/) | One folder per check (`check.py`, `page.md`, `test.py`) |
 | [tests/](tests/) | Cross-cutting wiring only |
@@ -21,6 +22,12 @@ Scoring checks: streaming **tool names**, and **prompt cache** on a streaming co
 | [probe/routes.py](probe/routes.py) | Provider discovery: probe arbitrary route strings and print a comparison table — no run JSON written |
 | [probe/pricing.py](probe/pricing.py) | Writes [data/pricing.json](data/pricing.json) — cost per M tokens per route from the Management API |
 | [site/generate.py](site/generate.py) | Builds HTML from [site/templates/](site/templates/) plus the registry and run files |
+
+## Report sections
+
+- **Spend dashboard** — above Latest results: month-to-date cost, today’s cost, and probe’s share, all from [data/pricing.json](data/pricing.json) (30-day usage logs), plus a 30-day sparkline (log-scaled bars, hover for the day total).
+- **Cost per M tokens** — board routes only. Ask in/out billed from usage; the **Δ ask** column compares with the previous day’s snapshot ([data/pricing/](data/pricing/), one file per day) — ↓ is cheaper, ↑ pricier.
+- **Candidates** — routes from [candidates.toml](candidates.toml), one table per model. The in-use board route leads; audition routes rank by checks passed, then cache hit, then blended ask. Candidate asks are billed on probe traffic; candidate cache hit comes from the probe, incumbents’ from the billing window. The section and its nav link disappear when there is no config or no candidate cells in the latest run.
 
 ## Add a check
 
