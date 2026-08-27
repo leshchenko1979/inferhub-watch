@@ -598,6 +598,84 @@ td {
   margin-left: 1px;
 }
 
+/* ── Spend block: stats + 30-day sparkline ── */
+
+.spend-block {
+  margin: 0 0 var(--space-5);
+}
+
+.spend-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-7);
+  margin: 0 0 var(--space-4);
+}
+
+.spend-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spend-val {
+  font-size: var(--text-sub);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.spend-cap {
+  font-size: var(--text-caption);
+  color: var(--muted);
+}
+
+.spend-spark {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.spark-bar {
+  fill: var(--accent);
+}
+
+.spark-zero {
+  fill: var(--line);
+}
+
+.spark-axis {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.spark-lab {
+  fill: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+/* ── Ask deltas ── */
+
+.ask-delta {
+  white-space: nowrap;
+}
+
+.delta-sep {
+  color: var(--muted);
+}
+
+.delta-down {
+  color: var(--ok);
+}
+
+.delta-up {
+  color: var(--fail);
+}
+
+.delta-flat {
+  color: var(--muted);
+}
+
 /* ── Mobile: timeline stays as a table (no card collapse) ── */
 
 @media (max-width: 720px) {

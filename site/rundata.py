@@ -271,3 +271,98 @@ def cache_bar_pct(raw: object) -> float:
         return max(0.0, min(100.0, float(str(raw))))
     except (TypeError, ValueError):
         return 0.0
+
+
+# ── spend dashboard: dated snapshots, day series, ask deltas ──
+
+
+def load_dated_pricing(root: Path) -> list[tuple[str, dict]]:
+    """data/pricing/*.json as (YYYY-MM-DD, payload), oldest first; skips broken files."""
+    directory = root / "data" / "pricing"
+    if not directory.is_dir():
+        return []
+    dated: list[tuple[str, dict]] = []
+    for path in sorted(directory.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if not isinstance(payload, dict) or not isinstance(payload.get("routes"), dict):
+            continue
+        dated.append((path.stem, payload))
+    return dated
+
+
+def prior_pricing(dated: list[tuple[str, dict]], current: dict | None) -> dict | None:
+    """The most recent dated snapshot strictly before the current snapshot's day."""
+    cur_day = ((current or {}).get("generated_at") or "")[:10]
+    best: dict | None = None
+    for day, payload in dated:
+        if cur_day and day >= cur_day:
+            continue
+        best = payload  # dated arrives oldest-first, so the last match wins
+    return best
+
+
+def spend_days(payload: dict | None) -> list[dict]:
+    """The snapshot's per-UTC-day spend series, validated down to usable entries."""
+    days = (payload or {}).get("days")
+    if not isinstance(days, list):
+        return []
+    return [d for d in days if isinstance(d, dict) and d.get("date")]
+
+
+def day_cost(day: dict) -> float:
+    try:
+        return float(str(day.get("cost_usdc")))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def spend_between(days: list[dict], start: str, end: str) -> float:
+    """Total cost over entries whose date falls inside [start, end] inclusive."""
+    return sum(day_cost(d) for d in days if start <= (d.get("date") or "") <= end)
+
+
+def probe_spend(runs: list[dict]) -> float:
+    """All-time cost of probe runs, board and candidate cells alike."""
+    total = 0.0
+    for run in runs:
+        for cell in run.get("cells") or []:
+            try:
+                total += float(cell.get("cost_usdc") or 0)
+            except (TypeError, ValueError):
+                continue
+    return total
+
+
+def ask_deltas(current: dict | None, prior: dict | None, route: str) -> dict | None:
+    """Ask-rate movement vs the prior dated snapshot: {'in': Δ, 'out': Δ}.
+
+    None when there is no honest comparison — no prior snapshot, the route
+    missing on either side, or a billed rate missing on either side.
+    """
+    if not prior:
+        return None
+    cur = ((current or {}).get("routes") or {}).get(route) or {}
+    prev = (prior.get("routes") or {}).get(route) or {}
+    deltas: dict[str, float] = {}
+    for key, field in (("in", "ask_in"), ("out", "ask_out")):
+        try:
+            deltas[key] = float(str(cur.get(field))) - float(str(prev.get(field)))
+        except (TypeError, ValueError):
+            return None
+    return deltas
+
+
+def month_day_label(date: str) -> str:
+    """'2026-08-21' -> 'Aug 21'; '' on malformed input."""
+    months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    parts = date.split("-")
+    if len(parts) != 3:
+        return ""
+    try:
+        return f"{months[int(parts[1]) - 1]} {int(parts[2])}"
+    except (IndexError, ValueError):
+        return ""

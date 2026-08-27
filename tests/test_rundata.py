@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 
@@ -171,6 +172,90 @@ class PricingDataTests(unittest.TestCase):
         self.assertEqual(rundata.cache_bar_pct(61.4), 61.4)
         self.assertEqual(rundata.cache_bar_pct(150.0), 100.0)
         self.assertEqual(rundata.cache_bar_pct(None), 0.0)
+
+
+class SpendDashboardTests(unittest.TestCase):
+    def _write_dated(self, root: Path, day: str, payload: dict | str) -> None:
+        directory = root / "data" / "pricing"
+        directory.mkdir(parents=True, exist_ok=True)
+        text = payload if isinstance(payload, str) else json.dumps(payload)
+        (directory / f"{day}.json").write_text(text)
+
+    def test_load_dated_pricing_orders_and_skips_unusable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(rundata.load_dated_pricing(root), [])
+            self._write_dated(root, "2026-08-26", {"routes": {"a": {}}})
+            self._write_dated(root, "2026-08-27", {"routes": {}})
+            self._write_dated(root, "2026-08-25", "not json")
+            self._write_dated(root, "2026-08-24", {"nope": 1})
+            dated = rundata.load_dated_pricing(root)
+            self.assertEqual([day for day, _ in dated], ["2026-08-26", "2026-08-27"])
+
+    def test_prior_pricing_needs_strictly_earlier_day(self) -> None:
+        old = {"generated_at": "2026-08-26T06:00:00+00:00", "routes": {}}
+        new = {"generated_at": "2026-08-27T06:00:00+00:00", "routes": {}}
+        current = {"generated_at": "2026-08-27T06:00:00+00:00"}
+        dated = [("2026-08-26", old), ("2026-08-27", new)]
+        self.assertIs(rundata.prior_pricing(dated, current), old)
+        self.assertIsNone(rundata.prior_pricing([("2026-08-27", new)], current))
+        self.assertIsNone(rundata.prior_pricing([], current))
+
+    def test_spend_days_validates_entries(self) -> None:
+        good = {"date": "2026-08-27", "cost_usdc": "0.5", "requests": 2}
+        payload = {"days": [good, {"nope": 1}, "junk"]}
+        self.assertEqual(rundata.spend_days(payload), [good])
+        self.assertEqual(rundata.spend_days(None), [])
+        self.assertEqual(rundata.spend_days({"days": "junk"}), [])
+
+    def test_spend_between_sums_inclusive_range(self) -> None:
+        days = [
+            {"date": "2026-07-31", "cost_usdc": "1.0"},
+            {"date": "2026-08-01", "cost_usdc": "2.0"},
+            {"date": "2026-08-27", "cost_usdc": "0.5"},
+            {"date": "2026-08-27", "cost_usdc": "junk"},
+        ]
+        self.assertEqual(rundata.spend_between(days, "2026-08-01", "2026-08-27"), 2.5)
+        self.assertEqual(rundata.spend_between(days, "2026-08-27", "2026-08-27"), 0.5)
+
+    def test_probe_spend_counts_all_cells(self) -> None:
+        runs = [
+            {"cells": [
+                {"cost_usdc": "0.001"},
+                {"cost_usdc": ""},
+                {"candidate": True, "cost_usdc": "0.004"},
+            ]},
+            {"cells": [{"cost_usdc": "junk"}]},
+        ]
+        self.assertAlmostEqual(rundata.probe_spend(runs), 0.005)
+        self.assertEqual(rundata.probe_spend([]), 0.0)
+
+    def test_ask_deltas_none_without_prior(self) -> None:
+        current = {"routes": {"a/m": {"ask_in": 0.4, "ask_out": 1.5}}}
+        self.assertIsNone(rundata.ask_deltas(current, None, "a/m"))
+
+    def test_ask_deltas_values_and_gaps(self) -> None:
+        prior = {"routes": {
+            "a/m": {"ask_in": 0.5, "ask_out": 1.5},
+            "b/m": {"ask_in": None, "ask_out": None},
+        }}
+        current = {"routes": {
+            "a/m": {"ask_in": 0.4, "ask_out": 1.5},
+            "b/m": {"ask_in": 1.0, "ask_out": 3.0},
+            "new/m": {"ask_in": 1.0, "ask_out": 3.0},
+        }}
+        deltas = rundata.ask_deltas(current, prior, "a/m")
+        self.assertAlmostEqual(deltas["in"], -0.1)
+        self.assertEqual(deltas["out"], 0.0)
+        self.assertIsNone(rundata.ask_deltas(current, prior, "new/m"))  # new route
+        self.assertIsNone(rundata.ask_deltas(current, prior, "b/m"))   # prior unrated
+        self.assertIsNone(rundata.ask_deltas(current, prior, "ghost")) # absent both
+
+    def test_month_day_label(self) -> None:
+        self.assertEqual(rundata.month_day_label("2026-08-21"), "Aug 21")
+        self.assertEqual(rundata.month_day_label("2026-01-05"), "Jan 5")
+        self.assertEqual(rundata.month_day_label("junk"), "")
+        self.assertEqual(rundata.month_day_label("2026-13-40"), "")
 
 
 if __name__ == "__main__":

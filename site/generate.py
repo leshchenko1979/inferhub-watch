@@ -4,6 +4,7 @@ import html
 import os
 import shutil
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -126,7 +127,137 @@ def _viz_cell(label: str, bar_pct: float, color_cls: str) -> str:
     )
 
 
-def pricing_section(payload: dict | None) -> str:
+# ── spend dashboard ──
+
+SPARK_DAYS = 30
+SPARK_BAR_W = 10
+SPARK_GAP = 3
+SPARK_BAR_H = 36  # tallest bar; log-scaled like the effective-rate bars
+SPARK_LABEL_H = 14
+SPARK_LO, SPARK_HI = 0.001, 10.0  # $/day domain, mirrors the $/M bar domain
+
+
+def _snapshot_day(payload: dict) -> str:
+    """The UTC day the snapshot speaks for; falls back to the newest day entry."""
+    day = (payload.get("generated_at") or "")[:10]
+    if day:
+        return day
+    days = rundata.spend_days(payload)
+    return days[-1]["date"] if days else ""
+
+
+def spend_sparkline(payload: dict) -> str:
+    """Daily spend for the last 30 days as an inline SVG bar strip.
+
+    Bars are log-scaled over $0.001–$10/day so a quiet day next to a spike
+    stays visible; trafficless days render as a 2px stub. Per-bar <title>
+    carries date, cost and request count — no JS anywhere.
+    """
+    days = rundata.spend_days(payload)
+    today = _snapshot_day(payload)
+    if not days or not today:
+        return ""
+    try:
+        end = date.fromisoformat(today)
+    except ValueError:
+        return ""
+    by_date = {d["date"]: d for d in days}
+    step = SPARK_BAR_W + SPARK_GAP
+    width = SPARK_DAYS * step - SPARK_GAP
+    height = SPARK_BAR_H + SPARK_LABEL_H
+    bars = []
+    for i in range(SPARK_DAYS):
+        day = (end - timedelta(days=SPARK_DAYS - 1 - i)).isoformat()
+        x = i * step
+        entry = by_date.get(day)
+        cost = rundata.day_cost(entry) if entry else 0.0
+        title = rundata.month_day_label(day) or day
+        if entry and cost > 0:
+            pct = rundata.log_bar_pct(cost, SPARK_LO, SPARK_HI)
+            h = max(2.0, SPARK_BAR_H * pct / 100.0)
+            reqs = entry.get("requests") or 0
+            label = rundata.cost_label(f"{cost:.6f}") or f"${cost:.4f}"
+            bars.append(
+                f'<rect class="spark-bar" x="{x}" y="{SPARK_BAR_H - h:.1f}" '
+                f'width="{SPARK_BAR_W}" height="{h:.1f}" rx="1">'
+                f"<title>{html.escape(f'{title} · {label} · {reqs} req')}</title>"
+                "</rect>"
+            )
+        else:
+            suffix = " · no billed traffic" if entry is None else ""
+            bars.append(
+                f'<rect class="spark-zero" x="{x}" y="{SPARK_BAR_H - 2}" '
+                f'width="{SPARK_BAR_W}" height="2" rx="1">'
+                f"<title>{html.escape(title + suffix)}</title></rect>"
+            )
+    start_label = rundata.month_day_label((end - timedelta(days=SPARK_DAYS - 1)).isoformat())
+    end_label = rundata.month_day_label(today)
+    return (
+        f'<svg class="spend-spark" viewBox="0 0 {width} {height}" '
+        f'width="{width}" height="{height}" role="img" '
+        'aria-label="Daily spend, last 30 days">'
+        + "".join(bars)
+        + f'<line class="spark-axis" x1="0" y1="{SPARK_BAR_H + 0.5}" '
+        f'x2="{width}" y2="{SPARK_BAR_H + 0.5}"/>'
+        + f'<text class="spark-lab" x="0" y="{height - 2}">{html.escape(start_label)}</text>'
+        + f'<text class="spark-lab" x="{width}" y="{height - 2}" '
+        f'text-anchor="end">{html.escape(end_label)}</text>'
+        "</svg>"
+    )
+
+
+def spend_block(payload: dict, runs: list[dict]) -> str:
+    """MTD + today + probe-share stats with the 30-day sparkline, or ''."""
+    days = rundata.spend_days(payload)
+    today = _snapshot_day(payload)
+    if not days or not today:
+        return ""
+    mtd = rundata.spend_between(days, today[:7] + "-01", today)
+    today_cost = rundata.spend_between(days, today, today)
+    first_day = rundata.day_key(runs[0]) if runs else ""
+    since = rundata.month_day_label(first_day)
+    probe_cap = "probe runs" + (f" · since {since}" if since else "")
+    stats = (
+        (rundata.cost_label(f"{mtd:.6f}") or "$0.00", "month to date"),
+        (rundata.cost_label(f"{today_cost:.6f}") or "$0.00", "today so far"),
+        (rundata.cost_label(f"{rundata.probe_spend(runs):.6f}") or "$0.00", probe_cap),
+    )
+    bits = "".join(
+        f'<div class="spend-stat"><span class="spend-val">{val}</span>'
+        f'<span class="spend-cap">{html.escape(cap)}</span></div>'
+        for val, cap in stats
+    )
+    return (
+        f'<div class="spend-block"><div class="spend-stats">{bits}</div>'
+        f"{spend_sparkline(payload)}</div>"
+    )
+
+
+def _delta_span(delta: float) -> str:
+    if abs(delta) < 1e-9:
+        return '<span class="delta-flat" title="ask unchanged">=</span>'
+    mag = rundata.rate_label(abs(delta)) or f"${abs(delta):.3f}"
+    if delta < 0:
+        return f'<span class="delta-down" title="ask fell">&#8595;{mag}</span>'
+    return f'<span class="delta-up" title="ask rose">&#8593;{mag}</span>'
+
+
+def ask_delta_cell(payload: dict | None, prior: dict | None, route: str) -> str:
+    """One Δ ask cell: in/out movement vs the prior snapshot, '—' without one."""
+    deltas = rundata.ask_deltas(payload, prior, route)
+    if deltas is None:
+        return '<td class="num ask-delta" data-label="&#916; ask in / out">' \
+            '<span class="delta-flat" title="no earlier snapshot for this route">&#8212;</span></td>'
+    return (
+        '<td class="num ask-delta" data-label="&#916; ask in / out">'
+        + _delta_span(deltas["in"])
+        + '<span class="delta-sep"> / </span>'
+        + _delta_span(deltas["out"])
+        + "</td>"
+    )
+
+
+def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     """The #pricing section, or '' when there is no usable pricing data."""
     rows = rundata.pricing_rows(payload)
     if not rows:
@@ -138,6 +269,7 @@ def pricing_section(payload: dict | None) -> str:
         note += f" · {scanned} billed requests"
     req_bounds = rundata.peer_bounds(int(r.get("reqs") or 0) for r in rows)
     cost_bounds = rundata.peer_bounds(float(r.get("cost_usdc") or 0) for r in rows)
+    prior = rundata.prior_pricing(rundata.load_dated_pricing(ROOT), payload)
     body_rows = []
     for row in rows:
         logged = row.get("source") == "usage-logs"
@@ -153,6 +285,7 @@ def pricing_section(payload: dict | None) -> str:
             "<tr>"
             f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>'
             f'<span class="route-ask">ask {ask_in} / {ask_out} per M{mark}</span></th>'
+            + ask_delta_cell(payload, prior, str(row["route"]))
             + _viz_cell(
                 rundata.rate_label(eff_raw) or "n/a",
                 rundata.log_bar_pct(eff_raw, 0.001, 10.0),
@@ -183,16 +316,21 @@ def pricing_section(payload: dict | None) -> str:
         "cache bars are linear, green &#8805; 70%. Traffic and cost bars are relative "
         "to the busiest route in the window. "
         "* = no traffic in the window, rates fall back to catalog list price. "
+        "&#916; ask compares the billed rates with the previous daily snapshot: "
+        "&#8595; green = cheaper, &#8593; red = pricier, &#8212; = no earlier snapshot "
+        "to compare yet. Sparkline bars are log-scaled $0.001&#8211;$10 per day. "
         "Rates for this board&#8217;s routes only; other traffic is not listed."
     )
     return (
         '<section class="pricing-block" id="pricing">'
         f"<h2>{html.escape(section_title('pricing'))}</h2>"
         f'<p class="section-note">{html.escape(note)}.</p>'
+        + spend_block(payload, runs) +
         '<div class="scroll"><table class="pricing">'
         f"<caption>{caption}</caption>"
         "<thead><tr>"
         '<th scope="col">Route</th>'
+        '<th scope="col" class="num">&#916; ask in / out</th>'
         '<th scope="col" class="num">effective $/M</th>'
         '<th scope="col" class="num">cache hit</th>'
         f'<th scope="col" class="num">{html.escape(span)} traffic</th>'
@@ -335,7 +473,7 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
         score_label="check" if n_score == 1 else "checks",
         rule=rule,
         grid_rows="".join(grid_rows),
-        pricing_section=pricing_section(rundata.load_pricing(ROOT)),
+        pricing_section=pricing_section(rundata.load_pricing(ROOT), runs),
         explainers="".join(explainers),
         github=GITHUB,
         clone=CLONE,

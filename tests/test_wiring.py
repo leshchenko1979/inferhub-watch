@@ -457,6 +457,85 @@ class BalanceAbortTests(unittest.TestCase):
         self.assertEqual(payload["cost"]["matched"], 0)
 
 
+class SpendDashboardTests(unittest.TestCase):
+    PAYLOAD = {
+        "generated_at": "2026-08-27T20:00:00+00:00",
+        "range": "30d",
+        "requests_scanned": 100,
+        "days": [
+            {"date": "2026-07-31", "cost_usdc": "5.000000", "requests": 9},
+            {"date": "2026-08-01", "cost_usdc": "1.500000", "requests": 20},
+            {"date": "2026-08-27", "cost_usdc": "0.250000", "requests": 30},
+        ],
+        "routes": {
+            "ali/qwen3.8-max": {
+                "ask_in": 0.014,
+                "ask_out": 0.042,
+                "eff_per_mtok": 0.0201,
+                "cache_pct": 61.4,
+                "reqs": 12,
+                "tok_in": 90000,
+                "tok_out": 3000,
+                "cost_usdc": "0.001870",
+                "last_ts": "2026-08-27T19:00:00",
+                "source": "usage-logs",
+            },
+        },
+    }
+    PRIOR = {
+        "generated_at": "2026-08-26T06:00:00+00:00",
+        "routes": {
+            "ali/qwen3.8-max": {"ask_in": 0.020, "ask_out": 0.042},
+        },
+    }
+
+    def _page(self, payload: dict, dated: list) -> str:
+        gen = _load_generate()
+        with mock.patch.object(gen.rundata, "load_pricing", return_value=payload), \
+                mock.patch.object(gen.rundata, "load_dated_pricing", return_value=dated), \
+                mock.patch.object(gen.rundata, "prior_pricing",
+                                  wraps=rundata.prior_pricing):
+            return gen.index_html(
+                gen.load_runs(), gen.load_aliases(), gen.load_registry()
+            )
+
+    def test_spend_block_mtd_today_and_sparkline(self) -> None:
+        page = self._page(self.PAYLOAD, [("2026-08-27", self.PAYLOAD)])
+        self.assertIn('class="spend-block"', page)
+        self.assertIn("$1.7500", page)          # MTD: Aug 01 + Aug 27 only
+        self.assertIn("$0.2500", page)          # today so far
+        self.assertIn("month to date", page)
+        self.assertIn("today so far", page)
+        self.assertIn("probe runs", page)
+        self.assertIn('class="spend-spark"', page)
+        self.assertEqual(page.count('class="spark-bar"'), 3)
+        self.assertEqual(page.count('class="spark-zero"'), 27)
+        self.assertIn("Aug 27", page)           # sparkline end label
+
+    def test_delta_column_em_dashes_without_prior_snapshot(self) -> None:
+        page = self._page(self.PAYLOAD, [("2026-08-27", self.PAYLOAD)])
+        self.assertIn("&#916; ask in / out", page)
+        self.assertIn("no earlier snapshot for this route", page)
+        self.assertNotIn("delta-down", page)
+        self.assertNotIn("delta-up", page)
+
+    def test_delta_column_against_prior_snapshot(self) -> None:
+        dated = [("2026-08-26", self.PRIOR), ("2026-08-27", self.PAYLOAD)]
+        page = self._page(self.PAYLOAD, dated)
+        # ask_in fell 0.020 -> 0.014, ask_out held 0.042
+        self.assertIn("delta-down", page)
+        self.assertIn('title="ask unchanged"', page)
+        self.assertNotIn("no earlier snapshot for this route", page)
+        self.assertNotIn("delta-up", page)
+
+    def test_payload_without_days_skips_spend_block(self) -> None:
+        legacy = {k: v for k, v in self.PAYLOAD.items() if k != "days"}
+        page = self._page(legacy, [])
+        self.assertIn('id="pricing"', page)
+        self.assertNotIn('class="spend-block"', page)
+        self.assertIn("ali/qwen3.8-max", page)
+
+
 if __name__ == "__main__":
     unittest.main()
 
