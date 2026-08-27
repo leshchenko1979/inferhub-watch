@@ -18,6 +18,7 @@ Scoring checks: streaming **tool names**, and **prompt cache** on a streaming co
 | [checks/](checks/) | One folder per check (`check.py`, `page.md`, `test.py`) |
 | [tests/](tests/) | Cross-cutting wiring only |
 | [probe/run.py](probe/run.py) | Writes [data/runs/](data/runs/) |
+| [probe/routes.py](probe/routes.py) | Provider discovery: probe arbitrary route strings and print a comparison table — no run JSON written |
 | [probe/pricing.py](probe/pricing.py) | Writes [data/pricing.json](data/pricing.json) — cost per M tokens per route from the Management API |
 | [site/generate.py](site/generate.py) | Builds HTML from [site/templates/](site/templates/) plus the registry and run files |
 
@@ -36,5 +37,6 @@ python3 -m unittest discover -s . -q
 export INFERHUB_API_KEY=…
 python3 -m probe.run
 python3 -m probe.pricing
+python3 -m probe.routes cb/gpt-5.6-luna cmc/deepseek/deepseek-v4-pro   # sweep arbitrary routes
 PAGES_BASE= python3 site/generate.py
 ```
