@@ -18,6 +18,11 @@ def cell_map(run: dict) -> dict[tuple[str, str], dict]:
     return {(c["alias"], c["check_id"]): c for c in run.get("cells") or []}
 
 
+def alias_probed(run: dict, alias: str) -> bool:
+    """True when the run holds at least one cell for the alias."""
+    return any(cell.get("alias") == alias for cell in run.get("cells") or [])
+
+
 def scoring_ids(registry: list[dict]) -> list[str]:
     return [spec["id"] for spec in registry if spec.get("scores_rank")]
 

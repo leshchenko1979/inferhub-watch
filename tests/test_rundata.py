@@ -25,6 +25,13 @@ class RundataBoardTests(unittest.TestCase):
             "2/2: tools + cache",
         )
 
+    def test_alias_probed(self) -> None:
+        run = {"cells": [{"alias": "a", "check_id": "x", "status": "pass"}]}
+        self.assertTrue(rundata.alias_probed(run, "a"))
+        self.assertFalse(rundata.alias_probed(run, "b"))
+        self.assertFalse(rundata.alias_probed({"cells": []}, "a"))
+        self.assertFalse(rundata.alias_probed({}, "a"))
+
     def test_aliases_safe_first_keeps_relative_order(self) -> None:
         run = {
             "cells": [

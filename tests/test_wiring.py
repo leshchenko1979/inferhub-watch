@@ -192,6 +192,36 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn("Clone and run", html)
         self.assertNotIn("Run it yourself", html)
 
+    def test_unprobed_runs_render_blank_not_red(self) -> None:
+        gen = _load_generate()
+        registry = gen.load_registry()
+        scoring = gen.rundata.scoring_ids(registry)
+        newer = {
+            "started_at": "2026-08-27T21:00:00",
+            "origin": "local",
+            "cells": [
+                {
+                    "alias": "new/a",
+                    "check_id": cid,
+                    "status": "pass",
+                    "summary": "ok",
+                    "resolved_model": "new/a",
+                }
+                for cid in scoring
+            ],
+        }
+        older = {
+            "started_at": "2026-08-27T06:00:00",
+            "origin": "Actions · CI",
+            "cells": [],
+        }
+        with mock.patch.object(gen.rundata, "load_pricing", return_value=None):
+            page = gen.index_html([older, newer], ["new/a"], registry)
+        self.assertIn('class="absent"', page)
+        self.assertIn("not probed", page)
+        self.assertNotIn('class="bad"', page)
+        self.assertIn("was not on the", page)
+
 
 class PricingSectionTests(unittest.TestCase):
     PAYLOAD = {
@@ -251,7 +281,7 @@ class PricingSectionTests(unittest.TestCase):
         self.assertIn('href="#method"', nav)
         self.assertIn('href="#earlier"', nav)
 
-    def test_present_pricing_renders_between_history_and_method(self) -> None:
+    def test_present_pricing_renders_before_history(self) -> None:
         gen = _load_generate()
         with mock.patch.object(
             gen.rundata, "load_pricing", return_value=self.PAYLOAD
@@ -262,8 +292,8 @@ class PricingSectionTests(unittest.TestCase):
             nav = gen.board_nav()
         self.assertIn('id="pricing"', page)
         self.assertIn('href="#pricing"', nav)
-        self.assertLess(page.find('id="earlier"'), page.find('id="pricing"'))
-        self.assertLess(page.find('id="pricing"'), page.find('id="method"'))
+        self.assertLess(page.find('id="probe"'), page.find('id="pricing"'))
+        self.assertLess(page.find('id="pricing"'), page.find('id="earlier"'))
         self.assertIn("ali/qwen3.8-max", page)
         self.assertIn("$0.014", page)
         self.assertIn("$0.042", page)

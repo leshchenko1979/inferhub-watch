@@ -30,8 +30,8 @@ FONTS = (
 )
 SECTIONS = (
     ("probe", "Latest results"),
-    ("earlier", "Past runs"),
     ("pricing", "Cost per M tokens"),
+    ("earlier", "Past runs"),
     ("method", "How we test"),
 )
 
@@ -222,6 +222,13 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
     for alias in order:
         cells = []
         for run, col_label in zip(window, col_labels):
+            if not rundata.alias_probed(run, alias):
+                cells.append(
+                    '<td class="absent" data-tip="'
+                    f'{html.escape(col_label + " · not probed")}"'
+                    ' tabindex="0"></td>'
+                )
+                continue
             ok, total = rundata.scoring_pass_count(run, alias, score_ids)
             cls = "ok" if ok == total else ("mid" if ok else "bad")
             failed = rundata.scoring_failed_ids(run, alias, score_ids)
