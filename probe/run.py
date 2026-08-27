@@ -8,7 +8,13 @@ from pathlib import Path
 
 from probe.http import InferHubClient
 from probe.payloads import URL
-from probe.registry import load_aliases, load_check_module, load_registry, repo_root
+from probe.registry import (
+    load_aliases,
+    load_candidates,
+    load_check_module,
+    load_registry,
+    repo_root,
+)
 from probe.result import result
 
 BALANCE_MARKERS = ("balance too low", "insufficient_balance")
@@ -52,6 +58,34 @@ def collect_cells(
     return cells, errors
 
 
+def candidate_routes(groups: list[dict]) -> list[tuple[str, str]]:
+    """(route, model) pairs in config order, deduplicated by route."""
+    seen: set[str] = set()
+    pairs: list[tuple[str, str]] = []
+    for group in groups:
+        for route in group["routes"]:
+            if route not in seen:
+                seen.add(route)
+                pairs.append((route, group["model"]))
+    return pairs
+
+
+def run_candidate_sweep(
+    client: InferHubClient, pairs: list[tuple[str, str]], registry: list[dict]
+) -> tuple[list[dict], list[str]]:
+    """Probe candidate routes; every cell tagged candidate:true + owning model."""
+    cells: list[dict] = []
+    errors: list[str] = []
+    for route, model in pairs:
+        route_cells, route_errors = collect_cells(client, [route], registry)
+        for cell in route_cells:
+            cell["candidate"] = True
+            cell["model"] = model
+        cells.extend(route_cells)
+        errors.extend(route_errors)
+    return cells, errors
+
+
 def main() -> int:
     key = os.environ.get("INFERHUB_API_KEY", "").strip()
     if not key:
@@ -60,12 +94,21 @@ def main() -> int:
     client = InferHubClient(key)
     aliases = load_aliases()
     registry = load_registry()
+    cand_pairs = candidate_routes(load_candidates())
     started = datetime.now(timezone.utc)
     try:
         cells, errors = collect_cells(client, aliases, registry)
     except BalanceTooLow as exc:
         print(f"Aborting probe, no run written — {exc}", file=sys.stderr)
         return 3
+    if cand_pairs:
+        try:
+            cand_cells, cand_errors = run_candidate_sweep(client, cand_pairs, registry)
+            cells.extend(cand_cells)
+            errors.extend(cand_errors)
+        except BalanceTooLow as exc:
+            # board data is already safe; stop the sweep, keep the run
+            errors.append(f"candidate sweep aborted early: {exc}")
     finished = datetime.now(timezone.utc)
     run_payload = {
         "started_at": started.isoformat(),
@@ -73,6 +116,7 @@ def main() -> int:
         "origin": "github-actions",
         "api": URL,
         "aliases": aliases,
+        "candidates": [route for route, _ in cand_pairs],
         "checks": [c["id"] for c in registry],
         "cells": cells,
         "runner_errors": errors,

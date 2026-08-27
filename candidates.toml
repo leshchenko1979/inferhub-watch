@@ -1,0 +1,29 @@
+# Candidate routes — alternates kept under watch per model family.
+#
+# Probed every run alongside the board (models.toml), rendered in the
+# #candidates section only — never in the board matrix, timeline, or pricing.
+# When a board route degrades, the replacement is already proven here.
+#
+# Initial list: probe evidence of 2026-08-27
+# (~/.opencrabs/research/inferhub-usage-provider-avoid-2026-08-27.md).
+# nous/* omitted (publisher dead), dated ali snapshots omitted.
+
+[[candidate]]
+model = "deepseek-v4-pro"
+routes = ["ocg/deepseek-v4-pro", "cbcn/deepseek-v4-pro"]
+
+[[candidate]]
+model = "gpt-5.6-luna"
+routes = ["cx/gpt-5.6-luna", "cb/gpt-5.6-luna"]
+
+[[candidate]]
+model = "qwen3.8-max"
+routes = ["cp/cline-pass/qwen3.8-max"]
+
+[[candidate]]
+model = "deepseek-v4-flash"
+routes = ["cmc/deepseek-v4-flash", "cbcn/deepseek-v4-flash"]
+
+[[candidate]]
+model = "glm-5.3"
+routes = ["cb/glm-5.3"]
