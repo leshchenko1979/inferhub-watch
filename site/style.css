@@ -508,6 +508,44 @@ td {
   overflow-x: auto;
 }
 
+/* ── Cost per M tokens ── */
+
+.pricing {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-caption);
+  font-family: var(--mono);
+}
+
+.pricing caption {
+  caption-side: bottom;
+  text-align: left;
+  color: var(--muted);
+  font-size: var(--text-caption);
+  padding: var(--space-3) 0 var(--space-2);
+  text-wrap: pretty;
+}
+
+.pricing th,
+.pricing td {
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.pricing .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pricing tbody th {
+  font-weight: 500;
+}
+
+.ask-mark {
+  color: var(--muted);
+  margin-left: 1px;
+}
+
 /* ── Mobile: timeline stays as a table (no card collapse) ── */
 
 @media (max-width: 720px) {

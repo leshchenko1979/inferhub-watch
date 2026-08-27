@@ -47,11 +47,16 @@ jobs:
         env:
           INFERHUB_API_KEY: ${{ secrets.INFERHUB_API_KEY }}
         run: python3 -m probe.run
+      - name: Probe pricing
+        env:
+          INFERHUB_API_KEY: ${{ secrets.INFERHUB_API_KEY }}
+        run: python3 -m probe.pricing
       - name: Commit run JSON
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/runs
+          test ! -f data/pricing.json || git add data/pricing.json
           if git diff --cached --quiet; then
             echo "no new run files"
           else

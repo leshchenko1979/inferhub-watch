@@ -136,3 +136,58 @@ def alias_run_cost(run: dict, alias: str) -> str:
 
 def run_total_cost(run: dict) -> str:
     return _sum_costs(run)
+
+
+def load_pricing(root: Path) -> dict | None:
+    """data/pricing.json as written by probe.pricing, or None when unusable."""
+    try:
+        payload = json.loads((root / "data" / "pricing.json").read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get("routes"), dict):
+        return None
+    return payload
+
+
+def pricing_rows(payload: dict | None) -> list[dict]:
+    """Routes with any billed rate, in the order the probe wrote them."""
+    if not payload:
+        return []
+    rows = []
+    for route, entry in (payload.get("routes") or {}).items():
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("ask_in") is None and entry.get("eff_per_mtok") is None:
+            continue
+        rows.append({"route": route, **entry})
+    return rows
+
+
+def rate_label(raw: object, sig: int = 3) -> str:
+    """Compact $/M label: '$0.014', '$2.49'; extra decimals when tiny."""
+    try:
+        value = float(str(raw))
+    except (TypeError, ValueError):
+        return ""
+    if value <= 0:
+        return ""
+    text = f"${value:.{sig}g}"
+    if "e" in text or "E" in text:
+        text = f"${value:.6f}".rstrip("0").rstrip(".")
+    return text
+
+
+def token_label(count: int) -> str:
+    if count >= 1_000_000:
+        return f"{count / 1_000_000:.1f}M"
+    if count >= 1_000:
+        return f"{count / 1_000:.0f}k"
+    return str(count)
+
+
+def cache_label(raw: object) -> str:
+    """68.7 -> '69%'; '' when absent."""
+    try:
+        return f"{float(str(raw)):.0f}%"
+    except (TypeError, ValueError):
+        return ""

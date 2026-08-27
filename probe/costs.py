@@ -30,12 +30,20 @@ def parse_ts(raw: str) -> datetime:
 
 
 def fetch_log_rows(
-    key: str, *, range_: str = "24h", after: datetime | None = None
+    key: str,
+    *,
+    range_: str = "24h",
+    after: datetime | None = None,
+    max_pages: int | None = None,
 ) -> list[dict]:
-    """Paginate /usage/logs newest-first; stop once older than `after`."""
+    """Paginate /usage/logs newest-first; stop once older than `after`.
+
+    `max_pages` raises the cap for wide ranges (30d needs ~60 pages).
+    """
+    cap = max_pages if max_pages is not None else MAX_PAGES
     rows: list[dict] = []
     page = 1
-    while page <= MAX_PAGES:
+    while page <= cap:
         url = (
             f"{MANAGEMENT}/usage/logs?range={range_}&sort=ts&dir=desc"
             f"&pageSize={PAGE_SIZE}&page={page}"

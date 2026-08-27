@@ -31,6 +31,7 @@ FONTS = (
 SECTIONS = (
     ("probe", "Latest results"),
     ("earlier", "Past runs"),
+    ("pricing", "Cost per M tokens"),
     ("method", "How we test"),
 )
 
@@ -54,11 +55,14 @@ def alias_heading(alias: str, resolved: str) -> str:
 
 
 def board_nav() -> str:
-    items = "".join(
-        f'<li><a href="#{html.escape(sid)}">{html.escape(title)}</a></li>'
-        for sid, title in SECTIONS
-    )
-    return tmpl.render("nav.html", items=items)
+    items = []
+    for sid, title in SECTIONS:
+        if sid == "pricing" and not rundata.load_pricing(ROOT):
+            continue
+        items.append(
+            f'<li><a href="#{html.escape(sid)}">{html.escape(title)}</a></li>'
+        )
+    return tmpl.render("nav.html", items="".join(items))
 
 
 def section_title(section_id: str) -> str:
@@ -106,6 +110,67 @@ def shell(
         body=body,
         footer=f"<footer><p>{CLONE}</p></footer>" if with_footer else "",
         script=script,
+    )
+
+
+def pricing_section(payload: dict | None) -> str:
+    """The #pricing section, or '' when there is no usable pricing data."""
+    rows = rundata.pricing_rows(payload)
+    if not rows:
+        return ""
+    span = html.escape(str(payload.get("range") or "30d"))
+    scanned = payload.get("requests_scanned")
+    note = f"{span} window"
+    if scanned:
+        note += f" · {scanned} billed requests"
+    traffic_head = f"{span} traffic"
+    body_rows = []
+    for row in rows:
+        logged = row.get("source") == "usage-logs"
+        mark = "" if logged else '<span class="ask-mark" title="no traffic in window; catalog list price">*</span>'
+        ask_in = rundata.rate_label(row.get("ask_in")) or "n/a"
+        ask_out = rundata.rate_label(row.get("ask_out")) or "n/a"
+        eff = rundata.rate_label(row.get("eff_per_mtok")) or "n/a"
+        cache = rundata.cache_label(row.get("cache_pct")) or "n/a"
+        reqs = int(row.get("reqs") or 0)
+        toks = rundata.token_label(
+            int(row.get("tok_in") or 0) + int(row.get("tok_out") or 0)
+        )
+        cost = rundata.cost_label(row.get("cost_usdc")) or "n/a"
+        body_rows.append(
+            "<tr>"
+            f'<th scope="row"><code>{html.escape(str(row["route"]))}</code></th>'
+            f'<td class="num">{ask_in}{mark}</td>'
+            f'<td class="num">{ask_out}{mark}</td>'
+            f'<td class="num">{eff}</td>'
+            f'<td class="num">{cache}</td>'
+            f'<td class="num">{reqs} req · {toks} tok</td>'
+            f'<td class="num">{cost}</td>'
+            "</tr>"
+        )
+    caption = (
+        "&#8220;ask&#8221; is the per-M rate billed on fresh (uncached) input / output; "
+        "&#8220;effective&#8221; is billed cost over all tokens, cache discounts included. "
+        "* = no traffic in the window, rates fall back to catalog list price. "
+        "Rates for this board&#8217;s routes only; other traffic is not listed."
+    )
+    return (
+        '<section class="pricing-block" id="pricing">'
+        f"<h2>{html.escape(section_title('pricing'))}</h2>"
+        f'<p class="section-note">{html.escape(note)}.</p>'
+        '<div class="scroll"><table class="pricing">'
+        f"<caption>{caption}</caption>"
+        "<thead><tr>"
+        '<th scope="col">Route</th>'
+        '<th scope="col" class="num">ask in $/M</th>'
+        '<th scope="col" class="num">ask out $/M</th>'
+        '<th scope="col" class="num">effective $/M</th>'
+        '<th scope="col" class="num">cache hit</th>'
+        f'<th scope="col" class="num">{html.escape(traffic_head)}</th>'
+        f'<th scope="col" class="num">{html.escape(span)} cost</th>'
+        "</tr></thead>"
+        f"<tbody>{''.join(body_rows)}</tbody>"
+        "</table></div></section>"
     )
 
 
@@ -234,6 +299,7 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
         score_label="check" if n_score == 1 else "checks",
         rule=rule,
         grid_rows="".join(grid_rows),
+        pricing_section=pricing_section(rundata.load_pricing(ROOT)),
         explainers="".join(explainers),
         github=GITHUB,
         clone=CLONE,

@@ -193,6 +193,92 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn("Run it yourself", html)
 
 
+class PricingSectionTests(unittest.TestCase):
+    PAYLOAD = {
+        "generated_at": "2026-08-27T20:00:00+00:00",
+        "range": "30d",
+        "requests_scanned": 5700,
+        "routes": {
+            "ali/qwen3.8-max": {
+                "ask_in": 0.014,
+                "ask_out": 0.042,
+                "eff_per_mtok": 0.0201,
+                "cache_pct": 61.4,
+                "reqs": 12,
+                "tok_in": 90000,
+                "tok_out": 3000,
+                "cost_usdc": "0.001870",
+                "last_ts": "2026-08-27T19:00:00",
+                "source": "usage-logs",
+            },
+            "nous/deepseek-v4-flash": {
+                "ask_in": 0.011,
+                "ask_out": 0.032,
+                "eff_per_mtok": None,
+                "cache_pct": None,
+                "reqs": 0,
+                "tok_in": 0,
+                "tok_out": 0,
+                "cost_usdc": None,
+                "last_ts": None,
+                "source": "catalog",
+            },
+            "ghost/route": {
+                "ask_in": None,
+                "ask_out": None,
+                "eff_per_mtok": None,
+                "cache_pct": None,
+                "reqs": 0,
+                "tok_in": 0,
+                "tok_out": 0,
+                "cost_usdc": None,
+                "last_ts": None,
+                "source": "none",
+            },
+        },
+    }
+
+    def test_absent_pricing_omits_section_and_nav(self) -> None:
+        gen = _load_generate()
+        with mock.patch.object(gen.rundata, "load_pricing", return_value=None):
+            page = gen.index_html(
+                gen.load_runs(), gen.load_aliases(), gen.load_registry()
+            )
+            nav = gen.board_nav()
+        self.assertNotIn('id="pricing"', page)
+        self.assertNotIn('href="#pricing"', page)
+        self.assertNotIn('href="#pricing"', nav)
+        self.assertIn('href="#method"', nav)
+        self.assertIn('href="#earlier"', nav)
+
+    def test_present_pricing_renders_between_history_and_method(self) -> None:
+        gen = _load_generate()
+        with mock.patch.object(
+            gen.rundata, "load_pricing", return_value=self.PAYLOAD
+        ):
+            page = gen.index_html(
+                gen.load_runs(), gen.load_aliases(), gen.load_registry()
+            )
+            nav = gen.board_nav()
+        self.assertIn('id="pricing"', page)
+        self.assertIn('href="#pricing"', nav)
+        self.assertLess(page.find('id="earlier"'), page.find('id="pricing"'))
+        self.assertLess(page.find('id="pricing"'), page.find('id="method"'))
+        self.assertIn("ali/qwen3.8-max", page)
+        self.assertIn("$0.014", page)
+        self.assertIn("$0.042", page)
+        self.assertIn("$0.0201", page)
+        self.assertIn("61%", page)
+        self.assertIn("$0.0019", page)
+        self.assertIn("12 req · 93k tok", page)
+        self.assertIn("30d window · 5700 billed requests", page)
+        # routes with no rate data at all are filtered out
+        self.assertNotIn("ghost/route", page)
+        # catalog-fallback route is marked with the list-price asterisk
+        self.assertIn("nous/deepseek-v4-flash", page)
+        self.assertIn("ask-mark", page)
+
+
 def _load_run():
     import probe.run as run_mod
 

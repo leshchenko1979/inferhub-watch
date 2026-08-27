@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
 
 import sys
@@ -57,6 +58,50 @@ class RundataBoardTests(unittest.TestCase):
             [s["id"] for s in rundata.display_specs(registry)],
             ["stream_tools", "usage_pricing"],
         )
+
+
+class PricingDataTests(unittest.TestCase):
+    def test_rate_label_formats_compact(self) -> None:
+        self.assertEqual(rundata.rate_label(0.014), "$0.014")
+        self.assertEqual(rundata.rate_label("2.49"), "$2.49")
+        self.assertEqual(rundata.rate_label(0.83), "$0.83")
+        self.assertEqual(rundata.rate_label(0.00005), "$0.00005")
+        self.assertEqual(rundata.rate_label(None), "")
+        self.assertEqual(rundata.rate_label(0), "")
+        self.assertEqual(rundata.rate_label("junk"), "")
+
+    def test_token_and_cache_labels(self) -> None:
+        self.assertEqual(rundata.token_label(999), "999")
+        self.assertEqual(rundata.token_label(41_200_000), "41.2M")
+        self.assertEqual(rundata.token_label(12_300), "12k")
+        self.assertEqual(rundata.cache_label(68.7), "69%")
+        self.assertEqual(rundata.cache_label(None), "")
+
+    def test_pricing_rows_keeps_only_routes_with_rates(self) -> None:
+        payload = {
+            "routes": {
+                "a": {"ask_in": 0.014, "eff_per_mtok": None},
+                "b": {"ask_in": None, "eff_per_mtok": 0.02},
+                "c": {"ask_in": None, "eff_per_mtok": None},
+                "d": "junk",
+            }
+        }
+        rows = rundata.pricing_rows(payload)
+        self.assertEqual([r["route"] for r in rows], ["a", "b"])
+        self.assertEqual(rundata.pricing_rows(None), [])
+        self.assertEqual(rundata.pricing_rows({}), [])
+
+    def test_load_pricing_reads_or_none(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertIsNone(rundata.load_pricing(root))
+            (root / "data").mkdir()
+            (root / "data" / "pricing.json").write_text('{"routes": {"a": {}}}')
+            self.assertEqual(rundata.load_pricing(root)["routes"], {"a": {}})
+            (root / "data" / "pricing.json").write_text("not json")
+            self.assertIsNone(rundata.load_pricing(root))
+            (root / "data" / "pricing.json").write_text('{"nope": 1}')
+            self.assertIsNone(rundata.load_pricing(root))
 
 
 if __name__ == "__main__":
