@@ -1,0 +1,519 @@
+{
+  "started_at": "2026-08-27T19:52:07.737817+00:00",
+  "origin": "github-actions",
+  "api": "https://api.inferhub.dev/v1/chat/completions",
+  "aliases": [
+    "cx/gpt-5.6-luna",
+    "ocg/deepseek-v4-flash",
+    "cp/cline-pass/deepseek-v4-pro",
+    "ali/qwen3.8-max",
+    "zai/glm-5.3",
+    "cp/xai/grok-4.6"
+  ],
+  "checks": [
+    "stream_tools",
+    "cache_tools",
+    "ru_mojibake",
+    "usage_pricing"
+  ],
+  "cells": [
+    {
+      "check_id": "stream_tools",
+      "alias": "cx/gpt-5.6-luna",
+      "resolved_model": "cx/gpt-5.6-luna",
+      "status": "pass",
+      "summary": "Streamed a tool call named get_weather.",
+      "http_status": 200,
+      "latency_ms": 2908.2,
+      "evidence": {
+        "chunk_count": 7,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "get_weather"
+        ],
+        "last_finish_reason": "tool_calls"
+      }
+    },
+    {
+      "check_id": "cache_tools",
+      "alias": "cx/gpt-5.6-luna",
+      "resolved_model": "cx/gpt-5.6-luna",
+      "status": "fail",
+      "summary": "No prompt-cache hit after 3 tries (1864 input tokens, no tools). usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 2347.7,
+      "evidence": {
+        "prefix_hash": "6879cf35bed7",
+        "cached_tokens": 0,
+        "chunk_count": 3,
+        "usage": {
+          "completion_tokens": 6,
+          "prompt_tokens": 1864,
+          "total_tokens": 1870
+        },
+        "had_tools": false
+      }
+    },
+    {
+      "check_id": "ru_mojibake",
+      "alias": "cx/gpt-5.6-luna",
+      "resolved_model": "cx/gpt-5.6-luna",
+      "status": "pass",
+      "summary": "Russian answer arrived clean \u2014 244 chars, no replacement characters, no double-encoded Cyrillic.",
+      "http_status": 200,
+      "latency_ms": 6304.4,
+      "evidence": {
+        "chars": 244,
+        "cyrillic_chars": 197,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "finish_reason": "stop",
+        "sample": "\u041d\u0438 \u0432 \u043a\u0430\u043a\u043e\u043c: \u0442\u0430\u043a\u043e\u0433\u043e \u0438\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u044f \u043d\u0435 \u0431\u044b\u043b\u043e. \u00ab\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439\u00bb \u043d\u0435 \u0438\u0437\u0432\u0435\u0441\u0442\u0435\u043d \u043a\u0430\u043a \u0437\u0430\u0432\u043e\u0435\u0432\u0430\u0442\u0435\u043b\u044c \u0438\u043d\u043a\u043e\u0432, \u0430 \u0441\u0430\u043c\u0438 \u0438\u043d\u043a\u0438 \u0441\u0442\u0430\u043b\u0438 \u043a"
+      }
+    },
+    {
+      "check_id": "usage_pricing",
+      "alias": "cx/gpt-5.6-luna",
+      "resolved_model": "cx/gpt-5.6-luna",
+      "status": "info",
+      "summary": "No price field.",
+      "http_status": 200,
+      "latency_ms": 2168.2,
+      "evidence": {
+        "usage": {
+          "prompt_tokens": 70,
+          "completion_tokens": 18
+        }
+      }
+    },
+    {
+      "check_id": "stream_tools",
+      "alias": "ocg/deepseek-v4-flash",
+      "resolved_model": "ocg/deepseek-v4-flash",
+      "status": "pass",
+      "summary": "Streamed a tool call named get_weather.",
+      "http_status": 200,
+      "latency_ms": 3561.7,
+      "evidence": {
+        "chunk_count": 14,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "get_weather"
+        ],
+        "last_finish_reason": "tool_calls"
+      }
+    },
+    {
+      "check_id": "cache_tools",
+      "alias": "ocg/deepseek-v4-flash",
+      "resolved_model": "ocg/deepseek-v4-flash",
+      "status": "pass",
+      "summary": "Prompt cache hit: 1792 of 1962 input tokens were reused.",
+      "http_status": 200,
+      "latency_ms": 2193.3,
+      "evidence": {
+        "prefix_hash": "6879cf35bed7",
+        "cached_tokens": 1792,
+        "chunk_count": 14,
+        "usage": {
+          "prompt_tokens": 1962,
+          "completion_tokens": 28,
+          "total_tokens": 1990,
+          "prompt_tokens_details": {
+            "cached_tokens": 1792
+          }
+        },
+        "had_tools": false
+      }
+    },
+    {
+      "check_id": "ru_mojibake",
+      "alias": "ocg/deepseek-v4-flash",
+      "resolved_model": "ocg/deepseek-v4-flash",
+      "status": "pass",
+      "summary": "Russian answer arrived clean \u2014 1734 chars, no replacement characters, no double-encoded Cyrillic.",
+      "http_status": 200,
+      "latency_ms": 10603.5,
+      "evidence": {
+        "chars": 1734,
+        "cyrillic_chars": 1332,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "finish_reason": "stop",
+        "sample": "\u0412 \u0438\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u043d\u0430\u0443\u043a\u0435 **\u043d\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442** \u0442\u0430\u043a\u043e\u0433\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u044f, \u043a\u0430\u043a \u00ab\u0430\u0442\u0430\u043a\u0430 \u0418\u0433\u043e\u0440\u044f \u0412\u0435\u043b\u0438\u043a\u043e\u0433\u043e \u043d\u0430 \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432\u00bb. \u042d\u0442\u043e \u0441\u043e\u0447\u0435\u0442\u0430\u043d\u0438\u0435 \u0430"
+      }
+    },
+    {
+      "check_id": "usage_pricing",
+      "alias": "ocg/deepseek-v4-flash",
+      "resolved_model": "ocg/deepseek-v4-flash",
+      "status": "info",
+      "summary": "No price field.",
+      "http_status": 200,
+      "latency_ms": 19207.3,
+      "evidence": {
+        "usage": {
+          "prompt_tokens": 296,
+          "completion_tokens": 69,
+          "cached_tokens": 256
+        }
+      }
+    },
+    {
+      "check_id": "stream_tools",
+      "alias": "cp/cline-pass/deepseek-v4-pro",
+      "resolved_model": "cp/cline-pass/deepseek-v4-pro",
+      "status": "pass",
+      "summary": "Streamed a tool call named get_weather.",
+      "http_status": 200,
+      "latency_ms": 5920.1,
+      "evidence": {
+        "chunk_count": 14,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "get_weather"
+        ],
+        "last_finish_reason": "tool_calls"
+      }
+    },
+    {
+      "check_id": "cache_tools",
+      "alias": "cp/cline-pass/deepseek-v4-pro",
+      "resolved_model": "cp/cline-pass/deepseek-v4-pro",
+      "status": "fail",
+      "summary": "No prompt-cache hit after 3 tries (1962 input tokens, no tools). usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 1510.2,
+      "evidence": {
+        "prefix_hash": "6879cf35bed7",
+        "cached_tokens": 0,
+        "chunk_count": 4,
+        "usage": {
+          "completion_tokens": 3,
+          "completion_tokens_details": {
+            "audio_tokens": 0,
+            "image_tokens": 0,
+            "reasoning_tokens": 0
+          },
+          "cost": 0.00325215,
+          "cost_details": null,
+          "is_byok": false,
+          "prompt_tokens": 1962,
+          "prompt_tokens_details": {
+            "audio_tokens": 0,
+            "cache_write_tokens": 0,
+            "cached_tokens": 0,
+            "video_tokens": 0
+          },
+          "total_tokens": 1965
+        },
+        "had_tools": false
+      }
+    },
+    {
+      "check_id": "ru_mojibake",
+      "alias": "cp/cline-pass/deepseek-v4-pro",
+      "resolved_model": "cp/cline-pass/deepseek-v4-pro",
+      "status": "pass",
+      "summary": "Russian answer arrived clean \u2014 383 chars, no replacement characters, no double-encoded Cyrillic.",
+      "http_status": 200,
+      "latency_ms": 12350.8,
+      "evidence": {
+        "chars": 383,
+        "cyrillic_chars": 313,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "finish_reason": "stop",
+        "sample": "\u0422\u0430\u043a\u043e\u0433\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u044f \u0432 \u0438\u0441\u0442\u043e\u0440\u0438\u0438 \u043d\u0435 \u0431\u044b\u043b\u043e. \u041a\u043d\u044f\u0437\u044c \u0418\u0433\u043e\u0440\u044c (\u0418\u0433\u043e\u0440\u044c \u0420\u044e\u0440\u0438\u043a\u043e\u0432\u0438\u0447, \u043f\u0440\u0430\u0432\u0438\u043b \u0432 \u041a\u0438\u0435\u0432\u0435 \u0432 X \u0432\u0435\u043a\u0435) \u0436\u0438\u043b \u0432 \u0412\u043e\u0441\u0442\u043e\u0447\u043d\u043e\u0439 \u0415\u0432\u0440\u043e\u043f\u0435 \u0438 \u043d\u0435 \u043c\u043e\u0433"
+      }
+    },
+    {
+      "check_id": "usage_pricing",
+      "alias": "cp/cline-pass/deepseek-v4-pro",
+      "resolved_model": "cp/cline-pass/deepseek-v4-pro",
+      "status": "info",
+      "summary": "cost=0.0008151",
+      "http_status": 200,
+      "latency_ms": 5303.8,
+      "evidence": {
+        "usage": {
+          "cost": 0.0008151,
+          "is_byok": false,
+          "cost_details": null,
+          "prompt_tokens": 296,
+          "completion_tokens": 66,
+          "cached_tokens": 0
+        }
+      }
+    },
+    {
+      "check_id": "stream_tools",
+      "alias": "ali/qwen3.8-max",
+      "resolved_model": "ali/qwen3.8-max",
+      "status": "pass",
+      "summary": "Streamed a tool call named get_weather.",
+      "http_status": 200,
+      "latency_ms": 1968.6,
+      "evidence": {
+        "chunk_count": 8,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "get_weather"
+        ],
+        "last_finish_reason": "tool_calls"
+      }
+    },
+    {
+      "check_id": "cache_tools",
+      "alias": "ali/qwen3.8-max",
+      "resolved_model": "ali/qwen3.8-max",
+      "status": "pass",
+      "summary": "Prompt cache hit: 2048 of 2236 input tokens were reused.",
+      "http_status": 200,
+      "latency_ms": 2498.4,
+      "evidence": {
+        "prefix_hash": "6879cf35bed7",
+        "cached_tokens": 2048,
+        "chunk_count": 14,
+        "usage": {
+          "completion_tokens": 37,
+          "completion_tokens_details": {
+            "reasoning_tokens": 30,
+            "text_tokens": 37
+          },
+          "prompt_tokens": 2236,
+          "prompt_tokens_details": {
+            "cached_tokens": 2048,
+            "text_tokens": 2236
+          },
+          "total_tokens": 2273
+        },
+        "had_tools": false
+      }
+    },
+    {
+      "check_id": "ru_mojibake",
+      "alias": "ali/qwen3.8-max",
+      "resolved_model": "ali/qwen3.8-max",
+      "status": "pass",
+      "summary": "Russian answer arrived clean \u2014 1633 chars, no replacement characters, no double-encoded Cyrillic.",
+      "http_status": 200,
+      "latency_ms": 47960.4,
+      "evidence": {
+        "chars": 1633,
+        "cyrillic_chars": 1202,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "finish_reason": "stop",
+        "sample": "\u0422\u0430\u043a\u043e\u0433\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u044f \u0432 \u0438\u0441\u0442\u043e\u0440\u0438\u0438 **\u043d\u0438\u043a\u043e\u0433\u0434\u0430 \u043d\u0435 \u0431\u044b\u043b\u043e**. \u0412\u0430\u0448 \u0432\u043e\u043f\u0440\u043e\u0441 \u2014 \u044d\u0442\u043e \u043a\u043b\u0430\u0441\u0441\u0438\u0447\u0435\u0441\u043a\u0438\u0439 \u043f\u0440\u0438\u043c\u0435\u0440 \u0438\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u043f\u0430\u0440\u0430\u0434\u043e\u043a\u0441\u0430 (\u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e, \u0448\u0443"
+      }
+    },
+    {
+      "check_id": "usage_pricing",
+      "alias": "ali/qwen3.8-max",
+      "resolved_model": "ali/qwen3.8-max",
+      "status": "info",
+      "summary": "No price field.",
+      "http_status": 200,
+      "latency_ms": 1957.6,
+      "evidence": {
+        "usage": {
+          "prompt_tokens": 286,
+          "completion_tokens": 22,
+          "cached_tokens": 0
+        }
+      }
+    },
+    {
+      "check_id": "stream_tools",
+      "alias": "zai/glm-5.3",
+      "resolved_model": "zai/glm-5.3",
+      "status": "pass",
+      "summary": "Streamed a tool call named get_weather.",
+      "http_status": 200,
+      "latency_ms": 4529.8,
+      "evidence": {
+        "chunk_count": 2,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "get_weather"
+        ],
+        "last_finish_reason": "tool_calls"
+      }
+    },
+    {
+      "check_id": "cache_tools",
+      "alias": "zai/glm-5.3",
+      "resolved_model": "zai/glm-5.3",
+      "status": "pass",
+      "summary": "Prompt cache hit: 1856 of 1921 input tokens were reused.",
+      "http_status": 200,
+      "latency_ms": 2842.8,
+      "evidence": {
+        "prefix_hash": "6879cf35bed7",
+        "cached_tokens": 1856,
+        "chunk_count": 3,
+        "usage": {
+          "prompt_tokens": 1921,
+          "completion_tokens": 4,
+          "total_tokens": 1925,
+          "prompt_tokens_details": {
+            "cached_tokens": 1856
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "had_tools": false
+      }
+    },
+    {
+      "check_id": "ru_mojibake",
+      "alias": "zai/glm-5.3",
+      "resolved_model": "zai/glm-5.3",
+      "status": "pass",
+      "summary": "Russian answer arrived clean \u2014 926 chars, no replacement characters, no double-encoded Cyrillic.",
+      "http_status": 200,
+      "latency_ms": 6465.2,
+      "evidence": {
+        "chars": 926,
+        "cyrillic_chars": 708,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "finish_reason": "stop",
+        "sample": "\u0412 \u044d\u0442\u043e\u043c \u0432\u043e\u043f\u0440\u043e\u0441\u0435 \u0441\u043e\u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044f \u043d\u0435\u0441\u043a\u043e\u043b\u044c\u043a\u043e \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u043e\u0448\u0438\u0431\u043e\u043a:\n\n1. **\u00ab\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439\u00bb** \u2014 \u0442\u0430\u043a\u043e\u0433\u043e \u043f\u0440\u0430\u0432\u0438\u0442\u0435\u043b\u044f \u0432 \u0438\u0441\u0442\u043e\u0440\u0438\u0438 \u043d\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u043e"
+      }
+    },
+    {
+      "check_id": "usage_pricing",
+      "alias": "zai/glm-5.3",
+      "resolved_model": "zai/glm-5.3",
+      "status": "info",
+      "summary": "No price field.",
+      "http_status": 200,
+      "latency_ms": 4099.7,
+      "evidence": {
+        "usage": {
+          "prompt_tokens": 171,
+          "completion_tokens": 12,
+          "cached_tokens": 128
+        }
+      }
+    },
+    {
+      "check_id": "stream_tools",
+      "alias": "cp/xai/grok-4.6",
+      "resolved_model": "cp/xai/grok-4.6",
+      "status": "pass",
+      "summary": "Streamed a tool call named get_weather.",
+      "http_status": 200,
+      "latency_ms": 6349.6,
+      "evidence": {
+        "chunk_count": 27,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "get_weather"
+        ],
+        "last_finish_reason": "tool_calls"
+      }
+    },
+    {
+      "check_id": "cache_tools",
+      "alias": "cp/xai/grok-4.6",
+      "resolved_model": "cp/xai/grok-4.6",
+      "status": "pass",
+      "summary": "Prompt cache hit: 128 of 2053 input tokens were reused.",
+      "http_status": 200,
+      "latency_ms": 4931.6,
+      "evidence": {
+        "prefix_hash": "6879cf35bed7",
+        "cached_tokens": 128,
+        "chunk_count": 19,
+        "usage": {
+          "prompt_tokens": 2053,
+          "completion_tokens": 173,
+          "total_tokens": 2226,
+          "cost": 0,
+          "is_byok": true,
+          "prompt_tokens_details": {
+            "cached_tokens": 128,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.004952,
+            "upstream_inference_prompt_cost": 0,
+            "upstream_inference_completions_cost": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 172,
+            "image_tokens": 0
+          },
+          "cache_creation_input_tokens": 0,
+          "market_cost": 0.004952
+        },
+        "had_tools": false
+      }
+    },
+    {
+      "check_id": "ru_mojibake",
+      "alias": "cp/xai/grok-4.6",
+      "resolved_model": "cp/xai/grok-4.6",
+      "status": "pass",
+      "summary": "Russian answer arrived clean \u2014 457 chars, no replacement characters, no double-encoded Cyrillic.",
+      "http_status": 200,
+      "latency_ms": 31503.9,
+      "evidence": {
+        "chars": 457,
+        "cyrillic_chars": 346,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "finish_reason": "stop",
+        "sample": "\u0422\u0430\u043a\u043e\u0433\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u044f \u0432 \u0438\u0441\u0442\u043e\u0440\u0438\u0438 \u043d\u0435 \u0431\u044b\u043b\u043e.\n\n\u041a\u043d\u044f\u0437\u044c \u0418\u0433\u043e\u0440\u044c (\u0418\u0433\u043e\u0440\u044c \u0420\u044e\u0440\u0438\u043a\u043e\u0432\u0438\u0447) \u043f\u0440\u0430\u0432\u0438\u043b \u041a\u0438\u0435\u0432\u0441\u043a\u043e\u0439 \u0420\u0443\u0441\u044c\u044e \u0432 X \u0432\u0435\u043a\u0435 \u0438 \u0443\u043c\u0435\u0440 \u0432 945 \u0433\u043e\u0434\u0443. \u0418\u043c\u043f\u0435\u0440"
+      }
+    },
+    {
+      "check_id": "usage_pricing",
+      "alias": "cp/xai/grok-4.6",
+      "resolved_model": "cp/xai/grok-4.6",
+      "status": "info",
+      "summary": "cost=0, market_cost=0.001494",
+      "http_status": 200,
+      "latency_ms": 5524.5,
+      "evidence": {
+        "usage": {
+          "cost": 0,
+          "market_cost": 0.001494,
+          "is_byok": true,
+          "cost_details": {
+            "upstream_inference_cost": 0.001494,
+            "upstream_inference_prompt_cost": 0,
+            "upstream_inference_completions_cost": 0
+          },
+          "prompt_tokens": 312,
+          "completion_tokens": 209,
+          "cached_tokens": 256
+        }
+      }
+    }
+  ],
+  "runner_errors": []
+}
