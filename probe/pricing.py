@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from probe.costs import MANAGEMENT, USER_AGENT, fetch_log_rows
-from probe.registry import load_aliases, repo_root
+from probe.registry import load_aliases, load_candidates, repo_root
 
 CATALOG_TIMEOUT = 30
 RANGE = "30d"
@@ -132,11 +132,11 @@ def daily_series(rows: list[dict]) -> list[dict]:
     ]
 
 
-def route_entry(stats: dict | None, catalog: dict, alias: str) -> dict:
-    """One board route as it lands in pricing.json — logs first, catalog fallback."""
+def route_entry(stats: dict | None, catalog: dict, alias: str, *, candidate: bool = False) -> dict:
+    """One route as it lands in pricing.json — logs first, catalog fallback."""
     if not stats:
         ask_in, ask_out = catalog.get(alias) or (None, None)
-        return {
+        entry = {
             "ask_in": ask_in,
             "ask_out": ask_out,
             "eff_per_mtok": None,
@@ -148,35 +148,55 @@ def route_entry(stats: dict | None, catalog: dict, alias: str) -> dict:
             "last_ts": None,
             "source": "catalog" if ask_in is not None else "none",
         }
-    toks = stats["tok_in"] + stats["tok_out"]
-    eff = stats["cost"] / toks * 1e6 if toks else None
-    cache_pct = stats["cached"] / stats["tok_in"] * 100 if stats["tok_in"] else None
-    return {
-        "ask_in": stats["ask_in"],
-        "ask_out": stats["ask_out"],
-        "eff_per_mtok": round(eff, 4) if eff is not None else None,
-        "cache_pct": round(cache_pct, 1) if cache_pct is not None else None,
-        "reqs": stats["reqs"],
-        "tok_in": stats["tok_in"],
-        "tok_out": stats["tok_out"],
-        "cost_usdc": f'{stats["cost"]:.6f}',
-        "last_ts": stats["last_ts"],
-        "source": "usage-logs",
-    }
+    else:
+        toks = stats["tok_in"] + stats["tok_out"]
+        eff = stats["cost"] / toks * 1e6 if toks else None
+        cache_pct = stats["cached"] / stats["tok_in"] * 100 if stats["tok_in"] else None
+        entry = {
+            "ask_in": stats["ask_in"],
+            "ask_out": stats["ask_out"],
+            "eff_per_mtok": round(eff, 4) if eff is not None else None,
+            "cache_pct": round(cache_pct, 1) if cache_pct is not None else None,
+            "reqs": stats["reqs"],
+            "tok_in": stats["tok_in"],
+            "tok_out": stats["tok_out"],
+            "cost_usdc": f'{stats["cost"]:.6f}',
+            "last_ts": stats["last_ts"],
+            "source": "usage-logs",
+        }
+    if candidate:
+        entry["candidate"] = True
+    return entry
 
 
-def snapshot(key: str, aliases: list[str], range_: str = RANGE) -> dict:
-    """Build the full pricing payload for the board routes."""
+def snapshot(key: str, aliases: list[str], range_: str = RANGE,
+             candidates: list[str] | None = None) -> dict:
+    """Build the full pricing payload; candidate routes are flagged as such."""
     rows = fetch_log_rows(key, range_=range_, max_pages=MAX_PAGES)
     stats = aggregate_rows(rows)
     catalog = fetch_catalog(key)
+    cand = set(candidates or [])
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "range": range_,
         "requests_scanned": len(rows),
         "days": daily_series(rows),
-        "routes": {alias: route_entry(stats.get(alias), catalog, alias) for alias in aliases},
+        "routes": {
+            alias: route_entry(stats.get(alias), catalog, alias, candidate=alias in cand)
+            for alias in aliases
+        },
     }
+
+
+def snapshot_routes() -> tuple[list[str], list[str]]:
+    """(all routes for the snapshot, the candidate subset) — board first, deduped."""
+    routes = list(load_aliases())
+    cand: list[str] = []
+    for group in load_candidates():
+        for route in group["routes"]:
+            if route not in routes and route not in cand:
+                cand.append(route)
+    return routes + cand, cand
 
 
 def write_outputs(payload: dict, root: Path | None = None) -> tuple[Path, Path]:
@@ -201,7 +221,8 @@ def main() -> int:  # noqa: BLE001 — pricing must never break the cron
         print("INFERHUB_API_KEY is required", file=sys.stderr)
         return 0
     try:
-        payload = snapshot(key, load_aliases())
+        routes, cand = snapshot_routes()
+        payload = snapshot(key, routes, candidates=cand)
         latest, dated = write_outputs(payload)
     except Exception as exc:
         print(f"warning: pricing snapshot failed, keeping previous file: {exc}", file=sys.stderr)

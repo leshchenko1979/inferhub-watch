@@ -251,7 +251,8 @@ class WiringTests(unittest.TestCase):
                 for cid in scoring
             ],
         }
-        with mock.patch.object(gen.rundata, "load_pricing", return_value=None):
+        with mock.patch.object(gen.rundata, "load_pricing", return_value=None), \
+                mock.patch.object(gen, "load_candidates", return_value=[]):
             page = gen.index_html([run], ["ocg/deepseek-v4-flash"], registry)
         self.assertNotIn("cb/gpt-5.6-luna", page)
         self.assertIn("ocg/deepseek-v4-flash", page)
@@ -534,6 +535,111 @@ class SpendDashboardTests(unittest.TestCase):
         self.assertIn('id="pricing"', page)
         self.assertNotIn('class="spend-block"', page)
         self.assertIn("ali/qwen3.8-max", page)
+
+
+class CandidatesSectionTests(unittest.TestCase):
+    GROUPS = [
+        {"model": "qwen3.8-max",
+         "routes": ["cp/cline-pass/qwen3.8-max", "cx/qwen3.8-max"]},
+    ]
+    PAYLOAD = {
+        "generated_at": "2026-08-27T20:00:00+00:00",
+        "routes": {
+            "ali/qwen3.8-max": {
+                "ask_in": 0.014, "ask_out": 0.042, "eff_per_mtok": 0.02,
+                "cache_pct": 60.0, "reqs": 1, "tok_in": 100, "tok_out": 10,
+                "cost_usdc": "0.001000", "last_ts": "t", "source": "usage-logs",
+            },
+            "cp/cline-pass/qwen3.8-max": {
+                "ask_in": 0.01, "ask_out": 0.03, "candidate": True,
+                "source": "usage-logs",
+            },
+            "cx/qwen3.8-max": {
+                "ask_in": 0.05, "ask_out": 0.15, "candidate": True,
+                "source": "usage-logs",
+            },
+        },
+    }
+
+    def _run(self, scoring, cand_results):
+        cells = [
+            {"alias": "ali/qwen3.8-max", "check_id": cid, "status": "pass",
+             "summary": "ok", "resolved_model": "ali/qwen3.8-max"}
+            for cid in scoring
+        ]
+        for route, ok_count, cached in cand_results:
+            for i, cid in enumerate(scoring):
+                cell = {
+                    "alias": route, "check_id": cid,
+                    "status": "pass" if i < ok_count else "fail",
+                    "summary": "ok", "candidate": True, "model": "qwen3.8-max",
+                    "resolved_model": route,
+                }
+                if cid == "cache_tools":
+                    cell["evidence"] = {
+                        "cached_tokens": cached, "usage": {"prompt_tokens": 100},
+                    }
+                cells.append(cell)
+        return {"started_at": "2026-08-27T22:00:00", "origin": "local", "cells": cells}
+
+    def _page(self, gen, run, groups):
+        with mock.patch.object(gen.rundata, "load_pricing", return_value=self.PAYLOAD), \
+                mock.patch.object(gen, "load_candidates", return_value=groups), \
+                mock.patch.object(gen.rundata, "load_runs", return_value=[run]):
+            page = gen.index_html([run], ["ali/qwen3.8-max"], gen.load_registry())
+            nav = gen.board_nav()
+        return page, nav
+
+    def test_section_renders_incumbent_first_then_ranked_candidates(self) -> None:
+        gen = _load_generate()
+        scoring = gen.rundata.scoring_ids(gen.load_registry())
+        # cp: 3/3 with 93% cache; cx: 3/3 with 40% cache -> cp ranks first
+        run = self._run(scoring, [
+            ("cp/cline-pass/qwen3.8-max", 3, 93),
+            ("cx/qwen3.8-max", 3, 40),
+        ])
+        page, nav = self._page(gen, run, self.GROUPS)
+        self.assertIn('id="candidates"', page)
+        self.assertIn('href="#candidates"', nav)
+        self.assertIn('class="pill in-use"', page)
+        pos_inc = page.find("ali/qwen3.8-max", page.find('id="candidates"'))
+        pos_cp = page.find("cp/cline-pass/qwen3.8-max", page.find('id="candidates"'))
+        pos_cx = page.find("cx/qwen3.8-max", page.find('id="candidates"'))
+        self.assertTrue(pos_inc < pos_cp < pos_cx)
+        self.assertIn("qwen3.8-max", page)
+
+    def test_failed_checks_rank_last_and_show_missed(self) -> None:
+        gen = _load_generate()
+        scoring = gen.rundata.scoring_ids(gen.load_registry())
+        run = self._run(scoring, [
+            ("cp/cline-pass/qwen3.8-max", 2, 93),   # missed one
+            ("cx/qwen3.8-max", 3, 40),              # all pass -> ranks first
+        ])
+        page, _ = self._page(gen, run, self.GROUPS)
+        pos_cp = page.find("cp/cline-pass/qwen3.8-max", page.find('id="candidates"'))
+        pos_cx = page.find("cx/qwen3.8-max", page.find('id="candidates"'))
+        self.assertTrue(pos_cx < pos_cp)
+        self.assertIn("missed:", page)
+
+    def test_candidates_stay_out_of_pricing_table(self) -> None:
+        gen = _load_generate()
+        scoring = gen.rundata.scoring_ids(gen.load_registry())
+        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 3, 93)])
+        page, _ = self._page(gen, run, self.GROUPS)
+        seg = page[page.find('id="pricing"'):page.find('id="candidates"')]
+        self.assertNotIn("cp/cline-pass/qwen3.8-max", seg)
+
+    def test_section_omitted_without_config_or_cells(self) -> None:
+        gen = _load_generate()
+        scoring = gen.rundata.scoring_ids(gen.load_registry())
+        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 3, 93)])
+        page, nav = self._page(gen, run, [])  # no candidates.toml groups
+        self.assertNotIn('id="candidates"', page)
+        self.assertNotIn('href="#candidates"', nav)
+        board_only = self._run(scoring, [])  # config present, no candidate cells
+        page, nav = self._page(gen, board_only, self.GROUPS)
+        self.assertNotIn('id="candidates"', page)
+        self.assertNotIn('href="#candidates"', nav)
 
 
 if __name__ == "__main__":

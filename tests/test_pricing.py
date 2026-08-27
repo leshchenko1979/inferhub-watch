@@ -177,6 +177,18 @@ class DailySeriesTests(unittest.TestCase):
         self.assertEqual(series[0]["requests"], 1)
 
 
+class SnapshotRoutesTests(unittest.TestCase):
+    def test_board_first_deduped(self) -> None:
+        with mock.patch.object(pricing, "load_aliases", return_value=["a/m", "b/m"]), \
+                mock.patch.object(pricing, "load_candidates", return_value=[
+                    {"model": "m", "routes": ["b/m", "c/m"]},
+                    {"model": "m2", "routes": ["c/m", "d/m"]},
+                ]):
+            routes, cand = pricing.snapshot_routes()
+        self.assertEqual(routes, ["a/m", "b/m", "c/m", "d/m"])
+        self.assertEqual(cand, ["c/m", "d/m"])
+
+
 class WriteOutputsTests(unittest.TestCase):
     def test_writes_latest_and_identical_dated_copy(self) -> None:
         payload = {

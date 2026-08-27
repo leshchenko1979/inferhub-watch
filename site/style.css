@@ -676,6 +676,44 @@ td {
   color: var(--muted);
 }
 
+/* ── Candidates ── */
+
+.candidates-block {
+  margin-top: var(--space-8);
+}
+
+.candidates-block h2 {
+  margin: 0 0 var(--space-4);
+}
+
+.cand-model {
+  font-size: var(--text-body);
+  font-weight: 500;
+  color: var(--primary);
+  margin: var(--space-6) 0 var(--space-3);
+}
+
+.cand-model:first-of-type {
+  margin-top: 0;
+}
+
+.pill.in-use {
+  margin-left: 0.4rem;
+  background: var(--ok-dim);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.candidates th,
+.candidates td {
+  white-space: nowrap;
+}
+
+.candidates tbody th {
+  white-space: normal;
+  min-width: 16rem;
+}
+
 /* ── Mobile: timeline stays as a table (no card collapse) ── */
 
 @media (max-width: 720px) {

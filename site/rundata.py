@@ -28,6 +28,10 @@ def cell_map(run: dict) -> dict[tuple[str, str], dict]:
     return {(c["alias"], c["check_id"]): c for c in board_cells(run)}
 
 
+def candidate_cell_map(run: dict) -> dict[tuple[str, str], dict]:
+    return {(c["alias"], c["check_id"]): c for c in candidate_cells(run)}
+
+
 def alias_probed(run: dict, alias: str) -> bool:
     """True when the run holds at least one board cell for the alias."""
     return any(cell.get("alias") == alias for cell in board_cells(run))
@@ -59,24 +63,76 @@ def scoring_rule(check_ids: list[str]) -> str:
     return f"{n}/{n}: {joined}" if joined else f"{n}/{n}"
 
 
-def scoring_pass_count(run: dict, alias: str, check_ids: list[str]) -> tuple[int, int]:
-    cmap = cell_map(run)
+def _pass_count(cmap: dict[tuple[str, str], dict], key: str, check_ids: list[str]) -> tuple[int, int]:
     ok = sum(
         1
         for check_id in check_ids
-        if (cell := cmap.get((alias, check_id))) and cell.get("status") == "pass"
+        if (cell := cmap.get((key, check_id))) and cell.get("status") == "pass"
     )
     return ok, len(check_ids)
 
 
-def scoring_failed_ids(run: dict, alias: str, check_ids: list[str]) -> list[str]:
-    cmap = cell_map(run)
+def _failed_ids(cmap: dict[tuple[str, str], dict], key: str, check_ids: list[str]) -> list[str]:
     failed: list[str] = []
     for check_id in check_ids:
-        cell = cmap.get((alias, check_id))
+        cell = cmap.get((key, check_id))
         if not cell or cell.get("status") != "pass":
             failed.append(check_id)
     return failed
+
+
+def scoring_pass_count(run: dict, alias: str, check_ids: list[str]) -> tuple[int, int]:
+    return _pass_count(cell_map(run), alias, check_ids)
+
+
+def scoring_failed_ids(run: dict, alias: str, check_ids: list[str]) -> list[str]:
+    return _failed_ids(cell_map(run), alias, check_ids)
+
+
+def candidate_pass_count(run: dict, route: str, check_ids: list[str]) -> tuple[int, int]:
+    return _pass_count(candidate_cell_map(run), route, check_ids)
+
+
+def candidate_failed_ids(run: dict, route: str, check_ids: list[str]) -> list[str]:
+    return _failed_ids(candidate_cell_map(run), route, check_ids)
+
+
+def candidate_cache_pct(run: dict, route: str) -> float | None:
+    """Cache-hit share from the route's cache_tools probe cell; None without one."""
+    cell = candidate_cell_map(run).get((route, "cache_tools")) or {}
+    ev = cell.get("evidence") or {}
+    usage = ev.get("usage") or {}
+    try:
+        cached = float(ev.get("cached_tokens"))
+        prompt = float(usage.get("prompt_tokens"))
+    except (TypeError, ValueError):
+        return None
+    if prompt <= 0:
+        return None
+    return min(100.0, cached / prompt * 100.0)
+
+
+def route_window_record(
+    runs: list[dict], route: str, check_ids: list[str], candidate: bool
+) -> tuple[int, int]:
+    """(all-pass runs, probed runs) for a route across the recorded window."""
+    probed = passed = 0
+    for run in runs:
+        cells = candidate_cells(run) if candidate else board_cells(run)
+        cmap = {(c["alias"], c["check_id"]): c for c in cells}
+        if not any(alias == route for alias, _ in cmap):
+            continue
+        probed += 1
+        ok, total = _pass_count(cmap, route, check_ids)
+        if total and ok == total:
+            passed += 1
+    return passed, probed
+
+
+def incumbent_aliases(aliases: list[str], model: str) -> list[str]:
+    """Board aliases serving the candidate's model — suffix match on '/<model>'."""
+    needle = "/" + model
+    return [a for a in aliases if a.endswith(needle)]
 
 
 def aliases_safe_first(
@@ -167,12 +223,16 @@ def load_pricing(root: Path) -> dict | None:
 
 
 def pricing_rows(payload: dict | None) -> list[dict]:
-    """Routes with any billed rate, in the order the probe wrote them."""
+    """Board routes with any billed rate, in the order the probe wrote them.
+
+    Candidate-flagged entries stay out — they render in the candidates
+    section, not the cost table.
+    """
     if not payload:
         return []
     rows = []
     for route, entry in (payload.get("routes") or {}).items():
-        if not isinstance(entry, dict):
+        if not isinstance(entry, dict) or entry.get("candidate"):
             continue
         if entry.get("ask_in") is None and entry.get("eff_per_mtok") is None:
             continue

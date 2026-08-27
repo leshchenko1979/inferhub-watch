@@ -258,5 +258,75 @@ class SpendDashboardTests(unittest.TestCase):
         self.assertEqual(rundata.month_day_label("2026-13-40"), "")
 
 
+class CandidatesHelpersTests(unittest.TestCase):
+    SCORE = ["stream_tools", "cache_tools", "ru_mojibake"]
+
+    def _cell(self, alias, cid, status="pass", candidate=True, evidence=None):
+        cell = {
+            "alias": alias,
+            "check_id": cid,
+            "status": status,
+            "resolved_model": alias,
+        }
+        if candidate:
+            cell["candidate"] = True
+        if evidence is not None:
+            cell["evidence"] = evidence
+        return cell
+
+    def test_pricing_rows_skip_candidate_entries(self) -> None:
+        payload = {"routes": {
+            "a/board": {"ask_in": 1.0, "ask_out": 3.0},
+            "c/cand": {"ask_in": 1.0, "ask_out": 3.0, "candidate": True},
+        }}
+        self.assertEqual([r["route"] for r in rundata.pricing_rows(payload)], ["a/board"])
+
+    def test_candidate_pass_count_and_failed_ids(self) -> None:
+        run = {"cells":
+            [self._cell("c/m", "stream_tools"),
+             self._cell("c/m", "cache_tools", status="fail"),
+             self._cell("c/m", "ru_mojibake")]
+        }
+        self.assertEqual(rundata.candidate_pass_count(run, "c/m", self.SCORE), (2, 3))
+        self.assertEqual(rundata.candidate_failed_ids(run, "c/m", self.SCORE), ["cache_tools"])
+        self.assertEqual(rundata.candidate_pass_count(run, "other", self.SCORE), (0, 3))
+
+    def test_candidate_cache_pct(self) -> None:
+        run = {"cells": [self._cell("c/m", "cache_tools", evidence={
+            "cached_tokens": 930, "usage": {"prompt_tokens": 1000}})]}
+        self.assertEqual(rundata.candidate_cache_pct(run, "c/m"), 93.0)
+        self.assertIsNone(rundata.candidate_cache_pct(run, "ghost"))
+        empty = {"cells": [self._cell("c/m", "cache_tools", evidence={
+            "cached_tokens": 0, "usage": {"prompt_tokens": 1000}})]}
+        self.assertEqual(rundata.candidate_cache_pct(empty, "c/m"), 0.0)
+
+    def test_route_window_record_counts_runs(self) -> None:
+        good = {"cells": [self._cell("c/m", cid) for cid in self.SCORE]}
+        bad = {"cells": [self._cell("c/m", cid, status="fail") for cid in self.SCORE]}
+        other = {"cells": [self._cell("x/y", cid) for cid in self.SCORE]}
+        runs = [good, bad, other, good]
+        self.assertEqual(
+            rundata.route_window_record(runs, "c/m", self.SCORE, candidate=True), (2, 3)
+        )
+        # board track: same cells but untagged
+        board_runs = [
+            {"cells": [{**c, "candidate": False} for c in good["cells"]]},
+            {"cells": [{**c, "candidate": False} for c in bad["cells"]]},
+        ]
+        self.assertEqual(
+            rundata.route_window_record(board_runs, "c/m", self.SCORE, candidate=False), (1, 2)
+        )
+
+    def test_incumbent_aliases_suffix_match(self) -> None:
+        aliases = ["ali/qwen3.8-max", "cp/cline-pass/deepseek-v4-pro",
+                   "cmc/deepseek/deepseek-v4-pro", "zai/glm-5.3"]
+        self.assertEqual(
+            rundata.incumbent_aliases(aliases, "deepseek-v4-pro"),
+            ["cp/cline-pass/deepseek-v4-pro", "cmc/deepseek/deepseek-v4-pro"],
+        )
+        self.assertEqual(rundata.incumbent_aliases(aliases, "qwen3.8-max"), ["ali/qwen3.8-max"])
+        self.assertEqual(rundata.incumbent_aliases(aliases, "gpt-5.6-luna"), [])
+
+
 if __name__ == "__main__":
     unittest.main()

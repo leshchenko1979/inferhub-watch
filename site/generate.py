@@ -18,7 +18,7 @@ import mdhtml  # noqa: E402
 import rundata  # noqa: E402
 import tmpl  # noqa: E402
 from probe.publishers import publisher_label  # noqa: E402
-from probe.registry import load_aliases, load_registry  # noqa: E402
+from probe.registry import load_aliases, load_candidates, load_registry  # noqa: E402
 
 GITHUB = "https://github.com/leshchenko1979/inferhub-watch"
 CLONE = (
@@ -32,6 +32,7 @@ FONTS = (
 SECTIONS = (
     ("probe", "Latest results"),
     ("pricing", "Cost per M tokens"),
+    ("candidates", "Candidates"),
     ("earlier", "Past runs"),
     ("method", "How we test"),
 )
@@ -44,6 +45,16 @@ def base_href() -> str:
 
 def load_runs() -> list[dict]:
     return rundata.load_runs(ROOT)
+
+
+def candidates_available() -> bool:
+    """True when candidates.toml has groups AND the latest run has candidate cells."""
+    if not load_candidates():
+        return False
+    runs = rundata.load_runs(ROOT)
+    if not runs:
+        return False
+    return bool(rundata.candidate_cells(runs[-1]))
 
 
 def alias_heading(alias: str, resolved: str) -> str:
@@ -59,6 +70,8 @@ def board_nav() -> str:
     items = []
     for sid, title in SECTIONS:
         if sid == "pricing" and not rundata.load_pricing(ROOT):
+            continue
+        if sid == "candidates" and not candidates_available():
             continue
         items.append(
             f'<li><a href="#{html.escape(sid)}">{html.escape(title)}</a></li>'
@@ -341,6 +354,144 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     )
 
 
+# ── candidates section ──
+
+
+def _resolved_for(run: dict, route: str, candidate: bool) -> str:
+    cells = rundata.candidate_cells(run) if candidate else rundata.board_cells(run)
+    resolved = ""
+    for cell in cells:
+        if cell.get("alias") == route:
+            resolved = cell.get("resolved_model") or resolved
+    return resolved
+
+
+def _candidate_route_row(
+    runs: list[dict],
+    route_entries: dict,
+    route: str,
+    score_ids: list[str],
+    *,
+    candidate: bool,
+) -> str:
+    """One route row for the candidates tables (incumbent or audition)."""
+    latest = runs[-1]
+    entry = route_entries.get(route) or {}
+    if candidate:
+        ok, total = rundata.candidate_pass_count(latest, route, score_ids)
+        failed = rundata.candidate_failed_ids(latest, route, score_ids)
+        probed = any(c.get("alias") == route for c in rundata.candidate_cells(latest))
+        cache_raw = rundata.candidate_cache_pct(latest, route)
+    else:
+        ok, total = rundata.scoring_pass_count(latest, route, score_ids)
+        failed = rundata.scoring_failed_ids(latest, route, score_ids)
+        probed = rundata.alias_probed(latest, route)
+        cache_raw = entry.get("cache_pct")
+    pill = "" if candidate else ' <span class="pill in-use">in use</span>'
+    resolved = _resolved_for(latest, route, candidate)
+    if probed:
+        probe_val = f"{ok}/{total}"
+        miss = ", ".join(rundata.scoring_short(cid) for cid in failed)
+        probe_sub = f'<span class="route-ask">missed: {html.escape(miss)}</span>' if miss else ""
+    else:
+        probe_val = "&#8212;"
+        probe_sub = ""
+    ask_in = rundata.rate_label(entry.get("ask_in")) or "n/a"
+    ask_out = rundata.rate_label(entry.get("ask_out")) or "n/a"
+    passed, seen = rundata.route_window_record(runs, route, score_ids, candidate)
+    window = f"{passed}/{seen}" if seen else "&#8212;"
+    return (
+        "<tr>"
+        f'<th scope="row"><code>{html.escape(route)}</code>{pill}'
+        f'<span class="route-ask">{html.escape(publisher_label(resolved))}</span></th>'
+        f'<td class="num">{probe_val}{probe_sub}</td>'
+        + _viz_cell(
+            rundata.cache_label(cache_raw) or "n/a",
+            rundata.cache_bar_pct(cache_raw),
+            rundata.cache_color_class(cache_raw),
+        )
+        + f'<td class="num">{ask_in} / {ask_out}</td>'
+        + f'<td class="num" title="runs all-pass / runs probed since first seen">{window}</td>'
+        "</tr>"
+    )
+
+
+def candidates_section(
+    runs: list[dict], aliases: list[str], registry: list[dict], payload: dict | None
+) -> str:
+    """The #candidates section, or '' without config or candidate cells."""
+    groups = load_candidates()
+    if not runs or not groups:
+        return ""
+    latest = runs[-1]
+    if not rundata.candidate_cells(latest):
+        return ""
+    score_ids = rundata.scoring_ids(registry)
+    route_entries = (payload or {}).get("routes") or {}
+    blocks = []
+    for group in groups:
+        rows_html = []
+        for alias in rundata.incumbent_aliases(aliases, group["model"]):
+            rows_html.append(
+                _candidate_route_row(runs, route_entries, alias, score_ids, candidate=False)
+            )
+        ranked = []
+        for route in group["routes"]:
+            ok, _ = rundata.candidate_pass_count(latest, route, score_ids)
+            cache = rundata.candidate_cache_pct(latest, route)
+            entry = route_entries.get(route) or {}
+            ask_in, ask_out = entry.get("ask_in"), entry.get("ask_out")
+            blended = (
+                (ask_in + ask_out) / 2
+                if ask_in is not None and ask_out is not None
+                else None
+            )
+            ranked.append((route, ok, cache, blended))
+        ranked.sort(
+            key=lambda r: (
+                -r[1],
+                -(r[2] if r[2] is not None else -1.0),
+                r[3] if r[3] is not None else float("inf"),
+                r[0],
+            )
+        )
+        for route, *_ in ranked:
+            rows_html.append(
+                _candidate_route_row(runs, route_entries, route, score_ids, candidate=True)
+            )
+        if not rows_html:
+            continue
+        blocks.append(
+            f'<h3 class="cand-model">{html.escape(group["model"])}</h3>'
+            '<div class="scroll"><table class="pricing candidates">'
+            "<thead><tr>"
+            '<th scope="col">Route</th>'
+            '<th scope="col" class="num">last probe</th>'
+            '<th scope="col" class="num">cache hit</th>'
+            '<th scope="col" class="num">ask in / out</th>'
+            '<th scope="col" class="num">window</th>'
+            "</tr></thead>"
+            f"<tbody>{''.join(rows_html)}</tbody></table></div>"
+        )
+    if not blocks:
+        return ""
+    note = (
+        "Audition routes from candidates.toml, probed after each board sweep. "
+        "Candidates rank by checks passed, then cache hit, then blended ask; "
+        "&#8220;in use&#8221; rows are the current board routes for the same model "
+        "(their cache share comes from the 30-day billing window, candidates from "
+        "the probe). Window = runs all-pass / runs probed since first seen. "
+        "Candidate asks are billed on probe traffic."
+    )
+    return (
+        '<section class="candidates-block" id="candidates">'
+        f"<h2>{html.escape(section_title('candidates'))}</h2>"
+        f'<p class="section-note">{note}</p>'
+        + "".join(blocks)
+        + "</section>"
+    )
+
+
 def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> str:
     if not runs:
         return shell("InferHub Watch", tmpl.render("empty.html"))
@@ -474,6 +625,9 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
         rule=rule,
         grid_rows="".join(grid_rows),
         pricing_section=pricing_section(rundata.load_pricing(ROOT), runs),
+        candidates_section=candidates_section(
+            runs, aliases, registry, rundata.load_pricing(ROOT)
+        ),
         explainers="".join(explainers),
         github=GITHUB,
         clone=CLONE,
