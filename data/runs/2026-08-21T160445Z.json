@@ -74,7 +74,9 @@
           "cached_tokens": 0
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000043",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -93,7 +95,9 @@
           "prompt_cache_hit_tokens": 0,
           "prompt_cache_miss_tokens": 185
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -205,7 +209,9 @@
           "total_tokens": 7788
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000853",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -224,7 +230,9 @@
           "completion_tokens": 45,
           "cached_tokens": 0
         }
-      }
+      },
+      "cost_usdc": "0.000133",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -278,7 +286,9 @@
           "total_tokens": 8752
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.002951",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -299,7 +309,9 @@
           "completion_tokens": 52,
           "cached_tokens": 0
         }
-      }
+      },
+      "cost_usdc": "0.000459",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -359,7 +371,9 @@
           "cached_tokens": 0
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000246",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -378,7 +392,9 @@
           "prompt_cache_hit_tokens": 256,
           "prompt_cache_miss_tokens": 36
         }
-      }
+      },
+      "cost_usdc": "0.000013",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -434,7 +450,9 @@
           "market_cost": 0.016356
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.008159",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -458,8 +476,16 @@
           "completion_tokens": 199,
           "cached_tokens": 256
         }
-      }
+      },
+      "cost_usdc": "0.000679",
+      "cost_match": "tokens"
     }
   ],
-  "runner_errors": []
+  "runner_errors": [],
+  "cost": {
+    "matched": 10,
+    "cells": 18,
+    "total_usdc": "0.013546",
+    "source": "usage-logs"
+  }
 }

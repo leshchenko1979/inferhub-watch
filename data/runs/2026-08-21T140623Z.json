@@ -74,7 +74,9 @@
           "cached_tokens": 0
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -93,7 +95,9 @@
           "prompt_cache_hit_tokens": 0,
           "prompt_cache_miss_tokens": 185
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -205,7 +209,9 @@
           "total_tokens": 711
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000078",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -224,7 +230,9 @@
           "completion_tokens": 66,
           "cached_tokens": 256
         }
-      }
+      },
+      "cost_usdc": "0.000026",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -278,7 +286,9 @@
           "total_tokens": 756
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000742",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -299,7 +309,9 @@
           "completion_tokens": 53,
           "cached_tokens": 0
         }
-      }
+      },
+      "cost_usdc": "0.000433",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -317,7 +329,9 @@
           "get_weather"
         ],
         "last_finish_reason": "tool_calls"
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "order"
     },
     {
       "check_id": "cache_tools",
@@ -359,7 +373,9 @@
           "cached_tokens": 0
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000031",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -378,7 +394,9 @@
           "prompt_cache_hit_tokens": 256,
           "prompt_cache_miss_tokens": 36
         }
-      }
+      },
+      "cost_usdc": "0.000014",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -394,7 +412,9 @@
         "empty_finish_chunks": 0,
         "names": [],
         "last_finish_reason": "error"
-      }
+      },
+      "cost_usdc": "0.000000",
+      "cost_match": "order"
     },
     {
       "check_id": "cache_tools",
@@ -432,7 +452,9 @@
           "market_cost": 0.002876
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.001390",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -444,8 +466,16 @@
       "latency_ms": 91091.1,
       "evidence": {
         "usage": {}
-      }
+      },
+      "cost_usdc": "0.000000",
+      "cost_match": "order"
     }
   ],
-  "runner_errors": []
+  "runner_errors": [],
+  "cost": {
+    "matched": 12,
+    "cells": 18,
+    "total_usdc": "0.002744",
+    "source": "usage-logs"
+  }
 }

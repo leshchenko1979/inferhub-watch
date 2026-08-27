@@ -78,7 +78,9 @@
           },
           "total_tokens": 225
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "cache_tools",
@@ -104,7 +106,9 @@
           "prompt_cache_hit_tokens": 0,
           "prompt_cache_miss_tokens": 961
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -124,7 +128,9 @@
           "prompt_cache_miss_tokens": 207
         },
         "error": null
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -142,7 +148,9 @@
           "get_weather"
         ],
         "last_finish_reason": "tool_calls"
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "order"
     },
     {
       "check_id": "nonstream_tools",
@@ -168,7 +176,9 @@
           },
           "total_tokens": 8013
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "order"
     },
     {
       "check_id": "cache_tools",
@@ -189,7 +199,9 @@
           "cached_tokens": 1024,
           "prompt_cache_hit_tokens": 1024
         }
-      }
+      },
+      "cost_usdc": "0.000048",
+      "cost_match": "order"
     },
     {
       "check_id": "usage_pricing",
@@ -207,7 +219,9 @@
           "prompt_cache_hit_tokens": 7936
         },
         "error": null
-      }
+      },
+      "cost_usdc": "0.000012",
+      "cost_match": "order"
     },
     {
       "check_id": "stream_tools",
@@ -262,7 +276,9 @@
           },
           "total_tokens": 369
         }
-      }
+      },
+      "cost_usdc": "0.000041",
+      "cost_match": "tokens"
     },
     {
       "check_id": "cache_tools",
@@ -288,7 +304,9 @@
           "completion_tokens": 38,
           "cached_tokens": 1024
         }
-      }
+      },
+      "cost_usdc": "0.000120",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -308,7 +326,9 @@
           "cached_tokens": 256
         },
         "error": null
-      }
+      },
+      "cost_usdc": "0.000018",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -365,7 +385,9 @@
           },
           "total_tokens": 437
         }
-      }
+      },
+      "cost_usdc": "0.000493",
+      "cost_match": "tokens"
     },
     {
       "check_id": "cache_tools",
@@ -393,7 +415,9 @@
           "completion_tokens": 85,
           "cached_tokens": 0
         }
-      }
+      },
+      "cost_usdc": "0.001246",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -415,7 +439,9 @@
           "cached_tokens": 0
         },
         "error": null
-      }
+      },
+      "cost_usdc": "0.000485",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -478,7 +504,9 @@
           },
           "total_tokens": 351
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "cache_tools",
@@ -504,7 +532,9 @@
           "prompt_cache_hit_tokens": 1024,
           "prompt_cache_miss_tokens": 65
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -524,7 +554,9 @@
           "prompt_cache_miss_tokens": 19
         },
         "error": null
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -542,7 +574,9 @@
           "get_weather"
         ],
         "last_finish_reason": "tool_calls"
-      }
+      },
+      "cost_usdc": "0.000834",
+      "cost_match": "order"
     },
     {
       "check_id": "nonstream_tools",
@@ -583,7 +617,9 @@
           },
           "total_tokens": 586
         }
-      }
+      },
+      "cost_usdc": "0.000791",
+      "cost_match": "tokens"
     },
     {
       "check_id": "cache_tools",
@@ -614,7 +650,9 @@
           "completion_tokens": 313,
           "cached_tokens": 128
         }
-      }
+      },
+      "cost_usdc": "0.001899",
+      "cost_match": "tokens"
     },
     {
       "check_id": "usage_pricing",
@@ -639,8 +677,16 @@
           "cached_tokens": 128
         },
         "error": null
-      }
+      },
+      "cost_usdc": "0.000893",
+      "cost_match": "tokens"
     }
   ],
-  "runner_errors": []
+  "runner_errors": [],
+  "cost": {
+    "matched": 20,
+    "cells": 24,
+    "total_usdc": "0.006960",
+    "source": "usage-logs"
+  }
 }

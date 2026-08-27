@@ -53,7 +53,9 @@
           "total_tokens": 1870
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "ru_mojibake",
@@ -87,7 +89,9 @@
           "prompt_tokens": 70,
           "completion_tokens": 18
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -105,7 +109,9 @@
           "get_weather"
         ],
         "last_finish_reason": "tool_calls"
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "order"
     },
     {
       "check_id": "cache_tools",
@@ -147,7 +153,9 @@
           "total_tokens": 2227
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "ru_mojibake",
@@ -166,7 +174,9 @@
         "cjk_chars": 0,
         "finish_reason": "stop",
         "sample": "\u0422\u0430\u043a\u043e\u0433\u043e \u0438\u0441\u0442\u043e\u0440\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u044f \u043d\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442. \u042d\u0442\u043e\u0442 \u0432\u043e\u043f\u0440\u043e\u0441 \u043e\u0431\u044a\u0435\u0434\u0438\u043d\u044f\u0435\u0442 \u0441\u043e\u0432\u0435\u0440\u0448\u0435\u043d\u043d\u043e \u0440\u0430\u0437\u043d\u044b\u0435 \u044d\u043f\u043e\u0445\u0438, \u043a\u043e\u043d\u0442\u0438\u043d\u0435\u043d\u0442\u044b \u0438 \u043a\u0443\u043b\u044c\u0442\u0443\u0440\u044b, \u043f\u043e\u044d\u0442\u043e"
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "order"
     },
     {
       "check_id": "usage_pricing",
@@ -185,7 +195,9 @@
           "prompt_cache_hit_tokens": 384,
           "prompt_cache_miss_tokens": 108
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -245,7 +257,9 @@
           "total_tokens": 2177
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000019",
+      "cost_match": "tokens"
     },
     {
       "check_id": "ru_mojibake",
@@ -283,7 +297,9 @@
           "prompt_cache_hit_tokens": 384,
           "prompt_cache_miss_tokens": 108
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -329,7 +345,9 @@
           "total_tokens": 2376
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000011",
+      "cost_match": "tokens"
     },
     {
       "check_id": "ru_mojibake",
@@ -364,7 +382,9 @@
           "completion_tokens": 22,
           "cached_tokens": 0
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -424,7 +444,9 @@
           "total_tokens": 2045
         },
         "had_tools": false
-      }
+      },
+      "cost_usdc": "0.000063",
+      "cost_match": "tokens"
     },
     {
       "check_id": "ru_mojibake",
@@ -462,7 +484,9 @@
           "prompt_cache_hit_tokens": 256,
           "prompt_cache_miss_tokens": 36
         }
-      }
+      },
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
     },
     {
       "check_id": "stream_tools",
@@ -544,5 +568,11 @@
       }
     }
   ],
-  "runner_errors": []
+  "runner_errors": [],
+  "cost": {
+    "matched": 12,
+    "cells": 24,
+    "total_usdc": "0.000183",
+    "source": "usage-logs"
+  }
 }
