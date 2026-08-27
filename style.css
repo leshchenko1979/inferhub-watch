@@ -29,6 +29,7 @@
   --z-head: 2;
   --z-link: 3;
   --z-nav: 4;
+  --z-masthead: 5;
 }
 
 * {
@@ -68,7 +69,10 @@ footer {
   gap: var(--space-4) var(--space-6);
   padding: var(--space-6) 0 var(--space-5);
   border-bottom: 1px solid var(--line);
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-masthead);
+  background: var(--bg);
 }
 
 .mark {
@@ -138,9 +142,11 @@ footer {
 }
 
 #probe,
+#pricing,
+#candidates,
 #earlier,
 #method {
-  scroll-margin-top: var(--space-6);
+  scroll-margin-top: calc(var(--space-8) + var(--space-7));
 }
 
 .dispatch-meta {
@@ -358,7 +364,7 @@ h2 {
 }
 
 .explainers details {
-  scroll-margin-top: var(--space-6);
+  scroll-margin-top: calc(var(--space-8) + var(--space-7));
 }
 
 .explainers summary {
