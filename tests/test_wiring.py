@@ -222,6 +222,40 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn('class="bad"', page)
         self.assertIn("was not on the", page)
 
+    def test_candidate_cells_do_not_render_on_board(self) -> None:
+        gen = _load_generate()
+        registry = gen.load_registry()
+        scoring = gen.rundata.scoring_ids(registry)
+        run = {
+            "started_at": "2026-08-27T22:00:00",
+            "origin": "local",
+            "cells": [
+                {
+                    "alias": "ocg/deepseek-v4-flash",
+                    "check_id": cid,
+                    "status": "pass",
+                    "summary": "ok",
+                    "resolved_model": "ocg/deepseek-v4-flash",
+                }
+                for cid in scoring
+            ]
+            + [
+                {
+                    "alias": "cb/gpt-5.6-luna",
+                    "check_id": cid,
+                    "status": "pass",
+                    "summary": "ok",
+                    "candidate": True,
+                    "model": "gpt-5.6-luna",
+                }
+                for cid in scoring
+            ],
+        }
+        with mock.patch.object(gen.rundata, "load_pricing", return_value=None):
+            page = gen.index_html([run], ["ocg/deepseek-v4-flash"], registry)
+        self.assertNotIn("cb/gpt-5.6-luna", page)
+        self.assertIn("ocg/deepseek-v4-flash", page)
+
 
 class PricingSectionTests(unittest.TestCase):
     PAYLOAD = {

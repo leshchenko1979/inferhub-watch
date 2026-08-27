@@ -14,13 +14,23 @@ def day_key(run: dict) -> str:
     return (run.get("started_at") or "")[:10]
 
 
+def board_cells(run: dict) -> list[dict]:
+    """Cells of the board proper; candidate-sweep cells carry a flag and stay out."""
+    return [c for c in run.get("cells") or [] if not c.get("candidate")]
+
+
+def candidate_cells(run: dict) -> list[dict]:
+    """Cells of candidate-sweep routes, tagged by the probe layer."""
+    return [c for c in run.get("cells") or [] if c.get("candidate")]
+
+
 def cell_map(run: dict) -> dict[tuple[str, str], dict]:
-    return {(c["alias"], c["check_id"]): c for c in run.get("cells") or []}
+    return {(c["alias"], c["check_id"]): c for c in board_cells(run)}
 
 
 def alias_probed(run: dict, alias: str) -> bool:
-    """True when the run holds at least one cell for the alias."""
-    return any(cell.get("alias") == alias for cell in run.get("cells") or [])
+    """True when the run holds at least one board cell for the alias."""
+    return any(cell.get("alias") == alias for cell in board_cells(run))
 
 
 def scoring_ids(registry: list[dict]) -> list[str]:
@@ -119,10 +129,10 @@ def cost_label(raw: object) -> str:
     return text if text != "$0.0000" else f"${value:.6f}"
 
 
-def _sum_costs(run: dict, alias: str | None = None) -> str:
+def _sum_costs(cells: list[dict], alias: str | None = None) -> str:
     total = 0.0
     seen = False
-    for cell in run.get("cells") or []:
+    for cell in cells:
         if alias is not None and cell.get("alias") != alias:
             continue
         raw = cell.get("cost_usdc")
@@ -137,11 +147,12 @@ def _sum_costs(run: dict, alias: str | None = None) -> str:
 
 
 def alias_run_cost(run: dict, alias: str) -> str:
-    return _sum_costs(run, alias)
+    return _sum_costs(board_cells(run), alias)
 
 
 def run_total_cost(run: dict) -> str:
-    return _sum_costs(run)
+    """True cost of the whole run, candidate-sweep probes included."""
+    return _sum_costs(run.get("cells") or [])
 
 
 def load_pricing(root: Path) -> dict | None:

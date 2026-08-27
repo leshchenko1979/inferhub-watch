@@ -32,6 +32,32 @@ class RundataBoardTests(unittest.TestCase):
         self.assertFalse(rundata.alias_probed({"cells": []}, "a"))
         self.assertFalse(rundata.alias_probed({}, "a"))
 
+    def test_candidate_cells_stay_out_of_board_views(self) -> None:
+        run = {
+            "cells": [
+                {"alias": "ocg/deepseek-v4-flash", "check_id": "stream_tools", "status": "pass"},
+                {"alias": "ocg/deepseek-v4-flash", "check_id": "cache_tools", "status": "pass", "cost_usdc": "0.0002"},
+                {"alias": "cb/gpt-5.6-luna", "check_id": "stream_tools", "status": "pass", "candidate": True, "model": "gpt-5.6-luna"},
+                {"alias": "cb/gpt-5.6-luna", "check_id": "cache_tools", "status": "fail", "candidate": True, "model": "gpt-5.6-luna", "cost_usdc": "0.0001"},
+            ]
+        }
+        self.assertEqual(len(rundata.board_cells(run)), 2)
+        self.assertEqual(len(rundata.candidate_cells(run)), 2)
+        cmap = rundata.cell_map(run)
+        self.assertNotIn(("cb/gpt-5.6-luna", "stream_tools"), cmap)
+        self.assertIn(("ocg/deepseek-v4-flash", "stream_tools"), cmap)
+        self.assertFalse(rundata.alias_probed(run, "cb/gpt-5.6-luna"))
+        self.assertTrue(rundata.alias_probed(run, "ocg/deepseek-v4-flash"))
+        self.assertEqual(
+            rundata.scoring_pass_count(run, "cb/gpt-5.6-luna", ["stream_tools", "cache_tools"]),
+            (0, 2),
+        )
+        # per-alias cost is a board view: candidates excluded
+        self.assertEqual(rundata.alias_run_cost(run, "cb/gpt-5.6-luna"), "")
+        self.assertEqual(rundata.alias_run_cost(run, "ocg/deepseek-v4-flash"), "$0.0002")
+        # run total is the true bill: candidates included
+        self.assertEqual(rundata.run_total_cost(run), "$0.0003")
+
     def test_aliases_safe_first_keeps_relative_order(self) -> None:
         run = {
             "cells": [
