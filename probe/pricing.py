@@ -110,6 +110,28 @@ def aggregate_rows(rows: list[dict]) -> dict[str, dict]:
     return stats
 
 
+def daily_series(rows: list[dict]) -> list[dict]:
+    """Per-UTC-day spend and request totals over the fetched rows, oldest first."""
+    per_day: dict[str, dict] = {}
+    for row in rows:
+        day = (row.get("ts") or "")[:10]
+        if not day:
+            continue
+        agg = per_day.setdefault(day, {"cost": 0.0, "requests": 0})
+        agg["requests"] += 1
+        cost = _float(row.get("cost_consumer_usdc"))
+        if cost is not None:
+            agg["cost"] += cost
+    return [
+        {
+            "date": day,
+            "cost_usdc": f"{per_day[day]['cost']:.6f}",
+            "requests": per_day[day]["requests"],
+        }
+        for day in sorted(per_day)
+    ]
+
+
 def route_entry(stats: dict | None, catalog: dict, alias: str) -> dict:
     """One board route as it lands in pricing.json — logs first, catalog fallback."""
     if not stats:
@@ -152,8 +174,25 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE) -> dict:
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "range": range_,
         "requests_scanned": len(rows),
+        "days": daily_series(rows),
         "routes": {alias: route_entry(stats.get(alias), catalog, alias) for alias in aliases},
     }
+
+
+def write_outputs(payload: dict, root: Path | None = None) -> tuple[Path, Path]:
+    """Write data/pricing.json plus the dated copy data/pricing/YYYY-MM-DD.json.
+
+    Same-day re-runs overwrite that day's copy; history accumulates per day.
+    """
+    root = root or repo_root()
+    text = json.dumps(payload, indent=2) + "\n"
+    latest = root / "data" / "pricing.json"
+    latest.parent.mkdir(parents=True, exist_ok=True)
+    latest.write_text(text)
+    dated = root / "data" / "pricing" / f"{datetime.now(timezone.utc):%Y-%m-%d}.json"
+    dated.parent.mkdir(parents=True, exist_ok=True)
+    dated.write_text(text)
+    return latest, dated
 
 
 def main() -> int:  # noqa: BLE001 — pricing must never break the cron
@@ -163,13 +202,12 @@ def main() -> int:  # noqa: BLE001 — pricing must never break the cron
         return 0
     try:
         payload = snapshot(key, load_aliases())
-        out = repo_root() / "data" / "pricing.json"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(payload, indent=2) + "\n")
+        latest, dated = write_outputs(payload)
     except Exception as exc:
         print(f"warning: pricing snapshot failed, keeping previous file: {exc}", file=sys.stderr)
         return 0
-    print(out)
+    print(latest)
+    print(dated)
     return 0
 
 

@@ -121,6 +121,16 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(payload["routes"]["zai/glm-5.3"]["source"], "catalog")
         self.assertEqual(payload["requests_scanned"], 1)
 
+    def test_snapshot_includes_days_series(self) -> None:
+        rows = [_row(ts="2026-08-26T10:00:00Z"), _row(ts="2026-08-27T10:00:00Z")]
+        with mock.patch.object(pricing, "fetch_log_rows", return_value=rows), \
+                mock.patch.object(pricing, "fetch_catalog", return_value={}):
+            payload = pricing.snapshot("k", ["cp/xai/grok-4.6"])
+        self.assertEqual(
+            [d["date"] for d in payload["days"]], ["2026-08-26", "2026-08-27"]
+        )
+        self.assertEqual(payload["days"][1]["requests"], 1)
+
     def test_main_writes_file_and_survives_failure(self) -> None:
         payload = {"generated_at": "t", "routes": {}}
         with tempfile.TemporaryDirectory() as tmp:
@@ -142,6 +152,55 @@ class SnapshotTests(unittest.TestCase):
     def test_main_without_key_is_a_noop(self) -> None:
         with mock.patch.dict("os.environ", {}, clear=True):
             self.assertEqual(pricing.main(), 0)
+
+
+class DailySeriesTests(unittest.TestCase):
+    def test_aggregates_per_utc_day_oldest_first(self) -> None:
+        rows = [
+            _row(ts="2026-08-27T10:00:00Z", cost_consumer_usdc="0.003"),
+            _row(ts="2026-08-26T23:59:59Z", cost_consumer_usdc="0.001"),
+            _row(ts="2026-08-27T01:00:00Z", cost_consumer_usdc="0.002"),
+        ]
+        series = pricing.daily_series(rows)
+        self.assertEqual([d["date"] for d in series], ["2026-08-26", "2026-08-27"])
+        self.assertEqual(series[0]["requests"], 1)
+        self.assertEqual(series[0]["cost_usdc"], "0.001000")
+        self.assertEqual(series[1]["requests"], 2)
+        self.assertEqual(series[1]["cost_usdc"], "0.005000")
+
+    def test_rows_without_ts_are_skipped(self) -> None:
+        self.assertEqual(pricing.daily_series([_row(ts=""), _row(ts=None)]), [])
+
+    def test_bad_cost_counts_as_zero(self) -> None:
+        series = pricing.daily_series([_row(cost_consumer_usdc="junk")])
+        self.assertEqual(series[0]["cost_usdc"], "0.000000")
+        self.assertEqual(series[0]["requests"], 1)
+
+
+class WriteOutputsTests(unittest.TestCase):
+    def test_writes_latest_and_identical_dated_copy(self) -> None:
+        payload = {
+            "generated_at": "t",
+            "days": [{"date": "2026-08-27", "cost_usdc": "0.001000", "requests": 1}],
+            "routes": {},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            latest, dated = pricing.write_outputs(payload, root=Path(tmp))
+            self.assertEqual(latest, Path(tmp) / "data" / "pricing.json")
+            self.assertTrue(latest.is_file())
+            self.assertTrue(dated.is_file())
+            self.assertEqual(dated.parent, Path(tmp) / "data" / "pricing")
+            self.assertEqual(json.loads(latest.read_text()), payload)
+            self.assertEqual(json.loads(dated.read_text()), json.loads(latest.read_text()))
+
+    def test_same_day_rerun_overwrites_dated_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            _, dated1 = pricing.write_outputs({"generated_at": "t1"}, root=Path(tmp))
+            _, dated2 = pricing.write_outputs({"generated_at": "t2"}, root=Path(tmp))
+            self.assertEqual(dated1, dated2)  # same UTC day -> same file
+            self.assertEqual(json.loads(dated2.read_text())["generated_at"], "t2")
+            copies = list((Path(tmp) / "data" / "pricing").glob("*.json"))
+            self.assertEqual(len(copies), 1)
 
 
 if __name__ == "__main__":
