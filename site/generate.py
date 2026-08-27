@@ -127,15 +127,16 @@ def shell(
     )
 
 
-def _viz_cell(label: str, bar_pct: float, color_cls: str) -> str:
+def _viz_cell(label: str, bar_pct: float, color_cls: str, data_label: str = "") -> str:
     """Value on top, a 4px bar underneath (Gatus-style)."""
     bar = (
         f'<i class="{color_cls}" style="width:{bar_pct:.0f}%"></i>'
         if bar_pct > 0
         else ""
     )
+    attr = f' data-label="{html.escape(data_label)}"' if data_label else ""
     return (
-        f'<td class="num viz"><span class="viz-val">{label}</span>'
+        f'<td class="num viz"{attr}><span class="viz-val">{label}</span>'
         f'<span class="viz-bar">{bar}</span></td>'
     )
 
@@ -303,21 +304,25 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
                 rundata.rate_label(eff_raw) or "n/a",
                 rundata.log_bar_pct(eff_raw, 0.001, 10.0),
                 rundata.rate_color_class(eff_raw),
+                data_label="effective $/M",
             )
             + _viz_cell(
                 rundata.cache_label(row.get("cache_pct")) or "n/a",
                 rundata.cache_bar_pct(row.get("cache_pct")),
                 rundata.cache_color_class(row.get("cache_pct")),
+                data_label="cache hit",
             )
             + _viz_cell(
                 f"{reqs} req · {toks} tok",
                 rundata.log_bar_pct(reqs, *req_bounds),
                 "neutral",
+                data_label=f"{span} traffic",
             )
             + _viz_cell(
                 rundata.cost_label(row.get("cost_usdc")) or "n/a",
                 rundata.log_bar_pct(float(row.get("cost_usdc") or 0), *cost_bounds),
                 "gold",
+                data_label=f"{span} cost",
             )
             + "</tr>"
         )
@@ -404,14 +409,15 @@ def _candidate_route_row(
         "<tr>"
         f'<th scope="row"><code>{html.escape(route)}</code>{pill}'
         f'<span class="route-ask">{html.escape(publisher_label(resolved))}</span></th>'
-        f'<td class="num">{probe_val}{probe_sub}</td>'
+        f'<td class="num" data-label="last probe">{probe_val}{probe_sub}</td>'
         + _viz_cell(
             rundata.cache_label(cache_raw) or "n/a",
             rundata.cache_bar_pct(cache_raw),
             rundata.cache_color_class(cache_raw),
+            data_label="cache hit",
         )
-        + f'<td class="num">{ask_in} / {ask_out}</td>'
-        + f'<td class="num" title="runs all-pass / runs probed since first seen">{window}</td>'
+        + f'<td class="num" data-label="ask in / out">{ask_in} / {ask_out}</td>'
+        + f'<td class="num" data-label="window" title="runs all-pass / runs probed since first seen">{window}</td>'
         "</tr>"
     )
 

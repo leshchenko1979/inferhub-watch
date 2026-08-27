@@ -347,6 +347,20 @@ class PricingSectionTests(unittest.TestCase):
         self.assertNotIn("ask in $/M", page)
         self.assertIn('class="viz-bar"', page)
         self.assertIn('class="route-ask"', page)
+        # every metric cell carries a fold label for the mobile card view
+        self.assertIn('data-label="effective $/M"', page)
+        self.assertIn('data-label="cache hit"', page)
+        self.assertIn('data-label="30d traffic"', page)
+        self.assertIn('data-label="30d cost"', page)
+
+    def test_mobile_fold_css_covers_pricing_but_not_timeline(self) -> None:
+        css = (repo_root() / "site" / "style.css").read_text()
+        mobile = css[css.rindex("@media (max-width: 720px)"):]
+        # cost + candidates tables fold like the matrix
+        self.assertIn(".pricing tbody,", mobile)
+        self.assertIn(".pricing td[data-label]::before", mobile)
+        # past runs keep the table layout (no .timeline fold in this block)
+        self.assertNotIn(".timeline tbody,", mobile)
 
 
 def _load_run():
@@ -640,6 +654,15 @@ class CandidatesSectionTests(unittest.TestCase):
         page, nav = self._page(gen, board_only, self.GROUPS)
         self.assertNotIn('id="candidates"', page)
         self.assertNotIn('href="#candidates"', nav)
+
+    def test_candidate_rows_carry_fold_labels(self) -> None:
+        gen = _load_generate()
+        scoring = gen.rundata.scoring_ids(gen.load_registry())
+        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 3, 93)])
+        page, _ = self._page(gen, run, self.GROUPS)
+        seg = page[page.find('id="candidates"'):]
+        for label in ("last probe", "cache hit", "ask in / out", "window"):
+            self.assertIn(f'data-label="{label}"', seg)
 
 
 if __name__ == "__main__":
