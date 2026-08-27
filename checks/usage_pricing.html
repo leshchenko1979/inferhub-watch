@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Whether the response includes a price</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,8..72,400;0,8..72,600;1,8..72,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/inferhub-watch/style.css">
+</head>
+<body class="brief">
+  <header class="site-header">
+    <a class="mark" href="/inferhub-watch/">InferHub Watch</a>
+    
+  </header>
+  <main>
+    <p class="crumb"><a href="/inferhub-watch/">InferHub Watch</a> / Whether the response includes a price</p>
+    <article class="explainer"><h1>Whether the response includes a price</h1>
+<p>InferHub bills consumers in USDC. This check never fails. It copies whatever price-shaped fields appear on the <strong>streaming</strong> usage payload.</p>
+<h2>What we record</h2>
+<p><code>cost</code>, <code>market_cost</code>, <code>gateway_cost</code>, and/or <code>credit</code> when present. Those fields are not treated as one unit; we do not convert them. The same alias can price differently when the resolved publisher changes. A cell with no price field is still info, never a fail.</p></article>
+  </main>
+  <footer><p>Clone <a href="https://github.com/leshchenko1979/inferhub-watch">leshchenko1979/inferhub-watch</a>, set <code>INFERHUB_API_KEY</code>, run <code>python3 -m probe.run</code>.</p></footer>
+  
+  </body>
+
+</html>

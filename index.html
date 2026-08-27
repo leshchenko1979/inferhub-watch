@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>InferHub Watch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,8..72,400;0,8..72,600;1,8..72,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/inferhub-watch/style.css">
+</head>
+<body class="board">
+  <header class="site-header">
+    <a class="mark" href="/inferhub-watch/">InferHub Watch</a>
+    <nav class="site-nav" aria-label="On this page">
+  <details class="nav-menu">
+    <summary aria-expanded="false">On this page</summary>
+    <ul id="board-nav"><li><a href="#probe">Latest results</a></li><li><a href="#earlier">Past runs</a></li><li><a href="#method">How we test</a></li></ul>
+  </details>
+</nav>
+
+  </header>
+  <main>
+    
+    <section class="report" id="probe">
+  <div class="verdict"><h1>Safe to use</h1><p class="verdict-line"><code>qwen3.8-max</code>, <code>grok-4.6</code>.</p></div>
+  <h2>Latest results</h2>
+  <p class="dispatch-meta">Last probe: <time datetime="2026-08-27T19:27:52">2026-08-27 19:27:52 UTC</time></p>
+  <div class="scroll">
+    <table class="matrix">
+      <caption>Tools and cache columns count toward Safe to use. Price is info and does not rank.</caption>
+      <thead>
+        <tr>
+          <th scope="col">Alias</th><th class="check-col col-score" scope="col"><a href="#check-stream_tools">Tool names in the live stream</a><span class="th-role">scores</span></th><th class="check-col col-score" scope="col"><a href="#check-cache_tools">Prompt cache on a streaming completion</a><span class="th-role">scores</span></th><th class="check-col col-score" scope="col"><a href="#check-ru_mojibake">Russian answers arrive ungarbled</a><span class="th-role">scores</span></th><th class="check-col col-info" scope="col"><a href="#check-usage_pricing">Whether the response includes a price</a><span class="th-role">info · not ranked</span></th>
+        </tr>
+      </thead>
+      <tbody><tr class="row-safe"><th class="alias-cell" scope="row"><span class="alias">qwen3.8-max</span><span class="pub">Ali · ali/qwen3.8-max</span></th><td class="st-pass" data-label="tools · scores"><span class="pill">pass</span><p class="cell-note">Streamed a tool call named get_weather. finish_reason was null or omitted, never an empty string.</p></td><td class="st-pass" data-label="cache · scores"><span class="pill">pass</span><p class="cell-note">Prompt cache hit: 2048 of 2236 input tokens were reused.</p></td><td class="st-pass" data-label="mojibake · scores"><span class="pill">pass</span><p class="cell-note">Russian answer arrived clean — no replacement characters, no double-encoded Cyrillic, no CJK flood.</p></td><td class="st-info" data-label="usage pricing · info"><p class="cell-note info-note">This stream had no cost or credit field. Info only; not part of Safe to use.</p></td></tr><tr class="row-safe"><th class="alias-cell" scope="row"><span class="alias">grok-4.6</span><span class="pub">xai · cmc/xai/grok-4.6</span></th><td class="st-pass" data-label="tools · scores"><span class="pill">pass</span><p class="cell-note">Streamed a tool call named get_weather. finish_reason was null or omitted, never an empty string.</p></td><td class="st-pass" data-label="cache · scores"><span class="pill">pass</span><p class="cell-note">Prompt cache hit: 128 of 2053 input tokens were reused.</p></td><td class="st-pass" data-label="mojibake · scores"><span class="pill">pass</span><p class="cell-note">Russian answer arrived clean — no replacement characters, no double-encoded Cyrillic, no CJK flood.</p></td><td class="st-info" data-label="usage pricing · info"><p class="cell-note info-note">This stream had no cost or credit field. Info only; not part of Safe to use.</p></td></tr><tr><th class="alias-cell" scope="row"><span class="alias">gpt-5.6-luna</span><span class="pub">Codex · cx/gpt-5.6-luna</span></th><td class="st-pass" data-label="tools · scores"><span class="pill">pass</span><p class="cell-note">Streamed a tool call named get_weather. finish_reason was null or omitted, never an empty string.</p></td><td class="st-fail" data-label="cache · scores"><span class="pill">fail</span><p class="cell-note">No prompt-cache hit after 3 tries (1864 input tokens, no tools). usage.cached_tokens stayed 0.</p></td><td class="st-pass" data-label="mojibake · scores"><span class="pill">pass</span><p class="cell-note">Russian answer arrived clean — no replacement characters, no double-encoded Cyrillic, no CJK flood.</p></td><td class="st-info" data-label="usage pricing · info"><p class="cell-note info-note">This stream had no cost or credit field. Info only; not part of Safe to use.</p></td></tr><tr><th class="alias-cell" scope="row"><span class="alias">deepseek-v4-flash</span><span class="pub">cbcn · cbcn/deepseek-v4-flash</span></th><td class="st-fail" data-label="tools · scores"><span class="pill">fail</span><p class="cell-note">Not the OpenAI stream shape: 11 event(s) set finish_reason to &quot;&quot; (OpenAI uses null or omits the field).</p></td><td class="st-pass" data-label="cache · scores"><span class="pill">pass</span><p class="cell-note">Prompt cache hit: 128 of 2015 input tokens were reused.</p></td><td class="st-pass" data-label="mojibake · scores"><span class="pill">pass</span><p class="cell-note">Russian answer arrived clean — no replacement characters, no double-encoded Cyrillic, no CJK flood.</p></td><td class="st-info" data-label="usage pricing · info"><p class="cell-note info-note">Price on this stream: credit=0.02. Info only; not part of Safe to use.</p></td></tr><tr><th class="alias-cell" scope="row"><span class="alias">deepseek-v4-pro</span><span class="pub">cbcn · cbcn/deepseek-v4-pro</span></th><td class="st-fail" data-label="tools · scores"><span class="pill">fail</span><p class="cell-note">Not the OpenAI stream shape: 41 event(s) set finish_reason to &quot;&quot; (OpenAI uses null or omits the field).</p></td><td class="st-pass" data-label="cache · scores"><span class="pill">pass</span><p class="cell-note">Prompt cache hit: 128 of 2015 input tokens were reused.</p></td><td class="st-pass" data-label="mojibake · scores"><span class="pill">pass</span><p class="cell-note">Russian answer arrived clean — no replacement characters, no double-encoded Cyrillic, no CJK flood.</p></td><td class="st-info" data-label="usage pricing · info"><p class="cell-note info-note">Price on this stream: credit=0.04. Info only; not part of Safe to use.</p></td></tr><tr><th class="alias-cell" scope="row"><span class="alias">glm-5.3</span><span class="pub">cbcn · cbcn/glm-5.3</span></th><td class="st-fail" data-label="tools · scores"><span class="pill">fail</span><p class="cell-note">Not the OpenAI stream shape: 6 event(s) set finish_reason to &quot;&quot; (OpenAI uses null or omits the field).</p></td><td class="st-pass" data-label="cache · scores"><span class="pill">pass</span><p class="cell-note">Prompt cache hit: 1984 of 1893 input tokens were reused.</p></td><td class="st-fail" data-label="mojibake · scores"><span class="pill">fail</span><p class="cell-note">Mojibake in the Russian answer: 2 CJK character(s) in a Russian answer — bytes decoded as GBK/Big5/Shift-JIS.</p></td><td class="st-info" data-label="usage pricing · info"><p class="cell-note info-note">Price on this stream: credit=0.02. Info only; not part of Safe to use.</p></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="history" id="earlier">
+  <h2>Past runs</h2>
+  <p class="section-note">Each column is one committed probe. Same-day reruns stay separate. A cell is how many of the
+    3 scoring checks passed (3/3: tools + cache + mojibake), and which ones missed.</p>
+  <div class="scroll">
+    <table class="timeline">
+      <caption>Hover or tap a bar for the run stamp, origin, pass count, and missed checks.</caption>
+      <tbody><tr><th class="alias-cell" scope="row"><span class="alias">qwen3.8-max</span><span class="pub">Ali · ali/qwen3.8-max</span></th><td class="mid" data-tip="08-21 09:00 seed · fixture · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 12:23 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 14:06 Actions · CI · 1/3 · missed: cache, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 15:46 Actions · CI · 1/3 · missed: cache, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:04 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:33 Actions · CI · 1/3 · missed: cache, mojibake" tabindex="0"></td><td class="ok" data-tip="08-27 19:27 Actions · CI · 3/3 · all pass" tabindex="0"></td></tr><tr><th class="alias-cell" scope="row"><span class="alias">grok-4.6</span><span class="pub">xai · cmc/xai/grok-4.6</span></th><td class="mid" data-tip="08-21 09:00 seed · fixture · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 12:23 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 14:06 Actions · CI · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 15:46 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:04 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:33 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="ok" data-tip="08-27 19:27 Actions · CI · 3/3 · all pass" tabindex="0"></td></tr><tr><th class="alias-cell" scope="row"><span class="alias">gpt-5.6-luna</span><span class="pub">Codex · cx/gpt-5.6-luna</span></th><td class="mid" data-tip="08-21 09:00 seed · fixture · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 12:23 Actions · CI · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="bad" data-tip="08-21 14:06 Actions · CI · 0/3 · missed: tools, cache, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 15:46 Actions · CI · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:04 Actions · CI · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:33 Actions · CI · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="mid" data-tip="08-27 19:27 Actions · CI · 2/3 · missed: cache" tabindex="0"></td></tr><tr><th class="alias-cell" scope="row"><span class="alias">deepseek-v4-flash</span><span class="pub">cbcn · cbcn/deepseek-v4-flash</span></th><td class="mid" data-tip="08-21 09:00 seed · fixture · 1/3 · missed: cache, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 12:23 Actions · CI · 1/3 · missed: cache, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 14:06 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 15:46 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:04 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:33 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-27 19:27 Actions · CI · 2/3 · missed: tools" tabindex="0"></td></tr><tr><th class="alias-cell" scope="row"><span class="alias">deepseek-v4-pro</span><span class="pub">cbcn · cbcn/deepseek-v4-pro</span></th><td class="mid" data-tip="08-21 09:00 seed · fixture · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 12:23 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 14:06 Actions · CI · 1/3 · missed: cache, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 15:46 Actions · CI · 1/3 · missed: cache, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:04 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:33 Actions · CI · 2/3 · missed: mojibake" tabindex="0"></td><td class="mid" data-tip="08-27 19:27 Actions · CI · 2/3 · missed: tools" tabindex="0"></td></tr><tr><th class="alias-cell" scope="row"><span class="alias">glm-5.3</span><span class="pub">cbcn · cbcn/glm-5.3</span></th><td class="mid" data-tip="08-21 09:00 seed · fixture · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 12:23 Actions · CI · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 14:06 Actions · CI · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 15:46 Actions · CI · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:04 Actions · CI · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="mid" data-tip="08-21 16:33 Actions · CI · 1/3 · missed: tools, mojibake" tabindex="0"></td><td class="mid" data-tip="08-27 19:27 Actions · CI · 1/3 · missed: tools, mojibake" tabindex="0"></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="explanations" id="method">
+  <h2>How we test</h2>
+  <h3>The endpoint</h3>
+  <p><a href="https://inferhub.dev/">InferHub</a> exposes an OpenAI-compatible <code>/v1/chat/completions</code> API.
+    This site probes that endpoint daily with <code>stream: true</code>. A red cell is a shape miss in that run’s JSON.
+    It is not an uptime check and not a score of your traffic.</p>
+  <h3>The matrix</h3>
+  <ul class="readout">
+    <li><strong>Alias</strong>: the short name we send in <code>model</code>.</li>
+    <li><strong>Publisher</strong>: the <code>model</code> string InferHub returned (who actually served). The alias
+      and the publisher can differ.</li>
+    <li><strong>Pass / fail</strong>: that check only, not a full SDK suite. The sentence under the chip is what
+      happened on the wire this run.</li>
+    <li><strong>Info</strong>: recorded; it never fails a cell. Price is info and never ranks.</li>
+    <li><strong>Scores</strong>: tool names in the SSE stream, prompt cache on a completion with no
+      <code>tools</code>, and mojibake in answers to a Russian question.
+    </li>
+  </ul>
+  <h3>Each check</h3>
+  <p class="section-note">Open a check for the request JSON and the pass/fail rule.</p>
+  <div class="explainers"><details id="check-stream_tools"><summary>Tool names in the live stream</summary><div class="check-brief"><p>InferHub advertises an OpenAI-compatible <code>/v1/chat/completions</code> stream. This check asks whether a <strong>streaming</strong> tool-call response matches that convention.</p>
+<p>OpenAI documents streaming chat completions and tool-call deltas here: <a href="https://platform.openai.com/docs/api-reference/chat/streaming">Chat Completions streaming</a> and <a href="https://platform.openai.com/docs/guides/function-calling">function calling</a>.</p>
+<h2>What we send</h2>
+<p><code>stream: true</code>, <code>tool_choice: required</code>, one <code>get_weather</code> tool. We do <strong>not</strong> send <code>max_tokens</code>; some InferHub routes reject it. We request the <strong>alias</strong> in <code>model</code>; InferHub may return a different <code>model</code> string.</p>
+<pre><code>{
+  &quot;model&quot;: &quot;&lt;alias&gt;&quot;,
+  &quot;messages&quot;: [
+    {
+      &quot;role&quot;: &quot;user&quot;,
+      &quot;content&quot;: &quot;Call get_weather for Paris. Do not answer in text. Use the tool.&quot;
+    }
+  ],
+  &quot;tools&quot;: [
+    {
+      &quot;type&quot;: &quot;function&quot;,
+      &quot;function&quot;: {
+        &quot;name&quot;: &quot;get_weather&quot;,
+        &quot;description&quot;: &quot;Get the current weather for a city&quot;,
+        &quot;parameters&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {&quot;city&quot;: {&quot;type&quot;: &quot;string&quot;}},
+          &quot;required&quot;: [&quot;city&quot;]
+        }
+      }
+    }
+  ],
+  &quot;tool_choice&quot;: &quot;required&quot;,
+  &quot;stream&quot;: true
+}</code></pre>
+<h2>Pass</h2>
+<p>Intermediate chunks use <code>finish_reason</code> of JSON <code>null</code> or omit the field. Tool names appear as non-empty strings on first use and never as <code>&quot;&quot;</code>. The stream includes at least one named tool.</p>
+<h2>Fail</h2>
+<p>Any of:</p>
+<ul><li>a chunk with <code>&quot;finish_reason&quot;: &quot;&quot;</code></li><li>a tool delta with <code>&quot;name&quot;: &quot;&quot;</code></li><li>a required tool call with no non-empty name by the end of the stream</li></ul>
+<p>A non-empty but unusual <code>finish_reason</code> is stored in evidence and does not fail this check. Out of scope: truncation, JSON schema, parallel tools, other SDK behavior.</p></div></details><details id="check-cache_tools"><summary>Prompt cache on a streaming completion</summary><div class="check-brief"><p>This check is <strong>not</strong> about tools. It sends a shared system prefix of about <strong>2k tokens</strong>, <code>stream: true</code>, no <code>tools</code> key, up to three times with <strong>2 seconds</strong> between attempts so a cache write can show up as <code>cached_tokens</code>. Public JSON stores only a hash of the prefix.</p>
+<h2>Pass</h2>
+<p>The last attempt reports a cache hit: <code>cached_tokens</code>, <code>prompt_tokens_details.cached_tokens</code>, <code>prompt_cache_hit_tokens</code>, or <code>cache_read_input_tokens</code> greater than zero.</p>
+<h2>Fail</h2>
+<p>Three streaming completions with <code>cached_tokens</code> still 0, or no SSE chunks.</p></div></details><details id="check-ru_mojibake"><summary>Russian answers arrive ungarbled</summary><div class="check-brief"><p>Non-ASCII prompts are where a broken gateway shows itself first. This check sends a <strong>Russian</strong> question and scores only one thing: whether the answer comes back as readable text or as mojibake.</p>
+<h2>What we send</h2>
+<p>A plain streaming completion, no tools, no system prompt — just the user message, verbatim:</p>
+<pre><code>{
+  &quot;model&quot;: &quot;&lt;alias&gt;&quot;,
+  &quot;messages&quot;: [
+    {
+      &quot;role&quot;: &quot;user&quot;,
+      &quot;content&quot;: &quot;в каком году игорь великий атаковал католических инков?&quot;
+    }
+  ],
+  &quot;stream&quot;: true
+}</code></pre>
+<p>The question is intentionally a trap: Igor never attacked &quot;Catholic Incas&quot; — the premise is an anachronism. Whether the model corrects the premise or plays along is <strong>not</strong> scored here; a truthful correction is just a convenient long Cyrillic answer.</p>
+<h2>Pass</h2>
+<p>The answer decodes as readable text:</p>
+<ul><li>no U+FFFD replacement characters (bytes were valid UTF-8),</li><li>no double-encoded UTF-8 Cyrillic — <code>Ð</code>/<code>Ñ</code> followed by a Latin-1 tail, the classic <code>Ð¸Ð³Ð¾Ñ€ÑŒ</code> look,</li><li>no CP1251-read-as-Latin-1 — Cyrillic turned into accented Latin like <code>èãîðü</code>,</li><li>no East-Asian flood — UTF-8 bytes paired up by a GBK/Big5/Shift-JIS decoder produce Chinese like <code>叶青体</code> in place of the Cyrillic.</li></ul>
+<p>A clean answer that contains no Cyrillic at all (for example, an English reply) still passes this check, and the board note says so — that is a language-fidelity issue, not an encoding one.</p>
+<h2>Fail</h2>
+<p>Any of:</p>
+<ul><li>replacement characters in the answer,</li><li>two or more CJK characters (Chinese, kana, or hangul) in the answer,</li><li>two or more <code>Ð</code>+tail sequences,</li><li>accented Latin-1 letters with zero Cyrillic (the CP1251 signature),</li><li>a stream with no text content to score.</li></ul>
+<h2>Why it matters</h2>
+<p>Any user whose prompts are not pure ASCII. A route that mangles UTF-8 once will mangle every Cyrillic, CJK, or emoji-laden request — agents lose tool names, users see <code>Ñ€Ð°Ð·Ñ€Ð°Ð±Ð¾Ñ‚ÐºÐ°</code> or a page of Chinese. The failed shapes above are the real-world ways gateways corrupt Cyrillic: re-decoding UTF-8 bytes as Latin-1, re-decoding CP1251 bytes as Latin-1, and re-decoding UTF-8 bytes as GBK/Big5.</p></div></details><details id="check-usage_pricing"><summary>Whether the response includes a price</summary><div class="check-brief"><p>InferHub bills consumers in USDC. This check never fails. It copies whatever price-shaped fields appear on the <strong>streaming</strong> usage payload.</p>
+<h2>What we record</h2>
+<p><code>cost</code>, <code>market_cost</code>, <code>gateway_cost</code>, and/or <code>credit</code> when present. Those fields are not treated as one unit; we do not convert them. The same alias can price differently when the resolved publisher changes. A cell with no price field is still info, never a fail.</p></div></details></div>
+  <h3>Ask for another</h3>
+  <p>To probe another InferHub alias, <a href="https://github.com/leshchenko1979/inferhub-watch/issues/new">open a GitHub issue</a> with the name you send in
+    <code>model</code>. The current list is <a href="https://github.com/leshchenko1979/inferhub-watch/blob/main/models.toml">models.toml</a>. To add a check,
+    describe the request JSON and what should pass or fail. Pull requests follow the README <a
+      href="https://github.com/leshchenko1979/inferhub-watch/blob/main/README.md#add-a-check">Add a check</a> steps.
+  </p>
+  <h3>Run locally</h3>
+  <p>Clone <a href="https://github.com/leshchenko1979/inferhub-watch">leshchenko1979/inferhub-watch</a>, set <code>INFERHUB_API_KEY</code>, run <code>python3 -m probe.run</code>. The public board uses the site owner’s InferHub key on GitHub Actions.</p>
+</section>
+  </main>
+  
+  <script>
+(function () {
+  function openHash() {
+    var id = location.hash.replace(/^#/, "");
+    if (!id) return;
+    var el = document.getElementById(id);
+    if (el && el.tagName === "DETAILS") el.open = true;
+  }
+  var menu = document.querySelector(".nav-menu");
+  var summary = menu && menu.querySelector("summary");
+  var mq = window.matchMedia("(max-width: 720px)");
+  function syncExpanded() {
+    if (!summary || !menu) return;
+    summary.setAttribute("aria-expanded", menu.open ? "true" : "false");
+  }
+  function adaptNav() {
+    if (!menu) return;
+    if (mq.matches) {
+      menu.removeAttribute("open");
+    } else {
+      menu.setAttribute("open", "");
+    }
+    syncExpanded();
+  }
+  function closeNav() {
+    if (menu && mq.matches) menu.removeAttribute("open");
+    syncExpanded();
+  }
+  openHash();
+  window.addEventListener("hashchange", openHash);
+  if (mq.addEventListener) mq.addEventListener("change", adaptNav);
+  else mq.addListener(adaptNav);
+  adaptNav();
+  if (menu) menu.addEventListener("toggle", syncExpanded);
+  document.querySelectorAll(".site-nav a").forEach(function (a) {
+    a.addEventListener("click", closeNav);
+  });
+})();
+
+/* Timeline tooltips: hover on pointer devices, tap to toggle on touch. */
+(function () {
+  var cells = document.querySelectorAll(".timeline td[data-tip]");
+  if (!cells.length) return;
+
+  var tip = document.createElement("div");
+  tip.id = "tipbox";
+  tip.className = "tipbox";
+  tip.setAttribute("role", "tooltip");
+  tip.hidden = true;
+  document.body.appendChild(tip);
+
+  var current = null;
+
+  function hide() {
+    tip.hidden = true;
+    if (current) current.classList.remove("tip-open");
+    current = null;
+  }
+
+  function place(cell) {
+    var r = cell.getBoundingClientRect();
+    var tw = tip.offsetWidth;
+    var th = tip.offsetHeight;
+    var left = r.left + r.width / 2 - tw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    var top = r.top - th - 8;
+    if (top < 8) top = r.bottom + 8;
+    tip.style.left = left + window.scrollX + "px";
+    tip.style.top = top + window.scrollY + "px";
+  }
+
+  function show(cell) {
+    var text = cell.getAttribute("data-tip");
+    if (!text) return;
+    tip.textContent = text;
+    tip.hidden = false;
+    if (current && current !== cell) current.classList.remove("tip-open");
+    current = cell;
+    cell.classList.add("tip-open");
+    place(cell);
+  }
+
+  if (window.matchMedia("(hover: hover)").matches) {
+    cells.forEach(function (cell) {
+      cell.addEventListener("mouseenter", function () { show(cell); });
+      cell.addEventListener("mouseleave", function () { hide(); });
+    });
+  }
+
+  cells.forEach(function (cell) {
+    cell.addEventListener("focus", function () { show(cell); });
+    cell.addEventListener("blur", function () { hide(); });
+    cell.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (current === cell && !tip.hidden) hide();
+      else show(cell);
+    });
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!tip.hidden && e.target !== tip && !tip.contains(e.target)) hide();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") hide();
+  });
+  window.addEventListener("scroll", function () {
+    if (!tip.hidden) hide();
+  }, { passive: true });
+})();
+</script>
+  </body>
+
+</html>

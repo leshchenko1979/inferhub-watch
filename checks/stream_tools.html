@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tool names in the live stream</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,8..72,400;0,8..72,600;1,8..72,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/inferhub-watch/style.css">
+</head>
+<body class="brief">
+  <header class="site-header">
+    <a class="mark" href="/inferhub-watch/">InferHub Watch</a>
+    
+  </header>
+  <main>
+    <p class="crumb"><a href="/inferhub-watch/">InferHub Watch</a> / Tool names in the live stream</p>
+    <article class="explainer"><h1>Tool names in the live stream</h1>
+<p>InferHub advertises an OpenAI-compatible <code>/v1/chat/completions</code> stream. This check asks whether a <strong>streaming</strong> tool-call response matches that convention.</p>
+<p>OpenAI documents streaming chat completions and tool-call deltas here: <a href="https://platform.openai.com/docs/api-reference/chat/streaming">Chat Completions streaming</a> and <a href="https://platform.openai.com/docs/guides/function-calling">function calling</a>.</p>
+<h2>What we send</h2>
+<p><code>stream: true</code>, <code>tool_choice: required</code>, one <code>get_weather</code> tool. We do <strong>not</strong> send <code>max_tokens</code>; some InferHub routes reject it. We request the <strong>alias</strong> in <code>model</code>; InferHub may return a different <code>model</code> string.</p>
+<pre><code>{
+  &quot;model&quot;: &quot;&lt;alias&gt;&quot;,
+  &quot;messages&quot;: [
+    {
+      &quot;role&quot;: &quot;user&quot;,
+      &quot;content&quot;: &quot;Call get_weather for Paris. Do not answer in text. Use the tool.&quot;
+    }
+  ],
+  &quot;tools&quot;: [
+    {
+      &quot;type&quot;: &quot;function&quot;,
+      &quot;function&quot;: {
+        &quot;name&quot;: &quot;get_weather&quot;,
+        &quot;description&quot;: &quot;Get the current weather for a city&quot;,
+        &quot;parameters&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {&quot;city&quot;: {&quot;type&quot;: &quot;string&quot;}},
+          &quot;required&quot;: [&quot;city&quot;]
+        }
+      }
+    }
+  ],
+  &quot;tool_choice&quot;: &quot;required&quot;,
+  &quot;stream&quot;: true
+}</code></pre>
+<h2>Pass</h2>
+<p>Intermediate chunks use <code>finish_reason</code> of JSON <code>null</code> or omit the field. Tool names appear as non-empty strings on first use and never as <code>&quot;&quot;</code>. The stream includes at least one named tool.</p>
+<h2>Fail</h2>
+<p>Any of:</p>
+<ul><li>a chunk with <code>&quot;finish_reason&quot;: &quot;&quot;</code></li><li>a tool delta with <code>&quot;name&quot;: &quot;&quot;</code></li><li>a required tool call with no non-empty name by the end of the stream</li></ul>
+<p>A non-empty but unusual <code>finish_reason</code> is stored in evidence and does not fail this check. Out of scope: truncation, JSON schema, parallel tools, other SDK behavior.</p></article>
+  </main>
+  <footer><p>Clone <a href="https://github.com/leshchenko1979/inferhub-watch">leshchenko1979/inferhub-watch</a>, set <code>INFERHUB_API_KEY</code>, run <code>python3 -m probe.run</code>.</p></footer>
+  
+  </body>
+
+</html>
