@@ -542,6 +542,57 @@ td {
   font-weight: 500;
 }
 
+.route-ask {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-caption);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.pricing td.viz {
+  vertical-align: middle;
+}
+
+.viz-val {
+  display: block;
+}
+
+.viz-bar {
+  display: block;
+  width: 72px;
+  height: 4px;
+  margin: 4px 0 1px auto;
+  border-radius: 2px;
+  background: var(--surface);
+}
+
+.viz-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.viz-bar .ok {
+  background: var(--ok);
+}
+
+.viz-bar .mid {
+  background: var(--mid);
+}
+
+.viz-bar .bad {
+  background: var(--fail);
+}
+
+.viz-bar .neutral {
+  background: var(--primary);
+}
+
+.viz-bar .gold {
+  background: var(--accent);
+}
+
 .ask-mark {
   color: var(--muted);
   margin-left: 1px;
