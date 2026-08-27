@@ -255,6 +255,8 @@ class BalanceAbortTests(unittest.TestCase):
                 run_mod, "InferHubClient", return_value=object()
             ), mock.patch.object(
                 run_mod, "repo_root", return_value=Path(tmp)
+            ), mock.patch(
+                "probe.costs.fetch_log_rows", return_value=[]
             ), mock.patch.dict(
                 os.environ, {"INFERHUB_API_KEY": "test-key"}
             ):
@@ -285,6 +287,8 @@ class BalanceAbortTests(unittest.TestCase):
                 run_mod, "InferHubClient", return_value=object()
             ), mock.patch.object(
                 run_mod, "repo_root", return_value=Path(tmp)
+            ), mock.patch(
+                "probe.costs.fetch_log_rows", return_value=[]
             ), mock.patch.dict(
                 os.environ, {"INFERHUB_API_KEY": "test-key"}
             ):
@@ -294,6 +298,8 @@ class BalanceAbortTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(len(runs), 1)
         self.assertEqual(payload["cells"][0]["status"], "pass")
+        self.assertEqual(payload["cost"]["source"], "usage-logs")
+        self.assertEqual(payload["cost"]["matched"], 0)
 
 
 if __name__ == "__main__":

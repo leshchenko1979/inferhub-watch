@@ -137,6 +137,9 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
                 title_parts.append(f"missed: {miss}")
             else:
                 title_parts.append("all pass")
+            bar_cost = rundata.alias_run_cost(run, alias)
+            if bar_cost:
+                title_parts.append(f"cost {bar_cost}")
             title = " · ".join(title_parts)
             cells.append(
                 f'<td class="{cls}" data-tip="{html.escape(title)}"'
@@ -202,9 +205,12 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
 
     started_raw = (latest.get("started_at") or "")[:19]
     started = html.escape(started_raw.replace("T", " ") + " UTC")
+    run_cost = rundata.run_total_cost(latest)
+    cost_bit = f' · run cost <span class="run-cost">{run_cost}</span>' if run_cost else ""
     dispatch = (
         f'<p class="dispatch-meta">Last probe: '
-        f'<time datetime="{html.escape(started_raw)}">{started}</time></p>'
+        f'<time datetime="{html.escape(started_raw)}">{started}</time>'
+        f"{cost_bit}</p>"
     )
     if safe:
         rec = ", ".join(f"<code>{html.escape(a)}</code>" for a in safe)

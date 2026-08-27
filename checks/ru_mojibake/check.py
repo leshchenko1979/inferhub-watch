@@ -5,7 +5,7 @@ import re
 from probe.http import InferHubClient
 from probe.payloads import russian_payload
 from probe.result import http_preview, result
-from probe.sse import parse_sse, resolved_model
+from probe.sse import last_usage, parse_sse, resolved_model
 
 CYRILLIC_RE = re.compile(r"[\u0400-\u04FF]")
 # UTF-8 Cyrillic misread as Latin-1/CP1252: lead bytes 0xD0/0xD1 become Ð/Ñ,
@@ -96,6 +96,12 @@ def run(client: InferHubClient, alias: str) -> dict:
     resolved = resolved_model(chunks, alias)
     answer = text_content(chunks)
     evidence: dict = mojibake_stats(answer)
+    usage = last_usage(chunks)
+    evidence["usage"] = {
+        key: usage[key]
+        for key in ("prompt_tokens", "completion_tokens")
+        if isinstance(usage.get(key), int)
+    }
     evidence["finish_reason"] = last_finish_reason(chunks)
     evidence["sample"] = answer[:120]
     if not chunks:

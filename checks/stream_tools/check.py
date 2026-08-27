@@ -3,7 +3,18 @@ from __future__ import annotations
 from probe.http import InferHubClient
 from probe.payloads import completion_payload
 from probe.result import http_preview, result
-from probe.sse import inspect_stream, parse_sse, resolved_model
+from probe.sse import inspect_stream, last_usage, parse_sse, resolved_model
+
+
+def usage_evidence(chunks: list[dict]) -> dict:
+    """Token counts from the final usage chunk — cost matching needs these."""
+    usage = last_usage(chunks)
+    out = {}
+    for key in ("prompt_tokens", "completion_tokens"):
+        value = usage.get(key)
+        if isinstance(value, int):
+            out[key] = value
+    return out
 
 
 def run(client: InferHubClient, alias: str) -> dict:
@@ -21,6 +32,7 @@ def run(client: InferHubClient, alias: str) -> dict:
     chunks = parse_sse(raw)
     resolved = resolved_model(chunks, alias)
     stats = inspect_stream(chunks)
+    stats["usage"] = usage_evidence(chunks)
     if not chunks:
         return result(
             check_id="stream_tools",

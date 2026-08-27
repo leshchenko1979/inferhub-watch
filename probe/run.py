@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from probe.http import InferHubClient
@@ -60,15 +60,16 @@ def main() -> int:
     client = InferHubClient(key)
     aliases = load_aliases()
     registry = load_registry()
+    started = datetime.now(timezone.utc)
     try:
         cells, errors = collect_cells(client, aliases, registry)
     except BalanceTooLow as exc:
         print(f"Aborting probe, no run written — {exc}", file=sys.stderr)
         return 3
-    started = datetime.now(timezone.utc)
-    stamp = started.strftime("%Y-%m-%dT%H%M%SZ")
-    payload = {
+    finished = datetime.now(timezone.utc)
+    run_payload = {
         "started_at": started.isoformat(),
+        "finished_at": finished.isoformat(),
         "origin": "github-actions",
         "api": URL,
         "aliases": aliases,
@@ -76,6 +77,17 @@ def main() -> int:
         "cells": cells,
         "runner_errors": errors,
     }
+    try:
+        from probe.costs import attribute_costs, fetch_log_rows
+
+        rows = fetch_log_rows(key, range_="24h", after=started - timedelta(minutes=5))
+        costs = attribute_costs(run_payload, rows)
+        run_payload["cost"] = costs
+    except Exception as exc:  # noqa: BLE001 — cost reporting must never break a run
+        run_payload["cost"] = None
+        run_payload["runner_errors"].append(f"cost attribution failed: {exc}")
+    stamp = started.strftime("%Y-%m-%dT%H%M%SZ")
+    payload = run_payload
     out = repo_root() / "data" / "runs" / f"{stamp}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2) + "\n")

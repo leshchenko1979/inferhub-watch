@@ -18,6 +18,7 @@ def run(client: InferHubClient, alias: str) -> dict:
     last = None
     cached = 0
     resolved = alias
+    attempts_usage: list[dict] = []
     for attempt in range(3):
         if attempt and RETRY_PAUSE_S:
             time.sleep(RETRY_PAUSE_S)
@@ -36,6 +37,13 @@ def run(client: InferHubClient, alias: str) -> dict:
         chunks = parse_sse(raw)
         resolved = resolved_model(chunks, resolved)
         usage = last_usage(chunks)
+        attempts_usage.append(
+            {
+                key: usage.get(key)
+                for key in ("prompt_tokens", "completion_tokens")
+                if isinstance(usage.get(key), int)
+            }
+        )
         cached = cached_tokens(usage)
         last = (status, usage, ms, len(chunks))
         if cached > 0:
@@ -48,6 +56,7 @@ def run(client: InferHubClient, alias: str) -> dict:
         "cached_tokens": cached,
         "chunk_count": n_chunks,
         "usage": usage,
+        "usage_all": [u for u in attempts_usage if len(u) == 2],
         "had_tools": False,
     }
     if n_chunks == 0:

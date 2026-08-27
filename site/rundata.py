@@ -99,3 +99,40 @@ def resolved_for_alias(run: dict, alias: str, registry: list[dict]) -> str:
         cell = cmap.get((alias, spec["id"])) or {}
         resolved = cell.get("resolved_model") or resolved
     return resolved
+
+
+def cost_label(raw: object) -> str:
+    """'0.000712' -> '$0.0007' (six decimals when too small). '' when absent."""
+    try:
+        value = float(raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return ""
+    if value <= 0:
+        return ""
+    text = f"${value:.4f}"
+    return text if text != "$0.0000" else f"${value:.6f}"
+
+
+def _sum_costs(run: dict, alias: str | None = None) -> str:
+    total = 0.0
+    seen = False
+    for cell in run.get("cells") or []:
+        if alias is not None and cell.get("alias") != alias:
+            continue
+        raw = cell.get("cost_usdc")
+        if not raw:
+            continue
+        try:
+            total += float(raw)
+            seen = True
+        except ValueError:
+            continue
+    return cost_label(f"{total:.6f}") if seen else ""
+
+
+def alias_run_cost(run: dict, alias: str) -> str:
+    return _sum_costs(run, alias)
+
+
+def run_total_cost(run: dict) -> str:
+    return _sum_costs(run)
