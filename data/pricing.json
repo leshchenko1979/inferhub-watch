@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-27T21:34:28+00:00",
+  "generated_at": "2026-08-27T21:46:08+00:00",
   "range": "30d",
-  "requests_scanned": 2195,
+  "requests_scanned": 2245,
   "routes": {
     "ocg/deepseek-v4-flash": {
       "ask_in": 0.05038,
@@ -30,13 +30,13 @@
     "ali/qwen3.8-max": {
       "ask_in": 0.014,
       "ask_out": 0.042,
-      "eff_per_mtok": 0.0066,
-      "cache_pct": 66.0,
-      "reqs": 48,
-      "tok_in": 912256,
-      "tok_out": 20852,
-      "cost_usdc": "0.006162",
-      "last_ts": "2026-08-27T21:33:53.578Z",
+      "eff_per_mtok": 0.0055,
+      "cache_pct": 71.9,
+      "reqs": 98,
+      "tok_in": 4381506,
+      "tok_out": 66278,
+      "cost_usdc": "0.024529",
+      "last_ts": "2026-08-27T21:46:13.739Z",
       "source": "usage-logs"
     },
     "zai/glm-5.3": {
