@@ -14,6 +14,11 @@ class RundataBoardTests(unittest.TestCase):
     def test_scoring_short_and_rule(self) -> None:
         self.assertEqual(rundata.scoring_short("stream_tools"), "tools")
         self.assertEqual(rundata.scoring_short("cache_tools"), "cache")
+        self.assertEqual(rundata.scoring_short("ru_mojibake"), "mojibake")
+        self.assertEqual(
+            rundata.scoring_rule(["stream_tools", "cache_tools", "ru_mojibake"]),
+            "3/3: tools + cache + mojibake",
+        )
         self.assertEqual(
             rundata.scoring_rule(["stream_tools", "cache_tools"]),
             "2/2: tools + cache",

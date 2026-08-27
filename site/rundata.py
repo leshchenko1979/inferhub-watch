@@ -32,6 +32,8 @@ def scoring_short(check_id: str) -> str:
         return "tools"
     if check_id == "cache_tools":
         return "cache"
+    if check_id == "ru_mojibake":
+        return "mojibake"
     return check_id.replace("_", " ")
 
 

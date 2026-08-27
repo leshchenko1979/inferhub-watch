@@ -15,6 +15,14 @@ contract = "openai-cache"
 scores_rank = true
 
 [[checks]]
+id = "ru_mojibake"
+title = "Russian answers arrive ungarbled"
+blurb = "A Russian question must get an answer without replacement characters, double-encoded Cyrillic, or a CJK flood."
+severity = "fail"
+contract = "openai-stream"
+scores_rank = true
+
+[[checks]]
 id = "usage_pricing"
 title = "Whether the response includes a price"
 blurb = "Records cost fields when present. Informational only: it never fails a cell or ranks an alias."

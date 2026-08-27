@@ -12,8 +12,29 @@ def note(cell: dict) -> str:
         return _tools(status, evidence, raw)
     if cid == "cache_tools":
         return _cache(status, evidence, raw)
+    if cid == "ru_mojibake":
+        return _ru(status, evidence, raw)
     if cid == "usage_pricing":
         return _price(status, evidence, raw)
+    return raw
+
+
+def _ru(status: str, ev: dict, raw: str) -> str:
+    if status == "error":
+        return raw or "The request did not return HTTP 200."
+    if status == "pass":
+        cyr = int(ev.get("cyrillic_chars") or 0)
+        if cyr == 0:
+            return (
+                "No mojibake, but the answer contained no Cyrillic — "
+                "not recognizably Russian."
+            )
+        return (
+            "Russian answer arrived clean — no replacement characters, "
+            "no double-encoded Cyrillic, no CJK flood."
+        )
+    if "No SSE" in raw:
+        return "The stream contained no JSON events, so there was nothing to parse."
     return raw
 
 

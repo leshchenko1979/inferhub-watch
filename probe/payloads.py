@@ -79,3 +79,14 @@ def cache_payload(alias: str, system: str) -> dict:
         ],
         "stream": True,
     }
+
+
+RUSSIAN_USER = "в каком году игорь великий атаковал католических инков?"
+
+
+def russian_payload(alias: str, *, stream: bool = True) -> dict:
+    return {
+        "model": alias,
+        "messages": [{"role": "user", "content": RUSSIAN_USER}],
+        "stream": stream,
+    }

@@ -11,6 +11,12 @@ from unittest import mock
 
 from probe.registry import load_registry, repo_root
 
+import sys
+
+sys.path.insert(0, str(repo_root() / "site"))
+
+import rundata  # noqa: E402
+
 
 def _load_generate():
     path = repo_root() / "site" / "generate.py"
@@ -124,9 +130,15 @@ class WiringTests(unittest.TestCase):
         self.assertIn("Last probe:", html)
         report = rest[rest.find('id="probe"') : rest.find('id="earlier"')]
         self.assertNotIn("Actions", report)
+        latest = gen.load_runs()[-1]
+        expected_first = rundata.aliases_safe_first(
+            gen.load_aliases(), latest, rundata.scoring_ids(load_registry())
+        )[0]
+        row_at = report.find('class="alias-cell"')
+        self.assertIn(f'<span class="alias">{expected_first}</span>', report[row_at : row_at + 400])
         self.assertIn("<h1>Safe to use</h1>", html)
         self.assertNotIn("Safe to use:", html)
-        self.assertIn("2/2: tools + cache", html)
+        self.assertIn("3/3: tools + cache + mojibake", html)
         self.assertNotIn("Scoring ", html)
         self.assertIn(
             "No alias is safe to use this run.",
@@ -176,7 +188,6 @@ class WiringTests(unittest.TestCase):
         self.assertIn("aria-expanded", html)
         self.assertIn("On this page", html)
         self.assertNotIn('id="nav-toggle"', html)
-        self.assertLess(report.find("deepseek-v4-flash"), report.find("gpt-5.6-luna"))
         self.assertIn("Run locally", html)
         self.assertNotIn("Clone and run", html)
         self.assertNotIn("Run it yourself", html)
