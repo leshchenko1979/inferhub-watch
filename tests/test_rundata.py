@@ -103,6 +103,42 @@ class PricingDataTests(unittest.TestCase):
             (root / "data" / "pricing.json").write_text('{"nope": 1}')
             self.assertIsNone(rundata.load_pricing(root))
 
+    def test_log_bar_pct_scales_and_clamps(self) -> None:
+        self.assertAlmostEqual(rundata.log_bar_pct(0.1, 0.001, 10.0), 50.0)
+        self.assertEqual(rundata.log_bar_pct(0.001, 0.001, 10.0), 0.0)
+        self.assertEqual(rundata.log_bar_pct(10.0, 0.001, 10.0), 100.0)
+        self.assertEqual(rundata.log_bar_pct(99.0, 0.001, 10.0), 100.0)  # clamp
+        self.assertEqual(rundata.log_bar_pct(0.0001, 0.001, 10.0), 0.0)  # clamp
+        self.assertEqual(rundata.log_bar_pct(0, 0.001, 10.0), 0.0)
+        self.assertEqual(rundata.log_bar_pct(None, 0.001, 10.0), 0.0)
+        # single non-zero peer: its own bar still draws
+        self.assertEqual(rundata.log_bar_pct(5, 5.0, 5.0), 100.0)
+        self.assertEqual(rundata.log_bar_pct(5, 0.0, 0.0), 0.0)
+
+    def test_peer_bounds_ignores_zeros(self) -> None:
+        self.assertEqual(rundata.peer_bounds([0, 3.0, 7, 0.0]), (3.0, 7.0))
+        self.assertEqual(rundata.peer_bounds([0, 0]), (0.0, 0.0))
+        self.assertEqual(rundata.peer_bounds([]), (0.0, 0.0))
+
+    def test_rate_color_class_thresholds(self) -> None:
+        self.assertEqual(rundata.rate_color_class(0.0055), "ok")
+        self.assertEqual(rundata.rate_color_class(0.02), "ok")
+        self.assertEqual(rundata.rate_color_class(0.0596), "mid")
+        self.assertEqual(rundata.rate_color_class(0.2), "mid")
+        self.assertEqual(rundata.rate_color_class(1.3), "bad")
+        self.assertEqual(rundata.rate_color_class(None), "")
+
+    def test_cache_visuals(self) -> None:
+        self.assertEqual(rundata.cache_color_class(91.3), "ok")
+        self.assertEqual(rundata.cache_color_class(70), "ok")
+        self.assertEqual(rundata.cache_color_class(53.1), "mid")
+        self.assertEqual(rundata.cache_color_class(40), "mid")
+        self.assertEqual(rundata.cache_color_class(0.0), "bad")
+        self.assertEqual(rundata.cache_color_class(None), "")
+        self.assertEqual(rundata.cache_bar_pct(61.4), 61.4)
+        self.assertEqual(rundata.cache_bar_pct(150.0), 100.0)
+        self.assertEqual(rundata.cache_bar_pct(None), 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -113,6 +113,19 @@ def shell(
     )
 
 
+def _viz_cell(label: str, bar_pct: float, color_cls: str) -> str:
+    """Value on top, a 4px bar underneath (Gatus-style)."""
+    bar = (
+        f'<i class="{color_cls}" style="width:{bar_pct:.0f}%"></i>'
+        if bar_pct > 0
+        else ""
+    )
+    return (
+        f'<td class="num viz"><span class="viz-val">{label}</span>'
+        f'<span class="viz-bar">{bar}</span></td>'
+    )
+
+
 def pricing_section(payload: dict | None) -> str:
     """The #pricing section, or '' when there is no usable pricing data."""
     rows = rundata.pricing_rows(payload)
@@ -123,34 +136,52 @@ def pricing_section(payload: dict | None) -> str:
     note = f"{span} window"
     if scanned:
         note += f" · {scanned} billed requests"
-    traffic_head = f"{span} traffic"
+    req_bounds = rundata.peer_bounds(int(r.get("reqs") or 0) for r in rows)
+    cost_bounds = rundata.peer_bounds(float(r.get("cost_usdc") or 0) for r in rows)
     body_rows = []
     for row in rows:
         logged = row.get("source") == "usage-logs"
         mark = "" if logged else '<span class="ask-mark" title="no traffic in window; catalog list price">*</span>'
         ask_in = rundata.rate_label(row.get("ask_in")) or "n/a"
         ask_out = rundata.rate_label(row.get("ask_out")) or "n/a"
-        eff = rundata.rate_label(row.get("eff_per_mtok")) or "n/a"
-        cache = rundata.cache_label(row.get("cache_pct")) or "n/a"
+        eff_raw = row.get("eff_per_mtok")
         reqs = int(row.get("reqs") or 0)
         toks = rundata.token_label(
             int(row.get("tok_in") or 0) + int(row.get("tok_out") or 0)
         )
-        cost = rundata.cost_label(row.get("cost_usdc")) or "n/a"
         body_rows.append(
             "<tr>"
-            f'<th scope="row"><code>{html.escape(str(row["route"]))}</code></th>'
-            f'<td class="num">{ask_in}{mark}</td>'
-            f'<td class="num">{ask_out}{mark}</td>'
-            f'<td class="num">{eff}</td>'
-            f'<td class="num">{cache}</td>'
-            f'<td class="num">{reqs} req · {toks} tok</td>'
-            f'<td class="num">{cost}</td>'
-            "</tr>"
+            f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>'
+            f'<span class="route-ask">ask {ask_in} / {ask_out} per M{mark}</span></th>'
+            + _viz_cell(
+                rundata.rate_label(eff_raw) or "n/a",
+                rundata.log_bar_pct(eff_raw, 0.001, 10.0),
+                rundata.rate_color_class(eff_raw),
+            )
+            + _viz_cell(
+                rundata.cache_label(row.get("cache_pct")) or "n/a",
+                rundata.cache_bar_pct(row.get("cache_pct")),
+                rundata.cache_color_class(row.get("cache_pct")),
+            )
+            + _viz_cell(
+                f"{reqs} req · {toks} tok",
+                rundata.log_bar_pct(reqs, *req_bounds),
+                "neutral",
+            )
+            + _viz_cell(
+                rundata.cost_label(row.get("cost_usdc")) or "n/a",
+                rundata.log_bar_pct(float(row.get("cost_usdc") or 0), *cost_bounds),
+                "gold",
+            )
+            + "</tr>"
         )
     caption = (
-        "&#8220;ask&#8221; is the per-M rate billed on fresh (uncached) input / output; "
-        "&#8220;effective&#8221; is billed cost over all tokens, cache discounts included. "
+        "&#8220;ask&#8221; under each route is the per-M rate billed on fresh "
+        "(uncached) input / output; &#8220;effective&#8221; is billed cost over all "
+        "tokens, cache discounts included. Effective bars are log-scaled over "
+        "$0.001&#8211;$10 per M and colored green &#8804; $0.02, amber &#8804; $0.20, red above; "
+        "cache bars are linear, green &#8805; 70%. Traffic and cost bars are relative "
+        "to the busiest route in the window. "
         "* = no traffic in the window, rates fall back to catalog list price. "
         "Rates for this board&#8217;s routes only; other traffic is not listed."
     )
@@ -162,11 +193,9 @@ def pricing_section(payload: dict | None) -> str:
         f"<caption>{caption}</caption>"
         "<thead><tr>"
         '<th scope="col">Route</th>'
-        '<th scope="col" class="num">ask in $/M</th>'
-        '<th scope="col" class="num">ask out $/M</th>'
         '<th scope="col" class="num">effective $/M</th>'
         '<th scope="col" class="num">cache hit</th>'
-        f'<th scope="col" class="num">{html.escape(traffic_head)}</th>'
+        f'<th scope="col" class="num">{html.escape(span)} traffic</th>'
         f'<th scope="col" class="num">{html.escape(span)} cost</th>'
         "</tr></thead>"
         f"<tbody>{''.join(body_rows)}</tbody>"

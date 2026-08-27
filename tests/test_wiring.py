@@ -277,6 +277,11 @@ class PricingSectionTests(unittest.TestCase):
         # catalog-fallback route is marked with the list-price asterisk
         self.assertIn("nous/deepseek-v4-flash", page)
         self.assertIn("ask-mark", page)
+        # ask rates fold under the route; the rest render as value + bar
+        self.assertIn("ask $0.014 / $0.042 per M", page)
+        self.assertNotIn("ask in $/M", page)
+        self.assertIn('class="viz-bar"', page)
+        self.assertIn('class="route-ask"', page)
 
 
 def _load_run():

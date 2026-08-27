@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 
@@ -191,3 +192,66 @@ def cache_label(raw: object) -> str:
         return f"{float(str(raw)):.0f}%"
     except (TypeError, ValueError):
         return ""
+
+
+# ── pricing-table visuals ──
+
+
+def log_bar_pct(value: object, lo: float, hi: float) -> float:
+    """Bar width % for value on a log10 scale between lo and hi, clamped.
+
+    hi <= lo (a single non-zero peer) collapses to 100% for values at or
+    above hi, so a one-row table still draws its bar.
+    """
+    try:
+        v = float(str(value))
+    except (TypeError, ValueError):
+        return 0.0
+    if v <= 0 or lo <= 0:
+        return 0.0
+    if hi <= lo:
+        return 100.0 if v >= hi else 0.0
+    pos = (math.log10(v) - math.log10(lo)) / (math.log10(hi) - math.log10(lo))
+    return max(0.0, min(100.0, pos * 100.0))
+
+
+def peer_bounds(values) -> tuple[float, float]:
+    """(min, max) of the non-zero peers, or (0.0, 0.0) when there are none."""
+    nonzero = [float(v) for v in values if v and float(v) > 0]
+    if not nonzero:
+        return (0.0, 0.0)
+    return (min(nonzero), max(nonzero))
+
+
+def rate_color_class(raw: object) -> str:
+    """Bar color for an effective $/M rate: cheap green, pricey red."""
+    try:
+        v = float(str(raw))
+    except (TypeError, ValueError):
+        return ""
+    if v <= 0.02:
+        return "ok"
+    if v <= 0.2:
+        return "mid"
+    return "bad"
+
+
+def cache_color_class(raw: object) -> str:
+    """Bar color for a cache-hit percentage: high green, low red."""
+    try:
+        v = float(str(raw))
+    except (TypeError, ValueError):
+        return ""
+    if v >= 70:
+        return "ok"
+    if v >= 40:
+        return "mid"
+    return "bad"
+
+
+def cache_bar_pct(raw: object) -> float:
+    """Cache percentage clamped to a 0-100 bar width."""
+    try:
+        return max(0.0, min(100.0, float(str(raw))))
+    except (TypeError, ValueError):
+        return 0.0
