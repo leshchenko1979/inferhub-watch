@@ -4,5 +4,4 @@ aliases = [
   "ali/qwen3.8-max",
   "zai/glm-5.3",
   "cmc/deepseek/deepseek-v4-pro",
-  "cp/xai/grok-4.6",
 ]
