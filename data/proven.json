@@ -1,4 +1,11 @@
 {
+  "ali/deepseek-v4-pro-0813": {
+    "last_probe": "2026-08-28T21:20:29.934579+00:00",
+    "statuses": {
+      "cache": "skipped",
+      "core": "fail"
+    }
+  },
   "cb/glm-5.3": {
     "last_probe": "2026-08-28T19:50:09.435030+00:00",
     "statuses": {
@@ -27,8 +34,22 @@
       "core": "fail"
     }
   },
+  "cbcn/glm-5.3-flash": {
+    "last_probe": "2026-08-28T21:20:29.934579+00:00",
+    "statuses": {
+      "cache": "skipped",
+      "core": "fail"
+    }
+  },
   "cp/cline-pass/deepseek-v4-flash": {
     "last_probe": "2026-08-28T19:50:09.435030+00:00",
+    "statuses": {
+      "cache": "pass",
+      "core": "pass"
+    }
+  },
+  "ocg/deepseek-v4-flash": {
+    "last_probe": "2026-08-28T21:20:29.934579+00:00",
     "statuses": {
       "cache": "pass",
       "core": "pass"
