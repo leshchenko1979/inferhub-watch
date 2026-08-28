@@ -35,8 +35,10 @@ FALLBACK_W_IN = 0.75
 # Versioned / derived snapshots of a board model rank inside the family
 # whose price bar they compete against: glm-5.3-flash vs glm-5.3,
 # deepseek-v4-flash-0731 (the dated snapshot) vs deepseek-v4-flash.
-# Board aliases all carry unversioned tails, so family_context() grouping
-# is unaffected. A tail absent from the map keeps its own family.
+# The board itself may carry the versioned tail (zai/glm-5.3-flash,
+# ali/deepseek-v4-flash-0731) — the map keeps every variant of a model
+# inside one family, whichever variant is in use. A tail absent from the
+# map keeps its own family.
 FAMILY_ALIASES = {
     "glm-5.3-flash": "glm-5.3",
     "deepseek-v4-flash-0731": "deepseek-v4-flash",
@@ -131,6 +133,28 @@ def incumbent_bar(routes: dict, incumbents: list[str]) -> tuple[float | None, di
     return best, best_entry
 
 
+def ask_bar(catalog: dict, incumbents: list[str]) -> float | None:
+    """Worst-case billed $/M of the cheapest incumbent's catalog asks.
+
+    Fallback bar for a board route with no billing history yet (a fresh
+    swap): cache 0 and the fallback token mix, so the bar OVERSTATES the
+    incumbent's likely bill rather than understating it — a challenger
+    must beat the incumbent's raw asks to earn a probe.
+    """
+    best: float | None = None
+    for alias in incumbents:
+        ask = catalog.get(alias)
+        if not ask:
+            continue
+        ask_in, ask_out = ask
+        predicted = predicted_usd_m(
+            ask_in, ask_out, 0.0, FALLBACK_W_IN, 1.0 - FALLBACK_W_IN
+        )
+        if best is None or predicted < best:
+            best = predicted
+    return best
+
+
 def token_weights(entry: dict) -> tuple[float, float]:
     """(w_in, w_out) from the family token mix; 0.75/0.25 fallback."""
     try:
@@ -151,16 +175,29 @@ def predicted_usd_m(
     return ask_in * (1.0 - cache_rate) * w_in + ask_out * w_out
 
 
-def family_context(pricing_routes: dict, aliases: list[str]) -> dict[str, dict]:
-    """Per family of the board: incumbent bar, cache rate, token weights."""
+def family_context(pricing_routes: dict, aliases: list[str],
+                   catalog: dict | None = None) -> dict[str, dict]:
+    """Per family of the board: incumbent bar, cache rate, token weights.
+
+    The bar is the cheapest BILLED effective $/M among the family's board
+    aliases. A board route with no billing history yet (a fresh swap)
+    falls back to its catalog asks when the catalog is supplied — see
+    ask_bar(). bar_source names which one it is ("billed" / "ask").
+    """
     families: dict[str, list[str]] = {}
     for alias in aliases:
         families.setdefault(family(alias), []).append(alias)
     out: dict[str, dict] = {}
     for fam, incumbents in families.items():
         bar, entry = incumbent_bar(pricing_routes, incumbents)
+        bar_source = "billed" if bar is not None else None
+        if bar is None and catalog is not None:
+            bar = ask_bar(catalog, incumbents)
+            if bar is not None:
+                bar_source = "ask"
         out[fam] = {
             "bar": bar,
+            "bar_source": bar_source,
             "cache_rate": (entry.get("cache_pct") or 0.0) / 100.0,
             "w_in": token_weights(entry)[0],
             "w_out": token_weights(entry)[1],
@@ -215,8 +252,8 @@ def shortlist(key: str, pricing: dict | None, root: Path | None = None,
     """
     root = root or repo_root()
     aliases = load_aliases()
-    ctx = family_context((pricing or {}).get("routes") or {}, aliases)
     catalog = fetch_catalog(key)
+    ctx = family_context((pricing or {}).get("routes") or {}, aliases, catalog)
     proven = load_proven(root)
     board = set(aliases)
     groups = []
@@ -240,8 +277,8 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     root = root or repo_root()
     pricing = load_pricing(root)
     aliases = load_aliases()
-    ctx = family_context((pricing or {}).get("routes") or {}, aliases)
     catalog = fetch_catalog(key)
+    ctx = family_context((pricing or {}).get("routes") or {}, aliases, catalog)
     proven = load_proven(root)
     board = set(aliases)
     print(f"catalog routes with live asks: {len(catalog)}")
@@ -249,7 +286,12 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     for fam in sorted(ctx):
         info = ctx[fam]
         bar = info["bar"]
-        bar_txt = f"${bar:.4f}/M" if bar is not None else "no billed incumbent"
+        if bar is None:
+            bar_txt = "no incumbent bar"
+        elif info.get("bar_source") == "ask":
+            bar_txt = f"${bar:.4f}/M (ask-based — no billed usage yet)"
+        else:
+            bar_txt = f"${bar:.4f}/M"
         print(
             f"\n{fam}: incumbent bar {bar_txt} "
             f"(family cache {info['cache_rate']:.0%}, w_in {info['w_in']:.2f})"

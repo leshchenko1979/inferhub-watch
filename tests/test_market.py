@@ -88,6 +88,52 @@ class IncumbentBarTests(unittest.TestCase):
         self.assertEqual(market.incumbent_bar({}, ["ghost"]), (None, {}))
 
 
+class AskBarTests(unittest.TestCase):
+    def test_worst_case_billing_of_asks(self) -> None:
+        # cache 0, fallback 75/25 mix — the incumbent's raw asks
+        catalog = {"zai/glm-5.3-flash": (0.0135, 0.045)}
+        bar = market.ask_bar(catalog, ["zai/glm-5.3-flash"])
+        self.assertAlmostEqual(bar, 0.0135 * 0.75 + 0.045 * 0.25)
+
+    def test_cheapest_incumbent_wins(self) -> None:
+        catalog = {"a/m": (0.02, 0.06), "b/m": (0.01, 0.03)}
+        self.assertAlmostEqual(
+            market.ask_bar(catalog, ["a/m", "b/m"]), 0.01 * 0.75 + 0.03 * 0.25
+        )
+
+    def test_incumbent_absent_from_catalog(self) -> None:
+        self.assertIsNone(market.ask_bar({}, ["ghost"]))
+        self.assertIsNone(market.ask_bar({"other/m": (0.01, 0.02)}, ["ghost"]))
+
+
+class FamilyContextBarTests(unittest.TestCase):
+    def test_billed_bar_wins_over_asks(self) -> None:
+        pricing = {"zai/glm-5.3-flash": {"eff_per_mtok": 0.01, "cache_pct": 50.0}}
+        ctx = market.family_context(
+            pricing, ["zai/glm-5.3-flash"],
+            catalog={"zai/glm-5.3-flash": (0.0135, 0.045)},
+        )
+        info = ctx["glm-5.3"]
+        self.assertEqual(info["bar"], 0.01)
+        self.assertEqual(info["bar_source"], "billed")
+        self.assertEqual(info["cache_rate"], 0.5)
+
+    def test_unbilled_board_falls_back_to_asks(self) -> None:
+        ctx = market.family_context(
+            {}, ["ali/deepseek-v4-flash-0731"],
+            catalog={"ali/deepseek-v4-flash-0731": (0.0130, 0.0389)},
+        )
+        info = ctx["deepseek-v4-flash"]
+        self.assertAlmostEqual(info["bar"], 0.0130 * 0.75 + 0.0389 * 0.25)
+        self.assertEqual(info["bar_source"], "ask")
+        self.assertEqual(info["cache_rate"], 0.0)
+
+    def test_unbilled_without_catalog_has_no_bar(self) -> None:
+        ctx = market.family_context({}, ["zai/glm-5.3-flash"])
+        self.assertIsNone(ctx["glm-5.3"]["bar"])
+        self.assertIsNone(ctx["glm-5.3"]["bar_source"])
+
+
 class ShortlistTests(unittest.TestCase):
     def _shortlist(self, catalog=None, pricing=PRICING, aliases=ALIASES,
                    proven=None, root=None, now=NOW):
@@ -152,12 +198,29 @@ class ShortlistTests(unittest.TestCase):
         )
 
     def test_family_without_billed_incumbent_is_skipped(self) -> None:
+        # no billed usage AND the incumbent is absent from the catalog:
+        # there is no bar to beat
         pricing = {"routes": {"zai/glm-5.3": {"eff_per_mtok": None}}}
         groups = self._shortlist(
             aliases=["zai/glm-5.3"], pricing=pricing,
             catalog={"cb/glm-5.3": (0.001, 0.001)},
         )
         self.assertEqual(groups, [])
+
+    def test_unbilled_incumbent_shortlists_via_ask_bar(self) -> None:
+        # fresh board route with no billing history: the bar comes from the
+        # incumbent's own asks (cache 0), cheaper variants still get probed
+        catalog = {
+            "zai/glm-5.3-flash": (0.0135, 0.045),       # ask bar 0.021375
+            "cbcn/glm-5.3-flash": (0.0045, 0.015),      # 0.007125 -> cheaper
+            "cp/zai/glm-5.3-flash": (0.01485, 0.0495),  # 0.023513 -> not cheaper
+        }
+        groups = self._shortlist(
+            aliases=["zai/glm-5.3-flash"], pricing={"routes": {}}, catalog=catalog,
+        )
+        self.assertEqual(
+            groups, [{"model": "glm-5.3", "routes": ["cbcn/glm-5.3-flash"]}]
+        )
 
     def test_missing_pricing_means_no_bar(self) -> None:
         self.assertEqual(self._shortlist(pricing=None), [])
@@ -242,6 +305,29 @@ class DryRunTests(unittest.TestCase):
         self.assertIn("skip — not cheaper", out)
         self.assertIn("shortlist total: 2", out)
         self.assertNotIn("ali/qwen3.8-max  ", out)  # board alias never ranked
+
+    def test_dry_run_marks_ask_based_bar(self) -> None:
+        catalog = {
+            "zai/glm-5.3-flash": (0.0135, 0.045),
+            "cbcn/glm-5.3-flash": (0.0045, 0.015),
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "data").mkdir()
+            (root / "data" / "pricing.json").write_text(json.dumps({"routes": {}}))
+            buf = io.StringIO()
+            with mock.patch.object(market, "fetch_catalog", return_value=catalog), \
+                    mock.patch.object(market, "load_aliases",
+                                      return_value=["zai/glm-5.3-flash"]), \
+                    mock.patch.dict(os.environ, {"INFERHUB_API_KEY": "k"}), \
+                    redirect_stdout(buf):
+                code = market.main(["--dry-run"], root=root)
+        out = buf.getvalue()
+        self.assertEqual(code, 0)
+        self.assertIn("ask-based", out)
+        self.assertIn("cbcn/glm-5.3-flash", out)
+        self.assertIn("SHORTLIST", out)
+        self.assertIn("shortlist total: 1", out)
 
     def test_dry_run_proven_marker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
