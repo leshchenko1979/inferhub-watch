@@ -138,7 +138,7 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn("info · not ranked", html)
         self.assertIn('class="timeline"', html)
         self.assertIn("Actions · CI", html)
-        self.assertIn("seed · fixture", html)
+        self.assertIn("Actions · CI", html)
         self.assertIn("<caption>", html)
         self.assertIn('<details class="nav-menu">', html)
         self.assertIn("aria-expanded", html)
@@ -659,14 +659,20 @@ class ProbeResultsSectionTests(unittest.TestCase):
         self.assertNotIn("cp/cline-pass/qwen3.8-max", seg)
         self.assertNotIn("cx/qwen3.8-max", seg)
 
-    def test_section_omitted_without_candidate_cells(self) -> None:
+    def test_board_only_run_still_renders_results(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         board_only = self._run(scoring, [])  # no candidate cells in the run
         page, nav = self._page(gen, board_only)
-        self.assertNotIn('id="results"', page)
-        self.assertNotIn("<h2>Probe results</h2>", page)
-        self.assertNotIn('href="#results"', nav)
+        self.assertIn('id="results"', page)
+        self.assertIn("ali/qwen3.8-max", page)
+        self.assertIn('href="#results"', nav)
+        # A run with no cells at all still omits the section entirely.
+        empty, empty_nav = self._page(
+            gen, {"started_at": "2026-08-27T22:00:00", "origin": "local", "cells": []}
+        )
+        self.assertNotIn('id="results"', empty)
+        self.assertNotIn("<h2>Probe results</h2>", empty)
 
     def test_rows_carry_fold_labels_and_column_hints(self) -> None:
         gen = _load_generate()

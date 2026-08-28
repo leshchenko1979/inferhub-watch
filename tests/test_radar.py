@@ -164,8 +164,13 @@ class PriceChipTests(unittest.TestCase):
         self.assertIn("model-group", section)
         self.assertNotIn("chip price", section)
 
-    def test_old_suite_run_without_candidates_is_empty(self) -> None:
-        self.assertEqual(self._section(RUN_BOARD_ONLY), "")
+    def test_board_only_run_renders_board_group(self) -> None:
+        # Suite v2 renders every probed family — a board-only run (no
+        # shortlist candidates) still shows its incumbent group + verdict.
+        section = self._section(RUN_BOARD_ONLY)
+        self.assertIn('class="model-group"', section)
+        self.assertIn("qwen3.8-max", section)
+        self.assertIn("ali/qwen3.8-max", section)
 
     def test_chip_html_without_verdict_is_empty(self) -> None:
         self.assertEqual(generate._price_chip_html(None), "")
