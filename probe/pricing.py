@@ -10,8 +10,10 @@ Two sources, both real billing rather than estimates:
 - /catalog carries each publisher's asks per model; used as the fallback
   for routes with no log rows yet.
 
-Writes data/pricing.json for the site generator. Failures never break the
-cron: main() logs a warning and exits 0, leaving any previous file in place.
+Writes data/pricing.json for the site generator. Transient failures (an
+HTTP 429 right after a probe run is the known one) are retried with backoff.
+If every attempt fails the cron still survives: main() logs a warning,
+emits a GitHub Actions annotation, exits 0, and leaves the previous file.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -215,6 +218,12 @@ def write_outputs(payload: dict, root: Path | None = None) -> tuple[Path, Path]:
     return latest, dated
 
 
+# A probe run burns rate budget; the pricing fetch right after it is the
+# classic 429 window. Back off and retry before giving up.
+ATTEMPTS = 3
+RETRY_BACKOFF_S = 30
+
+
 def main() -> int:  # noqa: BLE001 — pricing must never break the cron
     key = os.environ.get("INFERHUB_API_KEY", "").strip()
     if not key:
@@ -222,13 +231,34 @@ def main() -> int:  # noqa: BLE001 — pricing must never break the cron
         return 0
     try:
         routes, cand = snapshot_routes()
-        payload = snapshot(key, routes, candidates=cand)
-        latest, dated = write_outputs(payload)
-    except Exception as exc:
-        print(f"warning: pricing snapshot failed, keeping previous file: {exc}", file=sys.stderr)
+    except Exception as exc:  # noqa: BLE001
+        print(f"warning: could not load routes: {exc}", file=sys.stderr)
         return 0
-    print(latest)
-    print(dated)
+    last_exc: Exception | None = None
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            payload = snapshot(key, routes, candidates=cand)
+            latest, dated = write_outputs(payload)
+            print(latest)
+            print(dated)
+            return 0
+        except Exception as exc:  # noqa: BLE001 — e.g. HTTP Error 429
+            last_exc = exc
+            if attempt < ATTEMPTS:
+                wait = RETRY_BACKOFF_S * attempt
+                print(
+                    f"warning: pricing attempt {attempt}/{ATTEMPTS} failed "
+                    f"({exc}); retrying in {wait}s",
+                    file=sys.stderr,
+                )
+                time.sleep(wait)
+    print(
+        f"warning: pricing snapshot failed after {ATTEMPTS} attempts, "
+        f"keeping previous file: {last_exc}",
+        file=sys.stderr,
+    )
+    # Surface the staleness in CI — silent success is how this went unnoticed.
+    print(f"::warning::pricing snapshot failed ({last_exc}); data/pricing.json is STALE")
     return 0
 
 

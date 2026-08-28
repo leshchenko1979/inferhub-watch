@@ -146,12 +146,36 @@ class SnapshotTests(unittest.TestCase):
                         pricing, "snapshot", side_effect=RuntimeError("boom")
                     ), mock.patch.object(
                         pricing, "repo_root", return_value=Path(tmp)
-                    ), mock.patch("sys.stderr", new=io.StringIO()):
+                    ), mock.patch.object(pricing.time, "sleep") as sleep_mock, \
+                    mock.patch("sys.stderr", new=io.StringIO()), \
+                    mock.patch("sys.stdout", new=io.StringIO()) as out:
                 self.assertEqual(pricing.main(), 0)  # keeps previous file, exits clean
+                self.assertEqual(sleep_mock.call_count, pricing.ATTEMPTS - 1)
+                self.assertIn("::warning::", out.getvalue())  # staleness is visible in CI
 
     def test_main_without_key_is_a_noop(self) -> None:
         with mock.patch.dict("os.environ", {}, clear=True):
             self.assertEqual(pricing.main(), 0)
+
+
+class RetryTests(unittest.TestCase):
+    def test_transient_429_is_retried_and_succeeds(self) -> None:
+        from urllib.error import HTTPError
+
+        payload = {"generated_at": "t2", "routes": {}}
+        boom = HTTPError("https://management.example", 429, "Too Many Requests", {}, None)
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict("os.environ", {"INFERHUB_API_KEY": "k"}), \
+                    mock.patch.object(pricing, "load_aliases", return_value=["a/b"]), \
+                    mock.patch.object(pricing, "snapshot", side_effect=[boom, payload]), \
+                    mock.patch.object(pricing, "repo_root", return_value=Path(tmp)), \
+                    mock.patch.object(pricing.time, "sleep") as sleep_mock, \
+                    mock.patch("sys.stderr", new=io.StringIO()):
+                self.assertEqual(pricing.main(), 0)
+            self.assertEqual(sleep_mock.call_count, 1)  # one backoff, then success
+            self.assertEqual(sleep_mock.call_args.args[0], pricing.RETRY_BACKOFF_S)
+            written = json.loads((Path(tmp) / "data" / "pricing.json").read_text())
+            self.assertEqual(written["generated_at"], "t2")
 
 
 class DailySeriesTests(unittest.TestCase):
