@@ -19,7 +19,7 @@ Whether InferHub matched the shape that check documents.
 _Avoid_: “InferHub is down.”
 
 **Info**:
-Recorded, never fails the suite (`usage_pricing`).
+Recorded, never fails the suite (usage-based pricing in [data/pricing.json](data/pricing.json)).
 
 **Scoring checks**:
-`stream_tools` (streaming tool names) and `cache_tools` (prompt cache on a streaming completion **without** tools). Pricing does not score.
+`core` (stream shape + named tool call + Russian answer; fail-fast) and `cache` (identical repeat, `cached_tokens > 0`). Pricing does not score.
