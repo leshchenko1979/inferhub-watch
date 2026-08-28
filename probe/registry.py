@@ -15,26 +15,6 @@ def load_aliases() -> list[str]:
     return list(data["aliases"])
 
 
-def load_candidates(path: Path | None = None) -> list[dict]:
-    """Candidate groups [{model, routes}] from candidates.toml.
-
-    Missing or empty file → [] (board-only run). Groups without a model or
-    without usable routes are skipped.
-    """
-    path = path or repo_root() / "candidates.toml"
-    try:
-        data = tomllib.loads(path.read_text())
-    except (OSError, ValueError):
-        return []
-    groups = []
-    for entry in data.get("candidate") or []:
-        model = str(entry.get("model") or "").strip()
-        routes = [str(r).strip() for r in entry.get("routes") or [] if str(r).strip()]
-        if model and routes:
-            groups.append({"model": model, "routes": routes})
-    return groups
-
-
 def load_registry() -> list[dict]:
     data = tomllib.loads((repo_root() / "checks" / "registry.toml").read_text())
     return list(data["checks"])

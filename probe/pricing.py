@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from probe.costs import MANAGEMENT, USER_AGENT, fetch_log_rows
-from probe.registry import load_aliases, load_candidates, repo_root
+from probe.registry import load_aliases, repo_root
 
 CATALOG_TIMEOUT = 30
 RANGE = "30d"
@@ -191,14 +191,40 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
     }
 
 
+def latest_run_candidates(root: Path | None = None) -> list[str]:
+    """Candidate routes from the newest committed run file (may be empty).
+
+    Runs write their shortlist under "candidates"; legacy runs without the
+    key fall back to the candidate-flagged cells.
+    """
+    root = root or repo_root()
+    files = sorted((root / "data" / "runs").glob("*.json"))
+    if not files:
+        return []
+    try:
+        payload = json.loads(files[-1].read_text())
+    except (OSError, ValueError):
+        return []
+    candidates = [str(r) for r in payload.get("candidates") or [] if str(r)]
+    if candidates:
+        return candidates
+    seen: set[str] = set()
+    out: list[str] = []
+    for cell in payload.get("cells") or []:
+        alias = cell.get("alias") or ""
+        if cell.get("candidate") and alias and alias not in seen:
+            seen.add(alias)
+            out.append(alias)
+    return out
+
+
 def snapshot_routes() -> tuple[list[str], list[str]]:
     """(all routes for the snapshot, the candidate subset) — board first, deduped."""
     routes = list(load_aliases())
     cand: list[str] = []
-    for group in load_candidates():
-        for route in group["routes"]:
-            if route not in routes and route not in cand:
-                cand.append(route)
+    for route in latest_run_candidates():
+        if route not in routes and route not in cand:
+            cand.append(route)
     return routes + cand, cand
 
 

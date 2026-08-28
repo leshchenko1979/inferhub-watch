@@ -58,6 +58,7 @@ jobs:
           git add data/runs
           test ! -f data/pricing.json || git add data/pricing.json
           test ! -d data/pricing || git add data/pricing
+          test ! -f data/proven.json || git add data/proven.json
           if git diff --cached --quiet; then
             echo "no new run files"
           else

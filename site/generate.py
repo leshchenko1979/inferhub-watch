@@ -17,7 +17,7 @@ import mdhtml  # noqa: E402
 import rundata  # noqa: E402
 import tmpl  # noqa: E402
 from probe.publishers import publisher_label  # noqa: E402
-from probe.registry import load_aliases, load_candidates, load_registry  # noqa: E402
+from probe.registry import load_aliases, load_registry  # noqa: E402
 
 GITHUB = "https://github.com/leshchenko1979/inferhub-watch"
 CLONE = (
@@ -46,13 +46,39 @@ def load_runs() -> list[dict]:
 
 
 def results_available() -> bool:
-    """True when candidates.toml has groups AND the latest run has candidate cells."""
-    if not load_candidates():
-        return False
+    """True when the latest run carries candidate cells (market shortlist)."""
     runs = rundata.load_runs(ROOT)
     if not runs:
         return False
     return bool(rundata.candidate_cells(runs[-1]))
+
+
+def run_groups(run: dict) -> list[dict]:
+    """Candidate groups [{model, routes}] from a run's sweep.
+
+    Cells are the primary source (order = first appearance). Routes listed
+    in the run's shortlist without cells — a sweep aborted early — still
+    get a row under their own family, so they render as unprobed instead
+    of disappearing.
+    """
+    order: list[str] = []
+    routes_by_model: dict[str, list[str]] = {}
+
+    def add(model: str, alias: str) -> None:
+        if not model or not alias:
+            return
+        if model not in routes_by_model:
+            routes_by_model[model] = []
+            order.append(model)
+        if alias not in routes_by_model[model]:
+            routes_by_model[model].append(alias)
+
+    for cell in rundata.candidate_cells(run):
+        add(cell.get("model") or "", cell.get("alias") or "")
+    for route in run.get("candidates") or []:
+        route = str(route)
+        add(route.rsplit("/", 1)[-1], route)
+    return [{"model": model, "routes": routes_by_model[model]} for model in order]
 
 
 def alias_heading(alias: str, resolved: str) -> str:
@@ -445,12 +471,12 @@ def _chip_cls(ok: int, total: int) -> str:
 def probe_results_section(
     runs: list[dict], aliases: list[str], registry: list[dict], payload: dict | None
 ) -> str:
-    """The #results section, or '' without config or candidate cells."""
-    groups = load_candidates()
-    if not runs or not groups:
+    """The #results section, or '' without candidate cells in the latest run."""
+    if not runs:
         return ""
     latest = runs[-1]
-    if not rundata.candidate_cells(latest):
+    groups = run_groups(latest)
+    if not groups:
         return ""
     score_ids = rundata.scoring_ids(registry)
     route_entries = (payload or {}).get("routes") or {}
@@ -529,7 +555,8 @@ def probe_results_section(
         return ""
     note = (
         "Board routes in current use (&#8220;in use&#8221; pill) plus audition routes "
-        "from candidates.toml, grouped by model and probed after each board sweep. "
+        "from the market shortlist — live catalog asks ranked by predicted $/M, "
+        "cheaper-than-in-use only — grouped by model and probed after each board sweep. "
         "Audition routes rank by checks passed, then cache hit, then blended ask. "
         "Cache share: board routes from the 30-day billing window, audition routes "
         "from the probe. Window = runs all-pass / runs probed since first seen. "

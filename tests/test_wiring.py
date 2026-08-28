@@ -124,7 +124,7 @@ class WiringTests(unittest.TestCase):
         self.assertLess(html.find('id="earlier"'), html.find('id="method"'))
         results = rest[rest.find('id="results"') : rest.find('id="earlier"')]
         self.assertNotIn("Actions", results)
-        groups = gen.load_candidates()
+        groups = gen.run_groups(gen.load_runs()[-1])
         aliases = gen.load_aliases()
         first_group = next(
             g for g in groups if rundata.incumbent_aliases(aliases, g["model"])
@@ -206,10 +206,13 @@ class WiringTests(unittest.TestCase):
                 for cid in scoring
             ],
         }
-        with mock.patch.object(gen.rundata, "load_pricing", return_value=None), \
-                mock.patch.object(gen, "load_candidates", return_value=[]):
+        with mock.patch.object(gen.rundata, "load_pricing", return_value=None):
             page = gen.index_html([run], ["ocg/deepseek-v4-flash"], registry)
-        self.assertNotIn("cb/gpt-5.6-luna", page)
+        # candidate cells render only in the results section, never on the board
+        board = page[: page.find('id="results"')]
+        self.assertNotIn("cb/gpt-5.6-luna", board)
+        results = page[page.find('id="results"') :]
+        self.assertIn("cb/gpt-5.6-luna", results)
         self.assertIn("ocg/deepseek-v4-flash", page)
 
 
@@ -380,6 +383,8 @@ class BalanceAbortTests(unittest.TestCase):
                 run_mod, "InferHubClient", return_value=object()
             ), mock.patch.object(
                 run_mod, "repo_root", return_value=Path(tmp)
+            ), mock.patch.object(
+                run_mod.market, "fetch_catalog", return_value={}
             ), mock.patch(
                 "probe.costs.fetch_log_rows", return_value=[]
             ), mock.patch.dict(
@@ -412,6 +417,8 @@ class BalanceAbortTests(unittest.TestCase):
                 run_mod, "InferHubClient", return_value=object()
             ), mock.patch.object(
                 run_mod, "repo_root", return_value=Path(tmp)
+            ), mock.patch.object(
+                run_mod.market, "fetch_catalog", return_value={}
             ), mock.patch(
                 "probe.costs.fetch_log_rows", return_value=[]
             ), mock.patch.dict(
@@ -507,10 +514,6 @@ class SpendDashboardTests(unittest.TestCase):
 
 
 class ProbeResultsSectionTests(unittest.TestCase):
-    GROUPS = [
-        {"model": "qwen3.8-max",
-         "routes": ["cp/cline-pass/qwen3.8-max", "cx/qwen3.8-max"]},
-    ]
     PAYLOAD = {
         "generated_at": "2026-08-27T20:00:00+00:00",
         "routes": {
@@ -551,9 +554,8 @@ class ProbeResultsSectionTests(unittest.TestCase):
                 cells.append(cell)
         return {"started_at": "2026-08-27T22:00:00", "origin": "local", "cells": cells}
 
-    def _page(self, gen, run, groups):
+    def _page(self, gen, run):
         with mock.patch.object(gen.rundata, "load_pricing", return_value=self.PAYLOAD), \
-                mock.patch.object(gen, "load_candidates", return_value=groups), \
                 mock.patch.object(gen.rundata, "load_runs", return_value=[run]):
             page = gen.index_html([run], ["ali/qwen3.8-max"], gen.load_registry())
             nav = gen.board_nav()
@@ -567,7 +569,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
             ("cp/cline-pass/qwen3.8-max", 2, 93),
             ("cx/qwen3.8-max", 2, 40),
         ])
-        page, nav = self._page(gen, run, self.GROUPS)
+        page, nav = self._page(gen, run)
         self.assertIn('id="results"', page)
         self.assertIn('href="#results"', nav)
         self.assertIn("<h2>Probe results</h2>", page)
@@ -588,7 +590,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
             ("cp/cline-pass/qwen3.8-max", 1, 93),   # missed one -> amber
             ("cx/qwen3.8-max", 2, 40),              # all pass -> ranks first
         ])
-        page, _ = self._page(gen, run, self.GROUPS)
+        page, _ = self._page(gen, run)
         pos_cp = page.find("cp/cline-pass/qwen3.8-max", page.find('id="results"'))
         pos_cx = page.find("cx/qwen3.8-max", page.find('id="results"'))
         self.assertTrue(pos_cx < pos_cp)
@@ -599,9 +601,10 @@ class ProbeResultsSectionTests(unittest.TestCase):
     def test_tests_column_colors_fail_and_unprobed(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
-        # cp: 0/3 all fail -> red chip + tests-bad; cx: no cells -> unprobed dash
+        # cp: 0/2 all fail -> red chip + tests-bad; cx: no cells -> unprobed dash
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 0, 93)])
-        page, _ = self._page(gen, run, self.GROUPS)
+        run["candidates"] = ["cp/cline-pass/qwen3.8-max", "cx/qwen3.8-max"]
+        page, _ = self._page(gen, run)
         seg = page[page.find('id="results"'):page.find('id="earlier"')]
         self.assertIn('class="tests-bad"', seg)
         self.assertIn('class="chip bad">cp/cline-pass/qwen3.8-max · 0/2', seg)
@@ -613,30 +616,26 @@ class ProbeResultsSectionTests(unittest.TestCase):
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
-        page, _ = self._page(gen, run, self.GROUPS)
+        page, _ = self._page(gen, run)
         seg = page[page.find('id="pricing"'):page.find('id="earlier"')]
         self.assertIn("ali/qwen3.8-max", seg)          # incumbent has rate data
         self.assertNotIn("cp/cline-pass/qwen3.8-max", seg)
         self.assertNotIn("cx/qwen3.8-max", seg)
 
-    def test_section_omitted_without_config_or_cells(self) -> None:
+    def test_section_omitted_without_candidate_cells(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
-        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
-        page, nav = self._page(gen, run, [])  # no candidates.toml groups
+        board_only = self._run(scoring, [])  # no candidate cells in the run
+        page, nav = self._page(gen, board_only)
         self.assertNotIn('id="results"', page)
         self.assertNotIn("<h2>Probe results</h2>", page)
-        self.assertNotIn('href="#results"', nav)
-        board_only = self._run(scoring, [])  # config present, no candidate cells
-        page, nav = self._page(gen, board_only, self.GROUPS)
-        self.assertNotIn('id="results"', page)
         self.assertNotIn('href="#results"', nav)
 
     def test_rows_carry_fold_labels_and_column_hints(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
-        page, _ = self._page(gen, run, self.GROUPS)
+        page, _ = self._page(gen, run)
         seg = page[page.find('id="results"'):page.find('id="earlier"')]
         self.assertIn('<details class="model-group" open>', seg)
         for label in ("tests", "cache hit", "ask in / out", "window"):

@@ -6,11 +6,11 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from probe import market
 from probe.http import InferHubClient
 from probe.payloads import URL
 from probe.registry import (
     load_aliases,
-    load_candidates,
     load_check_module,
     load_registry,
     repo_root,
@@ -104,13 +104,23 @@ def main() -> int:
     client = InferHubClient(key)
     aliases = load_aliases()
     registry = load_registry()
-    cand_pairs = candidate_routes(load_candidates())
+    # Market radar: the catalog picks the candidates. A catalog hiccup must
+    # not kill the run — degrade to board-only and say so in runner_errors.
+    market_error: str | None = None
+    try:
+        groups = market.shortlist(key, market.load_pricing(root=repo_root()), root=repo_root())
+    except Exception as exc:  # noqa: BLE001
+        groups = []
+        market_error = f"market shortlist failed: {exc}"
+    cand_pairs = candidate_routes(groups)
     started = datetime.now(timezone.utc)
     try:
         cells, errors = collect_cells(client, aliases, registry)
     except BalanceTooLow as exc:
         print(f"Aborting probe, no run written — {exc}", file=sys.stderr)
         return 3
+    if market_error:
+        errors.append(market_error)
     if cand_pairs:
         try:
             cand_cells, cand_errors = run_candidate_sweep(client, cand_pairs, registry)
@@ -131,6 +141,10 @@ def main() -> int:
         "cells": cells,
         "runner_errors": errors,
     }
+    try:
+        market.record_proven(run_payload, root=repo_root())
+    except Exception as exc:  # noqa: BLE001 — proven cache must never break a run
+        run_payload["runner_errors"].append(f"proven cache write failed: {exc}")
     try:
         from probe.costs import attribute_costs, fetch_log_rows
 

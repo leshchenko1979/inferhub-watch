@@ -201,13 +201,47 @@ class DailySeriesTests(unittest.TestCase):
         self.assertEqual(series[0]["requests"], 1)
 
 
+class LatestRunCandidatesTests(unittest.TestCase):
+    def _write_run(self, tmp: str, name: str, payload: dict) -> None:
+        runs = Path(tmp) / "data" / "runs"
+        runs.mkdir(parents=True, exist_ok=True)
+        (runs / name).write_text(json.dumps(payload))
+
+    def test_missing_dir_returns_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(pricing.latest_run_candidates(Path(tmp)), [])
+
+    def test_candidates_key_wins(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            self._write_run(tmp, "2026-08-27T060000Z.json", {"candidates": ["old/m"]})
+            self._write_run(
+                tmp, "2026-08-28T060000Z.json",
+                {"candidates": ["c/m", "d/m"], "cells": []},
+            )
+            self.assertEqual(pricing.latest_run_candidates(Path(tmp)), ["c/m", "d/m"])
+
+    def test_legacy_run_falls_back_to_candidate_cells(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            self._write_run(tmp, "2026-08-28T060000Z.json", {"cells": [
+                {"alias": "a/m", "check_id": "core"},
+                {"alias": "c/m", "check_id": "core", "candidate": True},
+                {"alias": "c/m", "check_id": "cache", "candidate": True},
+            ]})
+            self.assertEqual(pricing.latest_run_candidates(Path(tmp)), ["c/m"])
+
+    def test_unreadable_latest_returns_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            self._write_run(tmp, "2026-08-28T060000Z.json", {})
+            (Path(tmp) / "data" / "runs" / "2026-08-28T060000Z.json").write_text("{broken")
+            self.assertEqual(pricing.latest_run_candidates(Path(tmp)), [])
+
+
 class SnapshotRoutesTests(unittest.TestCase):
     def test_board_first_deduped(self) -> None:
         with mock.patch.object(pricing, "load_aliases", return_value=["a/m", "b/m"]), \
-                mock.patch.object(pricing, "load_candidates", return_value=[
-                    {"model": "m", "routes": ["b/m", "c/m"]},
-                    {"model": "m2", "routes": ["c/m", "d/m"]},
-                ]):
+                mock.patch.object(
+                    pricing, "latest_run_candidates", return_value=["b/m", "c/m", "d/m"]
+                ):
             routes, cand = pricing.snapshot_routes()
         self.assertEqual(routes, ["a/m", "b/m", "c/m", "d/m"])
         self.assertEqual(cand, ["c/m", "d/m"])
