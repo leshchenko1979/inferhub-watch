@@ -317,14 +317,21 @@ class CandidatesHelpersTests(unittest.TestCase):
             rundata.route_window_record(board_runs, "c/m", self.SCORE, candidate=False), (1, 2)
         )
 
-    def test_incumbent_aliases_suffix_match(self) -> None:
+    def test_incumbent_aliases_family_match(self) -> None:
         aliases = ["ali/qwen3.8-max", "cp/cline-pass/deepseek-v4-pro",
-                   "cmc/deepseek/deepseek-v4-pro", "zai/glm-5.3"]
+                   "cmc/deepseek/deepseek-v4-pro", "zai/glm-5.3-flash",
+                   "ali/deepseek-v4-flash-0731"]
         self.assertEqual(
             rundata.incumbent_aliases(aliases, "deepseek-v4-pro"),
             ["cp/cline-pass/deepseek-v4-pro", "cmc/deepseek/deepseek-v4-pro"],
         )
         self.assertEqual(rundata.incumbent_aliases(aliases, "qwen3.8-max"), ["ali/qwen3.8-max"])
+        # versioned board tails still join their family group
+        self.assertEqual(rundata.incumbent_aliases(aliases, "glm-5.3"), ["zai/glm-5.3-flash"])
+        self.assertEqual(
+            rundata.incumbent_aliases(aliases, "deepseek-v4-flash"),
+            ["ali/deepseek-v4-flash-0731"],
+        )
         self.assertEqual(rundata.incumbent_aliases(aliases, "gpt-5.6-luna"), [])
 
 

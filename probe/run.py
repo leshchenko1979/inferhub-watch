@@ -51,7 +51,7 @@ def collect_cells(
                 )
             if balance_too_low(cell.get("summary") or ""):
                 raise BalanceTooLow(f"{alias}/{spec['id']}: {cell.get('summary')}")
-            cell["model"] = alias.rsplit("/", 1)[-1]
+            cell["model"] = market.family(alias)
             cells.append(cell)
             # Fail-fast: a failed or errored check means the route is broken —
             # the remaining specs of this route are skipped, not run.
@@ -63,7 +63,7 @@ def collect_cells(
                         status="skipped",
                         summary="not run — earlier check failed",
                     )
-                    skip["model"] = alias.rsplit("/", 1)[-1]
+                    skip["model"] = market.family(alias)
                     cells.append(skip)
                 break
     return cells, errors

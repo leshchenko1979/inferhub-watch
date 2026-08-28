@@ -83,9 +83,9 @@ def run_groups(run: dict) -> list[dict]:
         # Families come from EVERY probed cell — board cells included — so a
         # board-only family (no shortlist candidates this run) still renders
         # a group. Board cells in older runs carry no model key; fall back to
-        # the alias tail ("ali/qwen3.8-max" -> "qwen3.8-max").
+        # the alias's family ("ali/qwen3.8-max" -> "qwen3.8-max").
         alias = str(cell.get("alias") or "")
-        model = cell.get("model") or alias.rsplit("/", 1)[-1]
+        model = cell.get("model") or market.family(alias)
         if model and model not in routes_by_model:
             routes_by_model[model] = []
             order.append(model)
@@ -93,7 +93,7 @@ def run_groups(run: dict) -> list[dict]:
         add(cell.get("model") or "", cell.get("alias") or "")
     for route in run.get("candidates") or []:
         route = str(route)
-        add(route.rsplit("/", 1)[-1], route)
+        add(market.family(route), route)
     return [{"model": model, "routes": routes_by_model[model]} for model in order]
 
 

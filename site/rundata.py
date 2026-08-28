@@ -4,6 +4,8 @@ import json
 import math
 from pathlib import Path
 
+from probe import market
+
 
 def load_runs(root: Path) -> list[dict]:
     files = sorted((root / "data" / "runs").glob("*.json"))
@@ -124,9 +126,10 @@ def route_window_record(
 
 
 def incumbent_aliases(aliases: list[str], model: str) -> list[str]:
-    """Board aliases serving the candidate's model — suffix match on '/<model>'."""
-    needle = "/" + model
-    return [a for a in aliases if a.endswith(needle)]
+    """Board aliases serving the family — a market.family() match, so
+    versioned board tails (zai/glm-5.3-flash) still join their family's
+    group ("glm-5.3")."""
+    return [a for a in aliases if market.family(a) == model]
 
 
 def aliases_safe_first(
