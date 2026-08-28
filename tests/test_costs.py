@@ -146,5 +146,108 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual(summary["source"], "usage-logs")
 
 
+class _FakeResp:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    def read(self) -> bytes:
+        return self._payload
+
+    def __enter__(self) -> "_FakeResp":
+        return self
+
+    def __exit__(self, *exc) -> bool:
+        return False
+
+
+def _http_429(retry_after: str | None = None):
+    import urllib.error
+
+    headers = {}
+    if retry_after is not None:
+        headers["Retry-After"] = retry_after
+    return urllib.error.HTTPError(
+        "https://inferhub.dev/api/usage/logs", 429, "Too Many Requests", headers, None
+    )
+
+
+class RateLimitRetryTests(unittest.TestCase):
+    def test_retry_after_parsed_clamped_and_defaulted(self) -> None:
+        from probe.costs import (
+            RETRY_AFTER_CAP_S,
+            RETRY_AFTER_DEFAULT_S,
+            _retry_after_s,
+        )
+
+        self.assertEqual(_retry_after_s(_http_429("12")), 12.0)
+        self.assertEqual(_retry_after_s(_http_429("0.5")), 1.0)  # floored
+        self.assertEqual(_retry_after_s(_http_429("999")), RETRY_AFTER_CAP_S)
+        self.assertEqual(_retry_after_s(_http_429(None)), RETRY_AFTER_DEFAULT_S)
+        self.assertEqual(_retry_after_s(_http_429("junk")), RETRY_AFTER_DEFAULT_S)
+
+    def test_get_json_retries_429_then_succeeds(self) -> None:
+        import json
+        from unittest import mock
+
+        import probe.costs as costs
+
+        ok_body = {"rows": [{"ts": "2026-08-28T00:00:00Z"}]}
+        calls = {"n": 0}
+
+        def fake_urlopen(req, timeout=30):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise _http_429("12")
+            return _FakeResp(json.dumps(ok_body).encode())
+
+        with mock.patch.object(costs.urllib.request, "urlopen", side_effect=fake_urlopen), \
+                mock.patch.object(costs.time, "sleep") as sleep_mock:
+            result = costs._get_json("https://inferhub.dev/api/usage/logs?page=1", "k")
+
+        self.assertEqual(result, ok_body)
+        self.assertEqual(calls["n"], 2)
+        sleep_mock.assert_called_once_with(12.0)
+
+    def test_get_json_gives_up_after_max_retries(self) -> None:
+        import urllib.error
+        from unittest import mock
+
+        import probe.costs as costs
+
+        def fake_urlopen(req, timeout=30):
+            raise _http_429("1")
+
+        with mock.patch.object(costs.urllib.request, "urlopen", side_effect=fake_urlopen), \
+                mock.patch.object(costs.time, "sleep"):
+            with self.assertRaises(urllib.error.HTTPError):
+                costs._get_json("https://inferhub.dev/api/usage/logs?page=1", "k")
+
+    def test_fetch_log_rows_paces_between_pages(self) -> None:
+        from unittest import mock
+
+        import probe.costs as costs
+
+        # Two full pages then an empty third, with a known rangeTotal.
+        page_bodies = {
+            1: {"rows": [{"ts": "2026-08-28T00:00:02Z"}] * costs.PAGE_SIZE,
+                "rangeTotal": str(costs.PAGE_SIZE * 2)},
+            2: {"rows": [{"ts": "2026-08-28T00:00:01Z"}] * costs.PAGE_SIZE,
+                "rangeTotal": str(costs.PAGE_SIZE * 2)},
+        }
+
+        def fake_get_json(url, key):
+            page = int(url.split("page=")[1])
+            return page_bodies.get(page, {"rows": []})
+
+        with mock.patch.object(costs, "_get_json", side_effect=fake_get_json), \
+                mock.patch.object(costs.time, "sleep") as sleep_mock:
+            rows = costs.fetch_log_rows("k", range_="30d", pace_s=0.25)
+
+        self.assertEqual(len(rows), costs.PAGE_SIZE * 2)
+        # One pacing sleep between page 1 -> 2 (loop ends at page 2, full page).
+        self.assertEqual(sleep_mock.call_count, 1)
+        sleep_mock.assert_called_with(0.25)
+
+
 if __name__ == "__main__":
     unittest.main()

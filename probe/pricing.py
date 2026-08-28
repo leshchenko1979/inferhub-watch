@@ -175,7 +175,7 @@ def route_entry(stats: dict | None, catalog: dict, alias: str, *, candidate: boo
 def snapshot(key: str, aliases: list[str], range_: str = RANGE,
              candidates: list[str] | None = None) -> dict:
     """Build the full pricing payload; candidate routes are flagged as such."""
-    rows = fetch_log_rows(key, range_=range_, max_pages=MAX_PAGES)
+    rows = fetch_log_rows(key, range_=range_, max_pages=MAX_PAGES, pace_s=0.25)
     stats = aggregate_rows(rows)
     catalog = fetch_catalog(key)
     cand = set(candidates or [])

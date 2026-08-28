@@ -11,6 +11,9 @@ safely are left without a cost rather than guessed.
 from __future__ import annotations
 
 import json
+import sys
+import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
@@ -29,16 +32,67 @@ def parse_ts(raw: str) -> datetime:
     return datetime.fromisoformat((raw or "").replace("Z", "+00:00"))
 
 
+RATE_LIMIT_RETRIES = 5
+RETRY_AFTER_DEFAULT_S = 15.0
+RETRY_AFTER_CAP_S = 60.0
+
+
+def _retry_after_s(exc: urllib.error.HTTPError) -> float:
+    """The server's Retry-After in seconds, clamped; a default when absent."""
+    raw = ""
+    if exc.headers is not None:
+        raw = exc.headers.get("Retry-After") or ""
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return RETRY_AFTER_DEFAULT_S
+    return min(max(value, 1.0), RETRY_AFTER_CAP_S)
+
+
+def _get_json(url: str, key: str) -> dict:
+    """GET one JSON page; on HTTP 429 wait out Retry-After and retry in place.
+
+    The Management API rate-limits short request bursts (~12s windows); a
+    paginated sweep trips it unless each 429 is respected where it happens.
+    """
+    for attempt in range(RATE_LIMIT_RETRIES):
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return json.loads(resp.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as exc:
+            if exc.code != 429 or attempt == RATE_LIMIT_RETRIES - 1:
+                raise
+            wait = _retry_after_s(exc)
+            print(
+                f"warning: rate limited on {url.split('?')[0]}; "
+                f"retrying in {wait:.0f}s",
+                file=sys.stderr,
+            )
+            time.sleep(wait)
+    raise AssertionError("unreachable: the loop returns or raises")
+
+
 def fetch_log_rows(
     key: str,
     *,
     range_: str = "24h",
     after: datetime | None = None,
     max_pages: int | None = None,
+    pace_s: float = 0.0,
 ) -> list[dict]:
     """Paginate /usage/logs newest-first; stop once older than `after`.
 
     `max_pages` raises the cap for wide ranges (30d needs ~60 pages).
+    `pace_s` spaces page fetches to stay under the rate limit; 429s are
+    retried in place with the server's Retry-After either way.
     """
     cap = max_pages if max_pages is not None else MAX_PAGES
     rows: list[dict] = []
@@ -48,16 +102,7 @@ def fetch_log_rows(
             f"{MANAGEMENT}/usage/logs?range={range_}&sort=ts&dir=desc"
             f"&pageSize={PAGE_SIZE}&page={page}"
         )
-        req = urllib.request.Request(
-            url,
-            headers={
-                "Authorization": f"Bearer {key}",
-                "Accept": "application/json",
-                "User-Agent": USER_AGENT,
-            },
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            body = json.loads(resp.read().decode("utf-8", "replace"))
+        body = _get_json(url, key)
         batch = body.get("rows") or []
         if not batch:
             break
@@ -68,6 +113,8 @@ def fetch_log_rows(
         if page * PAGE_SIZE >= total:
             break
         page += 1
+        if pace_s > 0:
+            time.sleep(pace_s)
     return rows
 
 
