@@ -484,27 +484,54 @@ def _chip_cls(ok: int, total: int) -> str:
     return "mid" if ok else "bad"
 
 
+# In-use $/M billed on fewer requests than this is a probe-only sample —
+# real traffic has not built up yet, so the chip carries a marker.
+PROBE_ONLY_MAX_REQS = 25
+
+
+def _bar_provenance(verdict: dict) -> tuple[str, bool]:
+    """Tooltip clause for the in-use bar; True when the sample is probe-only."""
+    reqs = verdict.get("incumbent_reqs") or 0
+    if reqs < PROBE_ONLY_MAX_REQS:
+        plural = "s" if reqs != 1 else ""
+        return (
+            f"probe-only sample ({reqs} request{plural}) — no real traffic yet",
+            True,
+        )
+    return f"billed across {reqs} requests in the 30-day window", False
+
+
 def _price_chip_html(verdict: dict | None) -> str:
     """Best-price chip: in-use $/M vs the cheapest passing challenger.
 
     Tone — ok: no challenger undercuts the incumbent; mid: challenger
     undercuts by <15%; bad: by >=15%. Empty string without verdict data.
+    A `*` after the in-use rate marks a probe-only billing sample.
     """
     if not verdict or verdict.get("incumbent_usd_m") is None:
         return ""
     in_use = rundata.rate_label(verdict["incumbent_usd_m"])
+    bar_note, probe_only = _bar_provenance(verdict)
+    star = "*" if probe_only else ""
+    incumbent = html.escape(str(verdict.get("incumbent") or ""))
     if verdict.get("challenger") is None:
         return (
-            f'<span class="chip price ok" title="No passing route bills cheaper '
-            f'than the in-use route.">in use {in_use}/M · best</span>'
+            f'<span class="chip price ok" title="In-use {incumbent}: {bar_note}. '
+            f'No passing route bills cheaper.">in use {in_use}/M{star} · best</span>'
         )
     best = rundata.rate_label(verdict["challenger_usd_m"])
     margin = verdict["margin_pct"]
     tone = "bad" if margin >= radar.MARGIN_ALERT_PCT else "mid"
+    cache_pct = verdict.get("challenger_cache_pct")
+    cache_src = verdict.get("challenger_cache_source")
+    if cache_pct is not None:
+        cache_note = f"{cache_pct:.0f}% {'measured probe' if cache_src == 'probe' else 'family'} cache"
+    else:
+        cache_note = "family cache"
     return (
-        f'<span class="chip price {tone}" title="Cheapest passing challenger '
-        f'{html.escape(verdict["challenger"])} vs in-use '
-        f'{html.escape(verdict["incumbent"])}.">in use {in_use}/M · '
+        f'<span class="chip price {tone}" title="In-use {incumbent}: {bar_note}. '
+        f'Challenger {html.escape(verdict["challenger"])}: predicted from asks '
+        f'× {cache_note} × the family token mix.">in use {in_use}/M{star} · '
         f"best {best}/M (&#8722;{margin:.0f}%)</span>"
     )
 

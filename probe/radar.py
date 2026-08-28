@@ -90,16 +90,18 @@ def family_verdicts(run: dict, pricing_routes: dict, aliases: list[str]) -> list
     for fam in sorted(ctx):
         info = ctx[fam]
         inc_alias: str | None = None
+        inc_entry: dict = {}
         bar: float | None = None
         for alias in info["incumbents"]:
-            eff = (pricing_routes.get(alias) or {}).get("eff_per_mtok")
+            entry = pricing_routes.get(alias) or {}
+            eff = entry.get("eff_per_mtok")
             if eff is None:
                 continue
             if bar is None or eff < bar:
-                bar, inc_alias = eff, alias
+                bar, inc_alias, inc_entry = eff, alias, entry
         if bar is None:
             continue  # nothing billed for the incumbent — no bar to beat
-        best: tuple[str, float] | None = None
+        best: tuple[str, float, float, str] | None = None
         for route, route_statuses in statuses.items():
             if market.family(route) != fam:
                 continue
@@ -110,22 +112,31 @@ def family_verdicts(run: dict, pricing_routes: dict, aliases: list[str]) -> list
             if ask_in is None or ask_out is None:
                 continue  # no billed asks yet — cannot price the challenger
             measured = candidate_cache_pct(run, route)
-            rate = measured / 100.0 if measured is not None else info["cache_rate"]
+            if measured is not None:
+                rate, cache_src = measured / 100.0, "probe"
+            else:
+                rate, cache_src = info["cache_rate"], "family"
             usd_m = market.predicted_usd_m(ask_in, ask_out, rate, info["w_in"], info["w_out"])
             if usd_m < bar and (best is None or usd_m < best[1]):
-                best = (route, usd_m)
+                cache_pct = measured if measured is not None else info["cache_rate"] * 100.0
+                best = (route, usd_m, cache_pct, cache_src)
         verdict = {
             "family": fam,
             "incumbent": inc_alias,
             "incumbent_usd_m": bar,
+            "incumbent_reqs": inc_entry.get("reqs") or 0,
             "challenger": None,
             "challenger_usd_m": None,
+            "challenger_cache_pct": None,
+            "challenger_cache_source": None,
             "margin_pct": None,
         }
         if best:
-            route, usd_m = best
+            route, usd_m, cache_pct, cache_src = best
             verdict["challenger"] = route
             verdict["challenger_usd_m"] = usd_m
+            verdict["challenger_cache_pct"] = cache_pct
+            verdict["challenger_cache_source"] = cache_src
             verdict["margin_pct"] = (bar - usd_m) / bar * 100.0
         verdicts.append(verdict)
     return verdicts

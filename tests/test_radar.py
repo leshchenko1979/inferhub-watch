@@ -92,6 +92,25 @@ class VerdictTests(unittest.TestCase):
         # measured 90% cache: 0.001 * 0.1 * 0.75 + 0.001 * 0.25 = 0.000325
         self.assertAlmostEqual(v["challenger_usd_m"], 0.000325)
 
+    def test_verdict_carries_incumbent_reqs(self) -> None:
+        routes = dict(PRICING_ROUTES)
+        routes["ali/qwen3.8-max"] = {**routes["ali/qwen3.8-max"], "reqs": 321}
+        (v,) = radar.family_verdicts(RUN_PASS, routes, ALIASES)
+        self.assertEqual(v["incumbent_reqs"], 321)
+        self.assertEqual(v["challenger_cache_source"], "family")
+
+    def test_verdict_measured_cache_provenance(self) -> None:
+        run = make_run({"core": "pass", "cache": "pass"})
+        for cell in run["cells"]:
+            if cell.get("candidate") and cell["check_id"] == "cache":
+                cell["evidence"] = {
+                    "cached_tokens": 900,
+                    "usage": {"prompt_tokens": 1000},
+                }
+        (v,) = radar.family_verdicts(run, PRICING_ROUTES, ALIASES)
+        self.assertEqual(v["challenger_cache_source"], "probe")
+        self.assertAlmostEqual(v["challenger_cache_pct"], 90.0)
+
 
 class AlertLedgerTests(unittest.TestCase):
     def _verdict(self, margin):
@@ -173,6 +192,40 @@ class PriceChipTests(unittest.TestCase):
         self.assertIn('class="model-group"', section)
         self.assertIn("qwen3.8-max", section)
         self.assertIn("ali/qwen3.8-max", section)
+
+    def test_probe_only_bar_carries_star(self) -> None:
+        chip = generate._price_chip_html(
+            {
+                "incumbent": "ali/deepseek-v4-flash-0731",
+                "incumbent_usd_m": 0.0085,
+                "incumbent_reqs": 2,
+                "challenger": "ocg/deepseek-v4-flash",
+                "challenger_usd_m": 0.0004,
+                "challenger_cache_pct": 98.0,
+                "challenger_cache_source": "probe",
+                "margin_pct": 95.0,
+            }
+        )
+        self.assertIn("/M* ·", chip)
+        self.assertIn("probe-only sample (2 requests)", chip)
+        self.assertIn("98% measured probe cache", chip)
+
+    def test_real_traffic_bar_carries_no_star(self) -> None:
+        chip = generate._price_chip_html(
+            {
+                "incumbent": "ali/qwen3.8-max",
+                "incumbent_usd_m": 0.005,
+                "incumbent_reqs": 500,
+                "challenger": None,
+                "challenger_usd_m": None,
+                "challenger_cache_pct": None,
+                "challenger_cache_source": None,
+                "margin_pct": None,
+            }
+        )
+        self.assertIn("/M ·", chip)
+        self.assertNotIn("*", chip)
+        self.assertIn("billed across 500 requests", chip)
 
     def test_chip_html_without_verdict_is_empty(self) -> None:
         self.assertEqual(generate._price_chip_html(None), "")
