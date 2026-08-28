@@ -19,6 +19,8 @@ import tmpl  # noqa: E402
 from probe.publishers import publisher_label  # noqa: E402
 from probe.registry import load_aliases, load_registry  # noqa: E402
 
+from probe import market, radar  # noqa: E402
+
 GITHUB = "https://github.com/leshchenko1979/inferhub-watch"
 CLONE = (
     f'Clone <a href="{GITHUB}">leshchenko1979/inferhub-watch</a>, '
@@ -468,6 +470,31 @@ def _chip_cls(ok: int, total: int) -> str:
     return "mid" if ok else "bad"
 
 
+def _price_chip_html(verdict: dict | None) -> str:
+    """Best-price chip: in-use $/M vs the cheapest passing challenger.
+
+    Tone — ok: no challenger undercuts the incumbent; mid: challenger
+    undercuts by <15%; bad: by >=15%. Empty string without verdict data.
+    """
+    if not verdict or verdict.get("incumbent_usd_m") is None:
+        return ""
+    in_use = rundata.rate_label(verdict["incumbent_usd_m"])
+    if verdict.get("challenger") is None:
+        return (
+            f'<span class="chip price ok" title="No passing route bills cheaper '
+            f'than the in-use route.">in use {in_use}/M · best</span>'
+        )
+    best = rundata.rate_label(verdict["challenger_usd_m"])
+    margin = verdict["margin_pct"]
+    tone = "bad" if margin >= radar.MARGIN_ALERT_PCT else "mid"
+    return (
+        f'<span class="chip price {tone}" title="Cheapest passing challenger '
+        f'{html.escape(verdict["challenger"])} vs in-use '
+        f'{html.escape(verdict["incumbent"])}.">in use {in_use}/M · '
+        f"best {best}/M (&#8722;{margin:.0f}%)</span>"
+    )
+
+
 def probe_results_section(
     runs: list[dict], aliases: list[str], registry: list[dict], payload: dict | None
 ) -> str:
@@ -480,6 +507,9 @@ def probe_results_section(
         return ""
     score_ids = rundata.scoring_ids(registry)
     route_entries = (payload or {}).get("routes") or {}
+    verdict_by_fam = {
+        v["family"]: v for v in radar.family_verdicts(latest, route_entries, aliases)
+    }
     blocks = []
     for group in groups:
         incumbents = rundata.incumbent_aliases(aliases, group["model"])
@@ -536,6 +566,11 @@ def probe_results_section(
                 f'<span class="chip {_chip_cls(ok, total)}">'
                 f"{html.escape(route)} · {ok}/{total}{cache_bit}</span>"
             )
+        fam_alias = incumbents[0] if incumbents else (ranked[0][0] if ranked else None)
+        if fam_alias:
+            price_chip = _price_chip_html(verdict_by_fam.get(market.family(fam_alias)))
+            if price_chip:
+                chips.append(price_chip)
         blocks.append(
             '<details class="model-group" open>'
             f'<summary><span class="model-name">{html.escape(group["model"])}</span>'

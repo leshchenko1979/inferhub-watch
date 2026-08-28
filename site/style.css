@@ -682,6 +682,10 @@ td {
   background: var(--surface);
 }
 
+.chip.price {
+  font-variant-numeric: tabular-nums;
+}
+
 .tests-ok {
   color: var(--ok);
   font-weight: 500;
