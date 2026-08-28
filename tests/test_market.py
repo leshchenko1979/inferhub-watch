@@ -42,6 +42,18 @@ class FamilyTests(unittest.TestCase):
         self.assertEqual(market.family("ali/qwen3.8-max"), "qwen3.8-max")
         self.assertEqual(market.family("solo"), "solo")
 
+    def test_versioned_snapshots_map_to_board_family(self) -> None:
+        self.assertEqual(market.family("cbcn/glm-5.3-flash"), "glm-5.3")
+        self.assertEqual(market.family("ali/deepseek-v4-flash-0731"), "deepseek-v4-flash")
+        self.assertEqual(market.family("ali/deepseek-v4-pro-0813"), "deepseek-v4-pro")
+        self.assertEqual(market.family("zai/glm-5.3-flash"), "glm-5.3")
+
+    def test_unmapped_tails_keep_their_own_family(self) -> None:
+        # board aliases (unversioned) and unrelated models are untouched
+        self.assertEqual(market.family("cbcn/glm-5.3"), "glm-5.3")
+        self.assertEqual(market.family("zai/glm-5.2"), "glm-5.2")
+        self.assertEqual(market.family("cbcn/kimi-k2.7-code"), "kimi-k2.7-code")
+
 
 class PredictedPriceTests(unittest.TestCase):
     def test_cache_discounts_input_ask_only(self) -> None:
@@ -112,6 +124,32 @@ class ShortlistTests(unittest.TestCase):
         catalog["cb/qwen3.8-max"] = (0.0001, 0.0001)  # dramatic price drop
         groups = self._shortlist(catalog=catalog, proven=proven)
         self.assertNotIn("cb/qwen3.8-max", groups[0]["routes"])
+
+    def test_flash_variant_shortlists_into_board_family(self) -> None:
+        # glm-5.3 board; the flash sibling competes inside the same family
+        pricing = {"routes": {"cbcn/glm-5.3": {
+            "eff_per_mtok": 0.02, "cache_pct": 50.0, "tok_in": 750, "tok_out": 250,
+        }}}
+        catalog = {"cbcn/glm-5.3-flash": (0.004, 0.02)}  # predicted 0.0065 < 0.02
+        groups = self._shortlist(aliases=["cbcn/glm-5.3"], pricing=pricing, catalog=catalog)
+        self.assertEqual(
+            groups, [{"model": "glm-5.3", "routes": ["cbcn/glm-5.3-flash"]}]
+        )
+
+    def test_dated_snapshot_shortlists_into_family(self) -> None:
+        # the 0731 snapshot ranks against the deepseek-v4-flash bar
+        pricing = {"routes": {"ocg/deepseek-v4-flash": {
+            "eff_per_mtok": 0.0107, "cache_pct": 91.0, "tok_in": 900, "tok_out": 100,
+        }}}
+        catalog = {"ali/deepseek-v4-flash-0731": (0.0130, 0.0389)}
+        # predicted 0.0130*0.09*0.9 + 0.0389*0.1 = 0.00494 < 0.0107
+        groups = self._shortlist(
+            aliases=["ocg/deepseek-v4-flash"], pricing=pricing, catalog=catalog
+        )
+        self.assertEqual(
+            groups,
+            [{"model": "deepseek-v4-flash", "routes": ["ali/deepseek-v4-flash-0731"]}],
+        )
 
     def test_family_without_billed_incumbent_is_skipped(self) -> None:
         pricing = {"routes": {"zai/glm-5.3": {"eff_per_mtok": None}}}

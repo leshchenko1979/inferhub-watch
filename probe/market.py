@@ -32,9 +32,23 @@ TOP_N = 2
 FALLBACK_W_IN = 0.75
 
 
+# Versioned / derived snapshots of a board model rank inside the family
+# whose price bar they compete against: glm-5.3-flash vs glm-5.3,
+# deepseek-v4-flash-0731 (the dated snapshot) vs deepseek-v4-flash.
+# Board aliases all carry unversioned tails, so family_context() grouping
+# is unaffected. A tail absent from the map keeps its own family.
+FAMILY_ALIASES = {
+    "glm-5.3-flash": "glm-5.3",
+    "deepseek-v4-flash-0731": "deepseek-v4-flash",
+    "deepseek-v4-pro-0813": "deepseek-v4-pro",
+}
+
+
 def family(route: str) -> str:
-    """Model family = last path segment (`cp/cline-pass/x` -> `x`)."""
-    return route.rsplit("/", 1)[-1]
+    """Model family = last path segment, alias-normalized to the board
+    family (`cp/cline-pass/x` -> `x`; `cbcn/glm-5.3-flash` -> `glm-5.3`)."""
+    tail = route.rsplit("/", 1)[-1]
+    return FAMILY_ALIASES.get(tail, tail)
 
 
 def load_pricing(root: Path | None = None) -> dict | None:
