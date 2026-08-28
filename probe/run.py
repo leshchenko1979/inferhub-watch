@@ -51,19 +51,20 @@ def collect_cells(
                 )
             if balance_too_low(cell.get("summary") or ""):
                 raise BalanceTooLow(f"{alias}/{spec['id']}: {cell.get('summary')}")
+            cell["model"] = alias.rsplit("/", 1)[-1]
             cells.append(cell)
             # Fail-fast: a failed or errored check means the route is broken —
             # the remaining specs of this route are skipped, not run.
             if cell.get("status") in ("fail", "error"):
                 for remaining in registry[i + 1 :]:
-                    cells.append(
-                        result(
-                            check_id=remaining["id"],
-                            alias=alias,
-                            status="skipped",
-                            summary="not run — earlier check failed",
-                        )
+                    skip = result(
+                        check_id=remaining["id"],
+                        alias=alias,
+                        status="skipped",
+                        summary="not run — earlier check failed",
                     )
+                    skip["model"] = alias.rsplit("/", 1)[-1]
+                    cells.append(skip)
                 break
     return cells, errors
 

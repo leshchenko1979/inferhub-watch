@@ -363,6 +363,28 @@ class BalanceAbortTests(unittest.TestCase):
             with self.assertRaises(run_mod.BalanceTooLow):
                 run_mod.collect_cells(object(), ["a"], [{"id": "core"}])
 
+    def test_collect_cells_tags_model_and_fail_fast_skip(self) -> None:
+        run_mod = _load_run()
+        stub = types.SimpleNamespace(
+            run=lambda client, alias: {
+                "check_id": "core",
+                "alias": alias,
+                "status": "fail",
+                "summary": "bad stream",
+            }
+        )
+        with mock.patch.object(run_mod, "load_check_module", return_value=stub):
+            cells, errors = run_mod.collect_cells(
+                object(),
+                ["cmc/deepseek/deepseek-v4-pro"],
+                [{"id": "core"}, {"id": "cache"}],
+            )
+        self.assertEqual(errors, [])
+        self.assertEqual(
+            [c["model"] for c in cells], ["deepseek-v4-pro", "deepseek-v4-pro"]
+        )
+        self.assertEqual(cells[1]["status"], "skipped")
+
     def test_main_aborts_without_writing_a_run(self) -> None:
         run_mod = _load_run()
         cell = {
@@ -560,6 +582,21 @@ class ProbeResultsSectionTests(unittest.TestCase):
             page = gen.index_html([run], ["ali/qwen3.8-max"], gen.load_registry())
             nav = gen.board_nav()
         return page, nav
+
+    def test_board_only_family_renders_group_without_candidates(self) -> None:
+        gen = _load_generate()
+        scoring = gen.rundata.scoring_ids(gen.load_registry())
+        run = self._run(scoring, [])  # board cells only, no audition routes
+        groups = gen.run_groups(run)
+        self.assertEqual([g["model"] for g in groups], ["qwen3.8-max"])
+        self.assertEqual(groups[0]["routes"], [])
+        section = gen.probe_results_section(
+            [run], ["ali/qwen3.8-max"], gen.load_registry(), self.PAYLOAD
+        )
+        self.assertIn('class="model-group"', section)
+        self.assertIn("qwen3.8-max", section)
+        self.assertIn("ali/qwen3.8-max", section)
+        self.assertIn("chip price", section)
 
     def test_section_renders_incumbents_then_ranked_routes(self) -> None:
         gen = _load_generate()

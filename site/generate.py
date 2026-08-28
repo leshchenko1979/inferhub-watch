@@ -48,15 +48,19 @@ def load_runs() -> list[dict]:
 
 
 def results_available() -> bool:
-    """True when the latest run carries candidate cells (market shortlist)."""
+    """True when the latest run renders any model group (board or audition)."""
     runs = rundata.load_runs(ROOT)
     if not runs:
         return False
-    return bool(rundata.candidate_cells(runs[-1]))
+    return bool(run_groups(runs[-1]))
 
 
 def run_groups(run: dict) -> list[dict]:
-    """Candidate groups [{model, routes}] from a run's sweep.
+    """Model groups [{model, routes}] from a run's sweep.
+
+    Every probed family appears — board-only families (no audition routes)
+    with an empty route list — so the section renders the in-use verdict
+    even when the market shortlist found nothing cheaper.
 
     Cells are the primary source (order = first appearance). Routes listed
     in the run's shortlist without cells — a sweep aborted early — still
@@ -75,6 +79,16 @@ def run_groups(run: dict) -> list[dict]:
         if alias not in routes_by_model[model]:
             routes_by_model[model].append(alias)
 
+    for cell in run.get("cells") or []:
+        # Families come from EVERY probed cell — board cells included — so a
+        # board-only family (no shortlist candidates this run) still renders
+        # a group. Board cells in older runs carry no model key; fall back to
+        # the alias tail ("ali/qwen3.8-max" -> "qwen3.8-max").
+        alias = str(cell.get("alias") or "")
+        model = cell.get("model") or alias.rsplit("/", 1)[-1]
+        if model and model not in routes_by_model:
+            routes_by_model[model] = []
+            order.append(model)
     for cell in rundata.candidate_cells(run):
         add(cell.get("model") or "", cell.get("alias") or "")
     for route in run.get("candidates") or []:
