@@ -46,7 +46,7 @@ The false premise — Igor never attacked "Catholic Incas" — forces the model 
 
 All of:
 
-- intermediate chunks use `finish_reason` of JSON `null` or omit it; tool names come as non-empty strings, never `""`;
+- intermediate chunks use `finish_reason` of JSON `null` or omit it — a `"finish_reason": ""` chunk fails, because the consuming runtime treats any `finish_reason` as terminal and would flush tool calls mid-stream (empty/duplicated runs); tool-name deltas may carry `""` (the consumer skips them), as long as at least one non-empty name arrives;
 - at least one named tool arrived;
 - the answer (text content plus the `report_answer.answer` argument) decodes as readable Russian with no mojibake and at least one Cyrillic character.
 
@@ -54,7 +54,7 @@ All of:
 
 Any of:
 
-- a chunk with `"finish_reason": ""`, or a tool delta with `"name": ""`;
+- a chunk with `"finish_reason": ""` (terminal to the consumer's accumulator → mid-stream flush, empty/duplicated tool runs); a tool delta with `"name": ""` is tolerated evidence, not a failure;
 - a required tool call with no non-empty name by the end of the stream;
 - no text content and no parseable `answer` argument — "ordered Russian text, got none";
 - U+FFFD replacement characters, double-encoded UTF-8 Cyrillic (`Ð¸Ð³Ð¾Ñ€ÑŒ`), CP1251-read-as-Latin-1, or a CJK flood in the answer;

@@ -6,7 +6,7 @@ A red cell means InferHub’s JSON did not match the documented OpenAI Chat Comp
 
 Calls run on GitHub-hosted runners with `INFERHUB_API_KEY` (site owner’s InferHub key). Every cell shows the **resolved publisher** InferHub returned.
 
-Scoring checks: **core** (one request asserts the OpenAI stream shape, a named `report_answer` tool call, and a clean Russian answer — text or tool argument; any failure stops the route) and **cache** (the core payload sent again byte-for-byte; pass requires `cached_tokens > 0` on that first repeat). Pricing is informational.
+Scoring checks: **core** (one request asserts the stream shape as the consuming runtime parses it — `"finish_reason": ""` fails, empty-string tool-name deltas are tolerated — a named `report_answer` tool call, and a clean Russian answer — text or tool argument; any failure stops the route) and **cache** (the core payload sent again byte-for-byte; pass requires `cached_tokens > 0` on that first repeat). Pricing is informational.
 
 ## Layout
 

@@ -54,7 +54,11 @@ def last_usage(chunks: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def inspect_stream(chunks: list[dict[str, Any]]) -> dict[str, Any]:
-    """OpenAI streaming contract only. Empty strings on finish_reason or name fail."""
+    """OpenAI streaming contract, scored to the consuming runtime's parity.
+
+    Empty-string finish_reason and empty-string tool names are both counted;
+    the CORE CHECK decides the verdict: finish_reason "" fails (terminal to
+    the consumer's accumulator), name "" is tolerated evidence only."""
     empty_names = 0
     empty_finish = 0
     names: list[str] = []

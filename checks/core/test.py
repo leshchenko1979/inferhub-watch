@@ -1,6 +1,7 @@
 """Canned-SSE fixtures for the core check's sub-assertions.
 
-One request must assert the OpenAI stream shape, a named report_answer tool
+One request must assert the stream shape as the consuming runtime parses it (finish_reason
+"" fails, empty-name deltas are tolerated), a named report_answer tool
 call, and a clean Russian answer — text content OR the tool argument (several
 routes emit zero text under tool_choice: "required"). Each failing
 sub-assertion is covered here with its own fixture stream."""
@@ -167,8 +168,52 @@ class CoreCheckTests(unittest.TestCase):
         out = self.check.run(_Fake(_sse(chunks)), "zai/glm-5.3")
         self.assertEqual(out["status"], "fail")
         self.assertIn("finish_reason", out["summary"])
+        self.assertIn("terminal", out["summary"])
 
-    def test_empty_tool_name_fails_shape(self) -> None:
+    def test_empty_name_deltas_tolerated_oc_parity(self) -> None:
+        # OC parity: the accumulator skips name "" deltas (first non-empty
+        # name sticks) — ali/qwencloud gateways stream exactly this shape.
+        chunks = [
+            {
+                "choices": [
+                    {
+                        "delta": {
+                            "tool_calls": [
+                                {
+                                    "index": 0,
+                                    "id": "c1",
+                                    "function": {"name": "report_answer", "arguments": ""},
+                                }
+                            ]
+                        },
+                        "finish_reason": None,
+                    }
+                ]
+            },
+            {
+                "choices": [
+                    {
+                        "delta": {
+                            "tool_calls": [
+                                {
+                                    "index": 0,
+                                    "function": {"name": "", "arguments": ANSWER_JSON},
+                                }
+                            ]
+                        },
+                        "finish_reason": None,
+                    }
+                ]
+            },
+            {"choices": [{"delta": {}, "finish_reason": "tool_calls"}]},
+        ]
+        stats = inspect_stream(chunks)
+        self.assertGreater(stats["empty_name_chunks"], 0)
+        self.assertEqual(stats["names"], ["report_answer"])
+        out = self.check.run(_Fake(_sse(chunks)), "ali/deepseek-v4-flash-0731")
+        self.assertEqual(out["status"], "pass")
+
+    def test_only_empty_tool_names_fails(self) -> None:
         chunks = [
             {
                 "choices": [
@@ -191,7 +236,7 @@ class CoreCheckTests(unittest.TestCase):
         self.assertGreater(stats["empty_name_chunks"], 0)
         out = self.check.run(_Fake(_sse(chunks)), "zai/glm-5.3")
         self.assertEqual(out["status"], "fail")
-        self.assertIn("tool delta", out["summary"])
+        self.assertIn("non-empty tool name", out["summary"])
 
     def test_no_named_tool_fails(self) -> None:
         chunks = [

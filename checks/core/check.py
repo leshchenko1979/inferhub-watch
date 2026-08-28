@@ -1,7 +1,14 @@
 """Core probe: one request that asserts stream shape, tool call, and a clean
 Russian answer in one trip. The answer is expected on the tool argument
 (`report_answer.answer`) — under `tool_choice: "required"` several routes emit
-zero text content. Every failing sub-assertion is named in the summary."""
+zero text content. Every failing sub-assertion is named in the summary.
+
+Stream-shape standard = what the consuming runtime's tool-call accumulator
+actually survives, not the textbook OpenAI spec (see
+`oc-work/stream-quirk-risk-2026-08-28.md`): empty-string tool names are
+tolerated (the consumer skips them, first non-empty sticks), while an
+empty-string `finish_reason` is terminal to the consumer and flushes the
+tool call mid-stream — so only the latter fails this check."""
 
 from __future__ import annotations
 
@@ -61,17 +68,22 @@ def run(client: InferHubClient, alias: str) -> dict:
             latency_ms=ms,
             evidence=evidence,
         )
-    if stats["empty_finish_chunks"] or stats["empty_name_chunks"]:
-        bits = []
-        if stats["empty_finish_chunks"]:
-            bits.append(f'{stats["empty_finish_chunks"]} event(s) set finish_reason to ""')
-        if stats["empty_name_chunks"]:
-            bits.append(f'{stats["empty_name_chunks"]} tool delta(s) set name to ""')
+    if stats["empty_finish_chunks"]:
+        # Empty-string finish_reason is TERMINAL to the consuming runtime's
+        # accumulator: it flushes the tool call mid-stream (json_repair("")
+        # -> {}), then the drained map re-accumulates the argument tail and
+        # flushes again — empty/duplicated tool runs. Empty-string tool NAMES
+        # are tolerated (the consumer skips them; the first non-empty name
+        # sticks), so they are kept in evidence only and never fail the check.
         return result(
             check_id="core",
             alias=alias,
             status="fail",
-            summary="Not the OpenAI stream shape: " + "; ".join(bits) + ".",
+            summary=(
+                f'{stats["empty_finish_chunks"]} event(s) set finish_reason to "" — '
+                "the consumer treats that as terminal and flushes tool calls "
+                "mid-stream (empty/duplicated runs)."
+            ),
             resolved_model=resolved,
             http_status=status,
             latency_ms=ms,
