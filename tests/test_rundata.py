@@ -326,8 +326,11 @@ class CandidatesHelpersTests(unittest.TestCase):
             ["cp/cline-pass/deepseek-v4-pro", "cmc/deepseek/deepseek-v4-pro"],
         )
         self.assertEqual(rundata.incumbent_aliases(aliases, "qwen3.8-max"), ["ali/qwen3.8-max"])
-        # versioned board tails still join their family group
-        self.assertEqual(rundata.incumbent_aliases(aliases, "glm-5.3"), ["zai/glm-5.3-flash"])
+        # glm-5.3-flash keeps its own family — never grouped with glm-5.3
+        self.assertEqual(
+            rundata.incumbent_aliases(aliases, "glm-5.3-flash"), ["zai/glm-5.3-flash"]
+        )
+        self.assertEqual(rundata.incumbent_aliases(aliases, "glm-5.3"), [])
         self.assertEqual(
             rundata.incumbent_aliases(aliases, "deepseek-v4-flash"),
             ["ali/deepseek-v4-flash-0731"],

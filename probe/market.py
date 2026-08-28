@@ -32,15 +32,14 @@ TOP_N = 2
 FALLBACK_W_IN = 0.75
 
 
-# Versioned / derived snapshots of a board model rank inside the family
-# whose price bar they compete against: glm-5.3-flash vs glm-5.3,
-# deepseek-v4-flash-0731 (the dated snapshot) vs deepseek-v4-flash.
-# The board itself may carry the versioned tail (zai/glm-5.3-flash,
-# ali/deepseek-v4-flash-0731) — the map keeps every variant of a model
-# inside one family, whichever variant is in use. A tail absent from the
-# map keeps its own family.
+# Dated snapshots of a board model rank inside the family whose price bar
+# they compete against: deepseek-v4-flash-0731 vs deepseek-v4-flash,
+# deepseek-v4-pro-0813 vs deepseek-v4-pro. The board itself may carry the
+# dated tail (ali/deepseek-v4-flash-0731) — the map keeps the pinned
+# snapshot inside its family. glm-5.3-flash is deliberately NOT mapped:
+# the owner runs it as its own family, apart from glm-5.3. A tail absent
+# from the map keeps its own family.
 FAMILY_ALIASES = {
-    "glm-5.3-flash": "glm-5.3",
     "deepseek-v4-flash-0731": "deepseek-v4-flash",
     "deepseek-v4-pro-0813": "deepseek-v4-pro",
 }
@@ -48,7 +47,8 @@ FAMILY_ALIASES = {
 
 def family(route: str) -> str:
     """Model family = last path segment, alias-normalized to the board
-    family (`cp/cline-pass/x` -> `x`; `cbcn/glm-5.3-flash` -> `glm-5.3`)."""
+    family (`cp/cline-pass/x` -> `x`;
+    `ali/deepseek-v4-flash-0731` -> `deepseek-v4-flash`)."""
     tail = route.rsplit("/", 1)[-1]
     return FAMILY_ALIASES.get(tail, tail)
 

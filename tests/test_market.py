@@ -42,11 +42,14 @@ class FamilyTests(unittest.TestCase):
         self.assertEqual(market.family("ali/qwen3.8-max"), "qwen3.8-max")
         self.assertEqual(market.family("solo"), "solo")
 
-    def test_versioned_snapshots_map_to_board_family(self) -> None:
-        self.assertEqual(market.family("cbcn/glm-5.3-flash"), "glm-5.3")
+    def test_dated_snapshots_map_to_board_family(self) -> None:
         self.assertEqual(market.family("ali/deepseek-v4-flash-0731"), "deepseek-v4-flash")
         self.assertEqual(market.family("ali/deepseek-v4-pro-0813"), "deepseek-v4-pro")
-        self.assertEqual(market.family("zai/glm-5.3-flash"), "glm-5.3")
+
+    def test_flash_keeps_its_own_family(self) -> None:
+        # owner rule: glm-5.3-flash is never grouped with glm-5.3
+        self.assertEqual(market.family("cbcn/glm-5.3-flash"), "glm-5.3-flash")
+        self.assertEqual(market.family("zai/glm-5.3-flash"), "glm-5.3-flash")
 
     def test_unmapped_tails_keep_their_own_family(self) -> None:
         # board aliases (unversioned) and unrelated models are untouched
@@ -113,7 +116,7 @@ class FamilyContextBarTests(unittest.TestCase):
             pricing, ["zai/glm-5.3-flash"],
             catalog={"zai/glm-5.3-flash": (0.0135, 0.045)},
         )
-        info = ctx["glm-5.3"]
+        info = ctx["glm-5.3-flash"]
         self.assertEqual(info["bar"], 0.01)
         self.assertEqual(info["bar_source"], "billed")
         self.assertEqual(info["cache_rate"], 0.5)
@@ -130,8 +133,8 @@ class FamilyContextBarTests(unittest.TestCase):
 
     def test_unbilled_without_catalog_has_no_bar(self) -> None:
         ctx = market.family_context({}, ["zai/glm-5.3-flash"])
-        self.assertIsNone(ctx["glm-5.3"]["bar"])
-        self.assertIsNone(ctx["glm-5.3"]["bar_source"])
+        self.assertIsNone(ctx["glm-5.3-flash"]["bar"])
+        self.assertIsNone(ctx["glm-5.3-flash"]["bar_source"])
 
 
 class ShortlistTests(unittest.TestCase):
@@ -171,16 +174,15 @@ class ShortlistTests(unittest.TestCase):
         groups = self._shortlist(catalog=catalog, proven=proven)
         self.assertNotIn("cb/qwen3.8-max", groups[0]["routes"])
 
-    def test_flash_variant_shortlists_into_board_family(self) -> None:
-        # glm-5.3 board; the flash sibling competes inside the same family
+    def test_flash_variant_stays_out_of_plain_family(self) -> None:
+        # glm-5.3 board; the flash sibling is its OWN family and does not
+        # compete against the plain glm-5.3 bar
         pricing = {"routes": {"cbcn/glm-5.3": {
             "eff_per_mtok": 0.02, "cache_pct": 50.0, "tok_in": 750, "tok_out": 250,
         }}}
-        catalog = {"cbcn/glm-5.3-flash": (0.004, 0.02)}  # predicted 0.0065 < 0.02
+        catalog = {"cbcn/glm-5.3-flash": (0.004, 0.02)}  # would be cheaper, wrong family
         groups = self._shortlist(aliases=["cbcn/glm-5.3"], pricing=pricing, catalog=catalog)
-        self.assertEqual(
-            groups, [{"model": "glm-5.3", "routes": ["cbcn/glm-5.3-flash"]}]
-        )
+        self.assertEqual(groups, [])
 
     def test_dated_snapshot_shortlists_into_family(self) -> None:
         # the 0731 snapshot ranks against the deepseek-v4-flash bar
@@ -219,7 +221,7 @@ class ShortlistTests(unittest.TestCase):
             aliases=["zai/glm-5.3-flash"], pricing={"routes": {}}, catalog=catalog,
         )
         self.assertEqual(
-            groups, [{"model": "glm-5.3", "routes": ["cbcn/glm-5.3-flash"]}]
+            groups, [{"model": "glm-5.3-flash", "routes": ["cbcn/glm-5.3-flash"]}]
         )
 
     def test_missing_pricing_means_no_bar(self) -> None:

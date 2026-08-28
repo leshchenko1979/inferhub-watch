@@ -127,8 +127,8 @@ def route_window_record(
 
 def incumbent_aliases(aliases: list[str], model: str) -> list[str]:
     """Board aliases serving the family — a market.family() match, so
-    versioned board tails (zai/glm-5.3-flash) still join their family's
-    group ("glm-5.3")."""
+    dated board tails (ali/deepseek-v4-flash-0731) still join their
+    family's group ("deepseek-v4-flash")."""
     return [a for a in aliases if market.family(a) == model]
 
 
