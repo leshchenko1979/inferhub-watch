@@ -13,7 +13,6 @@ sys.path.insert(0, str(ROOT))
 if str(_SITE) not in sys.path:
     sys.path.insert(0, str(_SITE))
 
-import cellcopy  # noqa: E402
 import mdhtml  # noqa: E402
 import rundata  # noqa: E402
 import tmpl  # noqa: E402
@@ -30,9 +29,8 @@ FONTS = (
     "&family=Newsreader:ital,opsz,wght@0,8..72,400;0,8..72,600;1,8..72,400&display=swap"
 )
 SECTIONS = (
-    ("probe", "Latest results"),
+    ("results", "Probe results"),
     ("pricing", "Cost per M tokens"),
-    ("candidates", "Candidates"),
     ("earlier", "Past runs"),
     ("method", "How we test"),
 )
@@ -47,7 +45,7 @@ def load_runs() -> list[dict]:
     return rundata.load_runs(ROOT)
 
 
-def candidates_available() -> bool:
+def results_available() -> bool:
     """True when candidates.toml has groups AND the latest run has candidate cells."""
     if not load_candidates():
         return False
@@ -71,7 +69,7 @@ def board_nav() -> str:
     for sid, title in SECTIONS:
         if sid == "pricing" and not rundata.load_pricing(ROOT):
             continue
-        if sid == "candidates" and not candidates_available():
+        if sid == "results" and not results_available():
             continue
         items.append(
             f'<li><a href="#{html.escape(sid)}">{html.escape(title)}</a></li>'
@@ -91,6 +89,7 @@ def shell(
     nested: bool = False,
     page_class: str = "",
     page_nav: str = "",
+    header_meta: str = "",
     with_footer: bool = True,
 ) -> str:
     base = base_href()
@@ -120,6 +119,7 @@ def shell(
         body_class=f' class="{html.escape(page_class)}"' if page_class else "",
         home=html.escape(home),
         page_nav=page_nav,
+        header_meta=header_meta,
         crumb=crumb_html,
         body=body,
         footer=f"<footer><p>{CLONE}</p></footer>" if with_footer else "",
@@ -359,7 +359,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     )
 
 
-# ── candidates section ──
+# ── probe results section ──
 
 
 def _resolved_for(run: dict, route: str, candidate: bool) -> str:
@@ -396,11 +396,22 @@ def _candidate_route_row(
     resolved = _resolved_for(latest, route, candidate)
     if probed:
         probe_val = f"{ok}/{total}"
+        if total and ok == total:
+            val_cls = "tests-ok"
+        elif ok:
+            val_cls = "tests-mid"
+        else:
+            val_cls = "tests-bad"
         miss = ", ".join(rundata.scoring_short(cid) for cid in failed)
         probe_sub = f'<span class="route-ask">missed: {html.escape(miss)}</span>' if miss else ""
+        cell_title = (
+            f' title="failed: {html.escape(miss)}"' if miss else ' title="all checks passed"'
+        )
     else:
         probe_val = "&#8212;"
         probe_sub = ""
+        val_cls = "tests-none"
+        cell_title = ' title="not probed in the latest run"'
     ask_in = rundata.rate_label(entry.get("ask_in")) or "n/a"
     ask_out = rundata.rate_label(entry.get("ask_out")) or "n/a"
     passed, seen = rundata.route_window_record(runs, route, score_ids, candidate)
@@ -409,7 +420,7 @@ def _candidate_route_row(
         "<tr>"
         f'<th scope="row"><code>{html.escape(route)}</code>{pill}'
         f'<span class="route-ask">{html.escape(publisher_label(resolved))}</span></th>'
-        f'<td class="num" data-label="last probe">{probe_val}{probe_sub}</td>'
+        f'<td class="num" data-label="tests"{cell_title}><span class="{val_cls}">{probe_val}</span>{probe_sub}</td>'
         + _viz_cell(
             rundata.cache_label(cache_raw) or "n/a",
             rundata.cache_bar_pct(cache_raw),
@@ -422,10 +433,19 @@ def _candidate_route_row(
     )
 
 
-def candidates_section(
+def _chip_cls(ok: int, total: int) -> str:
+    """Summary-chip tone for a test score: ok / mid / bad / dim (unprobed)."""
+    if not total:
+        return "dim"
+    if ok == total:
+        return "ok"
+    return "mid" if ok else "bad"
+
+
+def probe_results_section(
     runs: list[dict], aliases: list[str], registry: list[dict], payload: dict | None
 ) -> str:
-    """The #candidates section, or '' without config or candidate cells."""
+    """The #results section, or '' without config or candidate cells."""
     groups = load_candidates()
     if not runs or not groups:
         return ""
@@ -436,8 +456,9 @@ def candidates_section(
     route_entries = (payload or {}).get("routes") or {}
     blocks = []
     for group in groups:
+        incumbents = rundata.incumbent_aliases(aliases, group["model"])
         rows_html = []
-        for alias in rundata.incumbent_aliases(aliases, group["model"]):
+        for alias in incumbents:
             rows_html.append(
                 _candidate_route_row(runs, route_entries, alias, score_ids, candidate=False)
             )
@@ -467,31 +488,56 @@ def candidates_section(
             )
         if not rows_html:
             continue
+        chips = []
+        if incumbents:
+            best = max(
+                incumbents,
+                key=lambda a: rundata.scoring_pass_count(latest, a, score_ids)[0],
+            )
+            ok, total = rundata.scoring_pass_count(latest, best, score_ids)
+            probed = rundata.alias_probed(latest, best)
+            chips.append(
+                f'<span class="chip {_chip_cls(ok, total) if probed else "dim"}">'
+                f"{html.escape(best)} · {ok}/{total}</span>"
+            )
+        else:
+            chips.append('<span class="chip dim">no incumbent</span>')
+        if ranked:
+            route, ok, cache, _ = ranked[0]
+            total = len(score_ids)
+            cache_bit = f" · {rundata.cache_label(cache)}" if cache is not None else ""
+            chips.append(
+                f'<span class="chip {_chip_cls(ok, total)}">'
+                f"{html.escape(route)} · {ok}/{total}{cache_bit}</span>"
+            )
         blocks.append(
-            f'<h3 class="cand-model">{html.escape(group["model"])}</h3>'
+            '<details class="model-group" open>'
+            f'<summary><span class="model-name">{html.escape(group["model"])}</span>'
+            f"{''.join(chips)}</summary>"
             '<div class="scroll"><table class="pricing candidates">'
             "<thead><tr>"
-            '<th scope="col">Route</th>'
-            '<th scope="col" class="num">last probe</th>'
-            '<th scope="col" class="num">cache hit</th>'
-            '<th scope="col" class="num">ask in / out</th>'
-            '<th scope="col" class="num">window</th>'
+            '<th scope="col" title="Provider route; the in-use pill marks the route currently on the board.">Route</th>'
+            '<th scope="col" class="num" title="Scoring checks passed in the latest probe; hover a value for the failed ones.">tests</th>'
+            '<th scope="col" class="num" title="Prompt-cache share — board routes from the 30-day billing window, audition routes from probe evidence.">cache hit</th>'
+            '<th scope="col" class="num" title="Ask price per M tokens (input / output); audition routes are billed on probe traffic.">ask in / out</th>'
+            '<th scope="col" class="num" title="All-pass runs / probed runs since the route was first seen.">window</th>'
             "</tr></thead>"
             f"<tbody>{''.join(rows_html)}</tbody></table></div>"
+            "</details>"
         )
     if not blocks:
         return ""
     note = (
-        "Audition routes from candidates.toml, probed after each board sweep. "
-        "Candidates rank by checks passed, then cache hit, then blended ask; "
-        "&#8220;in use&#8221; rows are the current board routes for the same model "
-        "(their cache share comes from the 30-day billing window, candidates from "
-        "the probe). Window = runs all-pass / runs probed since first seen. "
-        "Candidate asks are billed on probe traffic."
+        "Board routes in current use (&#8220;in use&#8221; pill) plus audition routes "
+        "from candidates.toml, grouped by model and probed after each board sweep. "
+        "Audition routes rank by checks passed, then cache hit, then blended ask. "
+        "Cache share: board routes from the 30-day billing window, audition routes "
+        "from the probe. Window = runs all-pass / runs probed since first seen. "
+        "Audition asks are billed on probe traffic."
     )
     return (
-        '<section class="candidates-block" id="candidates">'
-        f"<h2>{html.escape(section_title('candidates'))}</h2>"
+        '<section class="probe-results" id="results">'
+        f"<h2>{html.escape(section_title('results'))}</h2>"
         f'<p class="section-note">{note}</p>'
         + "".join(blocks)
         + "</section>"
@@ -506,7 +552,6 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
     window = runs[-14:]
     score_ids = rundata.scoring_ids(registry)
     n_score = len(score_ids)
-    specs = rundata.display_specs(registry)
     order = rundata.aliases_safe_first(aliases, latest, score_ids)
     rule = rundata.scoring_rule(score_ids)
 
@@ -544,52 +589,6 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
         resolved = rundata.resolved_for_alias(window[-1], alias, registry)
         grid_rows.append(f"<tr>{alias_heading(alias, resolved)}{''.join(cells)}</tr>")
 
-    cmap = rundata.cell_map(latest)
-    check_heads = []
-    for spec in specs:
-        scoring = bool(spec.get("scores_rank"))
-        role = "scores" if scoring else "info · not ranked"
-        kind = "col-score" if scoring else "col-info"
-        check_heads.append(
-            f'<th class="check-col {kind}" scope="col">'
-            f'<a href="#check-{html.escape(spec["id"])}">'
-            f"{html.escape(spec['title'])}</a>"
-            f'<span class="th-role">{html.escape(role)}</span></th>'
-        )
-    matrix_rows = []
-    safe = []
-    for alias in order:
-        resolved = ""
-        check_tds = []
-        for spec in specs:
-            cell = cmap.get((alias, spec["id"])) or {}
-            resolved = cell.get("resolved_model") or resolved
-            status = cell.get("status") or "missing"
-            summary = cellcopy.note({**cell, "check_id": spec["id"]})
-            scoring = bool(spec.get("scores_rank"))
-            data_label = html.escape(
-                f"{rundata.scoring_short(spec['id'])} · "
-                f"{'scores' if scoring else 'info'}"
-            )
-            if scoring:
-                inner = (
-                    f'<span class="pill">{html.escape(status)}</span>'
-                    f'<p class="cell-note">{html.escape(summary)}</p>'
-                )
-            else:
-                inner = f'<p class="cell-note info-note">{html.escape(summary)}</p>'
-            check_tds.append(
-                f'<td class="st-{html.escape(status)}" data-label="{data_label}">'
-                f"{inner}</td>"
-            )
-        ok, total = rundata.scoring_pass_count(latest, alias, score_ids)
-        row_attr = ' class="row-safe"' if total and ok == total else ""
-        matrix_rows.append(
-            f"<tr{row_attr}>{alias_heading(alias, resolved)}{''.join(check_tds)}</tr>"
-        )
-        if total and ok == total:
-            safe.append(alias)
-
     explainers = []
     for spec in registry:
         brief = mdhtml.check_brief_html(ROOT, spec)
@@ -603,35 +602,21 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
     started = html.escape(started_raw.replace("T", " ") + " UTC")
     run_cost = rundata.run_total_cost(latest)
     cost_bit = f' · run cost <span class="run-cost">{run_cost}</span>' if run_cost else ""
-    dispatch = (
-        f'<p class="dispatch-meta">Last probe: '
+    header_meta = (
+        f'<p class="probe-meta">Last probe: '
         f'<time datetime="{html.escape(started_raw)}">{started}</time>'
         f"{cost_bit}</p>"
     )
-    if safe:
-        rec = ", ".join(f"<code>{html.escape(a)}</code>" for a in safe)
-        line = f"{rec}."
-    else:
-        line = "No alias is safe to use this run."
-    recommend = (
-        f'<div class="verdict"><h1>Safe to use</h1>'
-        f'<p class="verdict-line">{line}</p></div>'
-    )
     body = tmpl.render(
         "board.html",
-        probe_title=section_title("probe"),
         earlier_title=section_title("earlier"),
         method_title=section_title("method"),
-        recommend=recommend,
-        dispatch=dispatch,
-        check_heads="".join(check_heads),
-        matrix_rows="".join(matrix_rows),
         n_score=str(n_score),
         score_label="check" if n_score == 1 else "checks",
         rule=rule,
         grid_rows="".join(grid_rows),
         pricing_section=pricing_section(rundata.load_pricing(ROOT), runs),
-        candidates_section=candidates_section(
+        probe_results_section=probe_results_section(
             runs, aliases, registry, rundata.load_pricing(ROOT)
         ),
         explainers="".join(explainers),
@@ -644,6 +629,7 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
         page_class="board",
         with_footer=False,
         page_nav=board_nav(),
+        header_meta=header_meta,
     )
 
 

@@ -60,8 +60,10 @@ class WiringTests(unittest.TestCase):
         header, _, rest = html.partition("</header>")
         self.assertNotIn("github.com/leshchenko1979/inferhub-watch", header)
         self.assertNotIn("dispatch-meta", header)
+        self.assertIn('class="probe-meta"', header)
+        self.assertIn("Last probe:", header)
         self.assertIn('class="site-nav"', header)
-        self.assertIn('href="#probe"', header)
+        self.assertIn('href="#results"', header)
         self.assertIn('href="#earlier"', header)
         self.assertIn('href="#method"', header)
         self.assertNotIn('href="#report"', header)
@@ -75,16 +77,19 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn("<footer", rest)
         self.assertIn("INFERHUB_API_KEY", rest)
         self.assertNotIn(os.environ.get("INFERHUB_API_KEY") or "sk-never", html)
-        self.assertIn('class="matrix"', html)
+        # the score matrix is retired; collapsible probe-results groups rule
+        self.assertNotIn('class="matrix"', html)
         self.assertNotIn('class="rank-table"', html)
-        self.assertIn('class="check-col col-score"', html)
-        self.assertIn('href="#check-stream_tools"', html)
+        self.assertNotIn("check-col", html)
+        self.assertNotIn('href="#check-stream_tools"', html)
         self.assertIn('id="check-stream_tools"', html)
         self.assertIn("<details", html)
         self.assertIn("<summary>", html)
         self.assertIn("get_weather", html)
-        self.assertIn("Prompt cache hit", html)
-        self.assertIn("not part of Safe to use", html)
+        self.assertIn('title="Prompt-cache share', html)
+        self.assertNotIn("Safe to use", html)
+        self.assertNotIn("Latest results", html)
+        self.assertNotIn("No alias is safe to use this run.", html)
         self.assertIn("platform.openai.com", html)
         thead, _, after_head = html.partition("</thead>")
         self.assertNotIn("checks/stream_tools.html", thead)
@@ -92,8 +97,8 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn("OpenCrabs", html)
         self.assertNotIn("Seven-day", html)
         self.assertNotIn("Who should care", html)
-        self.assertIn("Prompt cache", html)
-        self.assertIn("<h2>Latest results</h2>", html)
+        self.assertIn("<h2>Probe results</h2>", html)
+        self.assertIn("<h2>Cost per M tokens</h2>", html)
         self.assertIn("<h2>Past runs</h2>", html)
         self.assertIn("<h2>How we test</h2>", html)
         self.assertNotIn("<h2>This probe</h2>", html)
@@ -106,7 +111,6 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn("<h2>Mornings</h2>", html)
         self.assertNotIn("<th>Resolved</th>", html)
         self.assertIn('class="alias-cell"', html)
-        self.assertIn('class="report"', html)
         self.assertIn('class="explanations"', html)
         self.assertNotIn('class="notes"', html)
         self.assertNotIn('class="about"', html)
@@ -114,72 +118,24 @@ class WiringTests(unittest.TestCase):
         self.assertIn("The endpoint", html)
         self.assertNotIn("What we probe", html)
         self.assertIn("ClinePass", html)
-        self.assertLess(
-            html.find('class="report"'),
-            html.find('class="history"'),
-        )
-        self.assertLess(
-            html.find('id="earlier"'),
-            html.find('id="method"'),
-        )
-        self.assertLess(
-            rest.find('class="verdict"'),
-            rest.find("dispatch-meta"),
-        )
-        self.assertLess(rest.find("dispatch-meta"), rest.find('class="matrix"'))
-        self.assertIn("Last probe:", html)
-        report = rest[rest.find('id="probe"') : rest.find('id="earlier"')]
-        self.assertNotIn("Actions", report)
-        latest = gen.load_runs()[-1]
-        expected_first = rundata.aliases_safe_first(
-            gen.load_aliases(), latest, rundata.scoring_ids(load_registry())
-        )[0]
-        row_at = report.find('class="alias-cell"')
-        self.assertIn(f'<span class="alias">{expected_first}</span>', report[row_at : row_at + 400])
-        self.assertIn("<h1>Safe to use</h1>", html)
-        self.assertNotIn("Safe to use:", html)
         self.assertIn("3/3: tools + cache + mojibake", html)
-        self.assertNotIn("Scoring ", html)
-        self.assertIn(
-            "No alias is safe to use this run.",
-            gen.index_html(
-                [
-                    {
-                        "started_at": "2026-08-21T00:00:00",
-                        "origin": "local-seed",
-                        "cells": [
-                            {
-                                "alias": "x",
-                                "check_id": "stream_tools",
-                                "status": "fail",
-                                "summary": "miss",
-                                "resolved_model": "x",
-                            },
-                            {
-                                "alias": "x",
-                                "check_id": "cache_tools",
-                                "status": "fail",
-                                "summary": "miss",
-                                "resolved_model": "x",
-                            },
-                            {
-                                "alias": "x",
-                                "check_id": "usage_pricing",
-                                "status": "info",
-                                "summary": "No price field.",
-                                "resolved_model": "x",
-                            },
-                        ],
-                    }
-                ],
-                ["x"],
-                gen.load_registry(),
-            ),
+        self.assertLess(html.find('id="results"'), html.find('id="pricing"'))
+        self.assertLess(html.find('id="pricing"'), html.find('id="earlier"'))
+        self.assertLess(html.find('id="earlier"'), html.find('id="method"'))
+        results = rest[rest.find('id="results"') : rest.find('id="earlier"')]
+        self.assertNotIn("Actions", results)
+        groups = gen.load_candidates()
+        aliases = gen.load_aliases()
+        first_group = next(
+            g for g in groups if rundata.incumbent_aliases(aliases, g["model"])
         )
-        self.assertIn("check-col col-score", html)
-        self.assertIn("check-col col-info", html)
-        self.assertIn("info · not ranked", html)
-        self.assertNotIn('class="st-info"><span class="pill"', html)
+        expected_first = rundata.incumbent_aliases(aliases, first_group["model"])[0]
+        self.assertIn(f"<code>{expected_first}</code>", results)
+        self.assertIn('class="model-group"', results)
+        self.assertIn('class="chip', results)
+        self.assertIn('class="pill in-use"', results)
+        self.assertIn('data-label="tests"', results)
+        self.assertNotIn("info · not ranked", html)
         self.assertIn('class="timeline"', html)
         self.assertIn("Actions · CI", html)
         self.assertIn("seed · fixture", html)
@@ -188,7 +144,6 @@ class WiringTests(unittest.TestCase):
         self.assertIn("aria-expanded", html)
         self.assertIn("On this page", html)
         self.assertNotIn('id="nav-toggle"', html)
-        self.assertIn("Run locally", html)
         self.assertNotIn("Clone and run", html)
         self.assertNotIn("Run it yourself", html)
 
@@ -327,7 +282,7 @@ class PricingSectionTests(unittest.TestCase):
             nav = gen.board_nav()
         self.assertIn('id="pricing"', page)
         self.assertIn('href="#pricing"', nav)
-        self.assertLess(page.find('id="probe"'), page.find('id="pricing"'))
+        self.assertLess(page.find('id="results"'), page.find('id="pricing"'))
         self.assertLess(page.find('id="pricing"'), page.find('id="earlier"'))
         self.assertIn("ali/qwen3.8-max", page)
         self.assertIn("$0.014", page)
@@ -551,7 +506,7 @@ class SpendDashboardTests(unittest.TestCase):
         self.assertIn("ali/qwen3.8-max", page)
 
 
-class CandidatesSectionTests(unittest.TestCase):
+class ProbeResultsSectionTests(unittest.TestCase):
     GROUPS = [
         {"model": "qwen3.8-max",
          "routes": ["cp/cline-pass/qwen3.8-max", "cx/qwen3.8-max"]},
@@ -604,7 +559,7 @@ class CandidatesSectionTests(unittest.TestCase):
             nav = gen.board_nav()
         return page, nav
 
-    def test_section_renders_incumbent_first_then_ranked_candidates(self) -> None:
+    def test_section_renders_incumbents_then_ranked_routes(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         # cp: 3/3 with 93% cache; cx: 3/3 with 40% cache -> cp ranks first
@@ -613,56 +568,87 @@ class CandidatesSectionTests(unittest.TestCase):
             ("cx/qwen3.8-max", 3, 40),
         ])
         page, nav = self._page(gen, run, self.GROUPS)
-        self.assertIn('id="candidates"', page)
-        self.assertIn('href="#candidates"', nav)
+        self.assertIn('id="results"', page)
+        self.assertIn('href="#results"', nav)
+        self.assertIn("<h2>Probe results</h2>", page)
+        self.assertIn('class="model-group"', page)
         self.assertIn('class="pill in-use"', page)
-        pos_inc = page.find("ali/qwen3.8-max", page.find('id="candidates"'))
-        pos_cp = page.find("cp/cline-pass/qwen3.8-max", page.find('id="candidates"'))
-        pos_cx = page.find("cx/qwen3.8-max", page.find('id="candidates"'))
+        pos_inc = page.find("ali/qwen3.8-max", page.find('id="results"'))
+        pos_cp = page.find("cp/cline-pass/qwen3.8-max", page.find('id="results"'))
+        pos_cx = page.find("cx/qwen3.8-max", page.find('id="results"'))
         self.assertTrue(pos_inc < pos_cp < pos_cx)
-        self.assertIn("qwen3.8-max", page)
+        self.assertIn('class="chip ok">ali/qwen3.8-max · 3/3', page)
+        self.assertIn('class="chip ok">cp/cline-pass/qwen3.8-max · 3/3 · 93%', page)
+        self.assertIn('class="model-name">qwen3.8-max', page)
 
     def test_failed_checks_rank_last_and_show_missed(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         run = self._run(scoring, [
-            ("cp/cline-pass/qwen3.8-max", 2, 93),   # missed one
+            ("cp/cline-pass/qwen3.8-max", 2, 93),   # missed one -> amber
             ("cx/qwen3.8-max", 3, 40),              # all pass -> ranks first
         ])
         page, _ = self._page(gen, run, self.GROUPS)
-        pos_cp = page.find("cp/cline-pass/qwen3.8-max", page.find('id="candidates"'))
-        pos_cx = page.find("cx/qwen3.8-max", page.find('id="candidates"'))
+        pos_cp = page.find("cp/cline-pass/qwen3.8-max", page.find('id="results"'))
+        pos_cx = page.find("cx/qwen3.8-max", page.find('id="results"'))
         self.assertTrue(pos_cx < pos_cp)
         self.assertIn("missed:", page)
+        self.assertIn('class="tests-mid"', page)
+        self.assertIn('class="tests-ok"', page)
+
+    def test_tests_column_colors_fail_and_unprobed(self) -> None:
+        gen = _load_generate()
+        scoring = gen.rundata.scoring_ids(gen.load_registry())
+        # cp: 0/3 all fail -> red chip + tests-bad; cx: no cells -> unprobed dash
+        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 0, 93)])
+        page, _ = self._page(gen, run, self.GROUPS)
+        seg = page[page.find('id="results"'):page.find('id="earlier"')]
+        self.assertIn('class="tests-bad"', seg)
+        self.assertIn('class="chip bad">cp/cline-pass/qwen3.8-max · 0/3', seg)
+        self.assertIn('class="tests-none"', seg)      # cx unprobed
+        self.assertIn('&#8212;', seg)
+        self.assertIn('title="not probed in the latest run"', seg)
 
     def test_candidates_stay_out_of_pricing_table(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 3, 93)])
         page, _ = self._page(gen, run, self.GROUPS)
-        seg = page[page.find('id="pricing"'):page.find('id="candidates"')]
+        seg = page[page.find('id="pricing"'):page.find('id="earlier"')]
+        self.assertIn("ali/qwen3.8-max", seg)          # incumbent has rate data
         self.assertNotIn("cp/cline-pass/qwen3.8-max", seg)
+        self.assertNotIn("cx/qwen3.8-max", seg)
 
     def test_section_omitted_without_config_or_cells(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 3, 93)])
         page, nav = self._page(gen, run, [])  # no candidates.toml groups
-        self.assertNotIn('id="candidates"', page)
-        self.assertNotIn('href="#candidates"', nav)
+        self.assertNotIn('id="results"', page)
+        self.assertNotIn("<h2>Probe results</h2>", page)
+        self.assertNotIn('href="#results"', nav)
         board_only = self._run(scoring, [])  # config present, no candidate cells
         page, nav = self._page(gen, board_only, self.GROUPS)
-        self.assertNotIn('id="candidates"', page)
-        self.assertNotIn('href="#candidates"', nav)
+        self.assertNotIn('id="results"', page)
+        self.assertNotIn('href="#results"', nav)
 
-    def test_candidate_rows_carry_fold_labels(self) -> None:
+    def test_rows_carry_fold_labels_and_column_hints(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 3, 93)])
         page, _ = self._page(gen, run, self.GROUPS)
-        seg = page[page.find('id="candidates"'):]
-        for label in ("last probe", "cache hit", "ask in / out", "window"):
+        seg = page[page.find('id="results"'):page.find('id="earlier"')]
+        self.assertIn('<details class="model-group" open>', seg)
+        for label in ("tests", "cache hit", "ask in / out", "window"):
             self.assertIn(f'data-label="{label}"', seg)
+        for hint in (
+            'title="Provider route;',
+            'title="Scoring checks passed in the latest probe',
+            'title="Prompt-cache share',
+            'title="Ask price per M tokens',
+            'title="All-pass runs',
+        ):
+            self.assertIn(hint, seg)
 
 
 if __name__ == "__main__":

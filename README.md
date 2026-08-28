@@ -14,7 +14,7 @@ Scoring checks: streaming **tool names**, and **prompt cache** on a streaming co
 | --- | --- |
 | [CONTEXT.md](CONTEXT.md) | Alias, resolved publisher, pass/fail language |
 | [models.toml](models.toml) | Aliases to probe (the table is the list; open a GitHub issue to propose another) |
-| [candidates.toml](candidates.toml) | Audition routes per model, probed after each board sweep and ranked in the Candidates section |
+| [candidates.toml](candidates.toml) | Audition routes per model, probed after each board sweep and ranked in the Probe results section |
 | [checks/registry.toml](checks/registry.toml) | Check order, titles, scoring |
 | [checks/](checks/) | One folder per check (`check.py`, `page.md`, `test.py`) |
 | [tests/](tests/) | Cross-cutting wiring only |
@@ -25,9 +25,10 @@ Scoring checks: streaming **tool names**, and **prompt cache** on a streaming co
 
 ## Report sections
 
-- **Spend dashboard** — above Latest results: month-to-date cost, today’s cost, and probe’s share, all from [data/pricing.json](data/pricing.json) (30-day usage logs), plus a 30-day sparkline (log-scaled bars, hover for the day total).
-- **Cost per M tokens** — board routes only. Ask in/out billed from usage; the **Δ ask** column compares with the previous day’s snapshot ([data/pricing/](data/pricing/), one file per day) — ↓ is cheaper, ↑ pricier.
-- **Candidates** — routes from [candidates.toml](candidates.toml), one table per model. The in-use board route leads; audition routes rank by checks passed, then cache hit, then blended ask. Candidate asks are billed on probe traffic; candidate cache hit comes from the probe, incumbents’ from the billing window. The section and its nav link disappear when there is no config or no candidate cells in the latest run.
+- **Probe results** — first on the page. One collapsible group per model from [candidates.toml](candidates.toml): the in-use board route leads, audition routes rank by checks passed, then cache hit, then blended ask. Per-model summary chips show the best incumbent and the ranking leader (pass / total; ok green, partial amber, none red, unprobed dim). Columns: **tests** (scoring checks passed in the latest run, colored; hover a value for the failed list), cache hit, ask in / out, window (all-pass / probed runs since first seen). Candidate asks are billed on probe traffic; candidate cache hit comes from the probe, incumbents’ from the billing window. The section and its nav link disappear when there is no config or no candidate cells in the latest run.
+- **Cost per M tokens** — board routes only, with the **spend dashboard** at the top of the section: month-to-date cost, today’s cost, and probe’s share, all from [data/pricing.json](data/pricing.json) (30-day usage logs), plus a 30-day sparkline (log-scaled bars, hover for the day total). Ask in/out billed from usage; the **Δ ask** column compares with the previous day’s snapshot ([data/pricing/](data/pricing/), one file per day) — ↓ is cheaper, ↑ pricier.
+- **Past runs** — the 14-run timeline grid, with the probe origin and per-check tooltips.
+- **How we test** — the endpoint, the results-table columns, and one explainer per check.
 
 ## Add a check
 

@@ -10,7 +10,7 @@ web
 
 ## Users
 
-Primary readers call InferHub Chat Completions (streaming) and need to know which alias is safe today for the shapes we actually probe. InferHub operators are secondary.
+Primary readers call InferHub Chat Completions (streaming) and need to know how each route fared in today’s probe for the shapes we actually probe. InferHub operators are secondary.
 
 They arrive on GitHub Pages, already fluent in OpenAI request shapes.
 
@@ -32,10 +32,10 @@ This is not an OpenCrabs changelog or parser bug tracker.
 
 ## Design Principles
 
-Latest results, past runs, then how we test — three containers, nothing else on the board.
+Probe results, cost per M tokens, past runs, then how we test — four containers, nothing else on the board.
 Fail is a contract miss on the wire, never a status-page outage.
 The alias is the request; the publisher sits under it, not in a second column.
-Safe to use is the board headline: aliases that passed both scoring checks (tools + cache). Fail rows sit below.
+Probe results is the front page: one collapsible group per model, the in-use board route first and audition routes ranked under it. Summary chips plus a colored tests column read the verdict at a glance; the section disappears when there is nothing to rank.
 Price is info; it never ranks and must not share pass/fail pill chrome.
 Cell notes say what happened for the caller, then the wire field.
 Prompt cache is scored on an ordinary streaming completion (no tools) with a ~2k-token prefix and a short pause between retries.

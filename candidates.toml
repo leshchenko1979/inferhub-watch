@@ -1,7 +1,7 @@
 # Candidate routes — alternates kept under watch per model family.
 #
 # Probed every run alongside the board (models.toml), rendered in the
-# #candidates section only — never in the board matrix, timeline, or pricing.
+# Probe results section only — never in the past-runs timeline or pricing.
 # When a board route degrades, the replacement is already proven here.
 #
 # Initial list: probe evidence of 2026-08-27
