@@ -11,6 +11,8 @@ alert prints one ALERT line; alert state lives in .radar-ledger.json
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 from pathlib import Path
 
 from probe import market
@@ -18,6 +20,8 @@ from probe.registry import load_aliases, repo_root
 
 MARGIN_ALERT_PCT = 15.0
 LEDGER_NAME = ".radar-ledger.json"
+NOTIFY_SESSION_ENV = "INFERHUB_RADAR_SESSION"
+NOTIFY_PROFILE_ENV = "INFERHUB_RADAR_PROFILE"
 
 
 def latest_run(root: Path | None = None) -> dict | None:
@@ -143,6 +147,52 @@ def due_alerts(verdicts: list[dict], ledger: dict) -> list[dict]:
     return due
 
 
+def notify_command(due: list[dict]) -> list[str] | None:
+    """`opencrabs session notify` argv for the due alerts, or None.
+
+    None when no session is configured (INFERHUB_RADAR_SESSION unset) or
+    nothing is due — CI stays silent, local manual runs opt in.
+    """
+    session = os.environ.get(NOTIFY_SESSION_ENV, "").strip()
+    if not session or not due:
+        return None
+    lines = "\n".join(
+        f"{v['family']}: {v['challenger']} ${v['challenger_usd_m']:.4f}/M vs "
+        f"in-use {v['incumbent']} ${v['incumbent_usd_m']:.4f}/M "
+        f"({v['margin_pct']:.0f}% cheaper)"
+        for v in due
+    )
+    profile = os.environ.get(NOTIFY_PROFILE_ENV, "").strip()
+    cmd = ["opencrabs"]
+    if profile:
+        cmd += ["-p", profile]
+    cmd += [
+        "session",
+        "notify",
+        "--title",
+        "inferhub radar",
+        "--sender",
+        "inferhub-watch",
+        "--text",
+        f"Cheaper passing challenger on the board:\n{lines}",
+    ]
+    cmd.append(session)
+    return cmd
+
+
+def notify_alerts(due: list[dict]) -> None:
+    """Best-effort delivery of due alerts; never raises (advisory job)."""
+    cmd = notify_command(due)
+    if cmd is None:
+        return
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if proc.returncode != 0:
+            print(f"radar: notify failed ({proc.returncode}): {proc.stderr.strip()}")
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"radar: notify error: {exc}")
+
+
 def main(root: Path | None = None) -> int:
     root = root or repo_root()
     try:
@@ -174,6 +224,7 @@ def main(root: Path | None = None) -> int:
             save_ledger(ledger, root)
         else:
             print("no alert")
+        notify_alerts(due)
     except Exception as exc:  # noqa: BLE001 — advisory job; never break the cron
         print(f"radar error: {exc} — no alert")
     return 0

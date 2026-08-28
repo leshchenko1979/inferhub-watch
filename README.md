@@ -48,6 +48,11 @@ python3 -m probe.run
 python3 -m probe.pricing
 python3 -m probe.market --dry-run   # rank the catalog, print the shortlist, no probe calls
 python3 -m probe.radar              # advisory: is the in-use route still the best price?
+# Radar notifications (opt-in, local runs): due alerts are delivered to an
+# OpenCrabs session instead of stdout only. CI runs stay silent.
+#   INFERHUB_RADAR_SESSION=<session-uuid>  target session
+#   INFERHUB_RADAR_PROFILE=<profile>       opencrabs profile (optional -p)
+INFERHUB_RADAR_SESSION=… python3 -m probe.radar
 python3 -m probe.routes cb/gpt-5.6-luna cmc/deepseek/deepseek-v4-pro   # sweep arbitrary routes
 PAGES_BASE= python3 site/generate.py
 ```

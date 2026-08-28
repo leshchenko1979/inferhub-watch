@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "site"))
 
@@ -177,6 +179,60 @@ class PriceChipTests(unittest.TestCase):
         self.assertEqual(
             generate._price_chip_html({"incumbent_usd_m": None}), ""
         )
+
+
+NOTIFY_VERDICT = {
+    "family": "qwen3.8-max",
+    "incumbent": "ali/qwen3.8-max",
+    "incumbent_usd_m": 0.005,
+    "challenger": "cb/qwen3.8-max",
+    "challenger_usd_m": 0.001,
+    "margin_pct": 80.0,
+}
+
+
+class NotifyTests(unittest.TestCase):
+    def test_no_session_env_builds_no_command(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(radar.notify_command([NOTIFY_VERDICT]))
+
+    def test_no_due_alerts_builds_no_command(self) -> None:
+        env = {radar.NOTIFY_SESSION_ENV: "abc-123"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            self.assertIsNone(radar.notify_command([]))
+
+    def test_session_env_builds_notify_command(self) -> None:
+        env = {radar.NOTIFY_SESSION_ENV: "abc-123"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            cmd = radar.notify_command([NOTIFY_VERDICT])
+        self.assertIsNotNone(cmd)
+        self.assertEqual(cmd[0], "opencrabs")
+        self.assertNotIn("-p", cmd)  # profile opt-in, not hardcoded
+        self.assertEqual(cmd[-1], "abc-123")
+        text = cmd[cmd.index("--text") + 1]
+        self.assertIn("qwen3.8-max", text)
+        self.assertIn("cb/qwen3.8-max", text)
+        self.assertIn("80% cheaper", text)
+
+    def test_profile_env_adds_profile_flag(self) -> None:
+        env = {radar.NOTIFY_SESSION_ENV: "abc-123", radar.NOTIFY_PROFILE_ENV: "ops"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            cmd = radar.notify_command([NOTIFY_VERDICT])
+        self.assertEqual(cmd[1:3], ["-p", "ops"])
+
+    def test_notify_alerts_calls_subprocess_once(self) -> None:
+        env = {radar.NOTIFY_SESSION_ENV: "abc-123"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            with mock.patch.object(radar.subprocess, "run") as run:
+                run.return_value = mock.Mock(returncode=0)
+                radar.notify_alerts([NOTIFY_VERDICT])
+        self.assertEqual(run.call_count, 1)
+
+    def test_notify_alerts_swallows_errors(self) -> None:
+        env = {radar.NOTIFY_SESSION_ENV: "abc-123"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            with mock.patch.object(radar.subprocess, "run", side_effect=OSError("boom")):
+                radar.notify_alerts([NOTIFY_VERDICT])  # must not raise
 
 
 if __name__ == "__main__":
