@@ -1,31 +1,15 @@
 [[checks]]
-id = "stream_tools"
-title = "Tool names in the live stream"
-blurb = "Named tools must show up in the SSE deltas; an empty finish_reason or empty name fails."
+id = "core"
+title = "Core probe: stream shape, tool call, Russian answer"
+blurb = "One request asserts the OpenAI stream shape, a named report_answer tool call, and a clean Russian answer (text or tool argument). Any failure stops the route — nothing after it is probed."
 severity = "fail"
 contract = "openai-stream"
 scores_rank = true
 
 [[checks]]
-id = "cache_tools"
-title = "Prompt cache on a streaming completion"
-blurb = "A long prefix is sent three times with no tools. Fail if InferHub never reports cached tokens."
+id = "cache"
+title = "Prompt cache on an identical repeat"
+blurb = "The core payload is sent again byte-for-byte; pass requires cached_tokens > 0 on that first repeat."
 severity = "fail"
 contract = "openai-cache"
 scores_rank = true
-
-[[checks]]
-id = "ru_mojibake"
-title = "Russian answers arrive ungarbled"
-blurb = "A Russian question must get an answer without replacement characters, double-encoded Cyrillic, or a CJK flood."
-severity = "fail"
-contract = "openai-stream"
-scores_rank = true
-
-[[checks]]
-id = "usage_pricing"
-title = "Whether the response includes a price"
-blurb = "Records cost fields when present. Informational only: it never fails a cell or ranks an alias."
-severity = "info"
-contract = "observability"
-scores_rank = false

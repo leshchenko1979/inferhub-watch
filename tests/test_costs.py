@@ -39,7 +39,7 @@ def _run(cells: list[dict], *, finished: bool = True, aliases=None) -> dict:
     run = {
         "started_at": "2026-08-27T19:50:00Z",
         "aliases": aliases or ["zai/glm-5.3"],
-        "checks": ["stream_tools", "cache_tools", "ru_mojibake", "usage_pricing"],
+        "checks": ["core", "cache"],
         "cells": cells,
     }
     if finished:
@@ -60,7 +60,7 @@ class WindowTests(unittest.TestCase):
 
 class AttributionTests(unittest.TestCase):
     def test_exact_token_match_beats_fleet_noise(self) -> None:
-        cell = _cell("zai/glm-5.3", "usage_pricing", {"prompt_tokens": 70, "completion_tokens": 18})
+        cell = _cell("zai/glm-5.3", "cache", {"prompt_tokens": 70, "completion_tokens": 18})
         rows = [
             _row("zai/glm-5.3", 51, prompt=999, completion=888, cost="0.500000"),
             _row("zai/glm-5.3", 53, prompt=70, completion=18, cost="0.000013"),
@@ -70,56 +70,64 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual(cell["cost_match"], "tokens")
         self.assertEqual(summary["total_usdc"], "0.000013")
 
-    def test_multi_request_cell_sums_identical_rows(self) -> None:
-        cell = _cell("zai/glm-5.3", "cache_tools", {"prompt_tokens": 1864, "completion_tokens": 6})
+    def test_single_request_cell_matches_one_row(self) -> None:
+        cell = _cell("zai/glm-5.3", "cache", {"prompt_tokens": 1864, "completion_tokens": 6})
+        rows = [
+            _row("zai/glm-5.3", 51, prompt=1864, completion=6, cost="0.000002"),
+        ]
+        attribute_costs(_run([cell]), rows)
+        self.assertEqual(cell["cost_usdc"], "0.000002")
+
+    def test_legacy_usage_all_cell_still_sums(self) -> None:
+        cell = _cell("zai/glm-5.3", "cache", {"prompt_tokens": 1864, "completion_tokens": 6})
         cell["evidence"]["usage_all"] = [
             {"prompt_tokens": 1864, "completion_tokens": 6},
-        ] * 3
+            {"prompt_tokens": 1864, "completion_tokens": 6},
+        ]
         rows = [
             _row("zai/glm-5.3", 51, prompt=1864, completion=6, cost="0.000002"),
             _row("zai/glm-5.3", 52, prompt=1864, completion=6, cost="0.000002"),
-            _row("zai/glm-5.3", 53, prompt=1864, completion=6, cost="0.000002"),
         ]
         attribute_costs(_run([cell]), rows)
-        self.assertEqual(cell["cost_usdc"], "0.000006")
+        self.assertEqual(cell["cost_usdc"], "0.000004")
 
     def test_order_fallback_only_without_interference(self) -> None:
-        stream = _cell("zai/glm-5.3", "stream_tools")
-        cache = _cell("zai/glm-5.3", "cache_tools")
+        core = _cell("zai/glm-5.3", "core")
+        cache = _cell("zai/glm-5.3", "cache")
         rows = [
             _row("zai/glm-5.3", 51, cost="0.000100"),
             _row("zai/glm-5.3", 53, cost="0.000300"),
         ]
-        attribute_costs(_run([stream, cache]), rows)
-        self.assertEqual(stream["cost_usdc"], "0.000100")
+        attribute_costs(_run([core, cache]), rows)
+        self.assertEqual(core["cost_usdc"], "0.000100")
         self.assertEqual(cache["cost_usdc"], "0.000300")
-        self.assertEqual(stream["cost_match"], "order")
+        self.assertEqual(core["cost_match"], "order")
 
     def test_order_fallback_skipped_when_extra_rows(self) -> None:
-        stream = _cell("zai/glm-5.3", "stream_tools")
+        core = _cell("zai/glm-5.3", "core")
         rows = [
             _row("zai/glm-5.3", 51, cost="0.000100"),
             _row("zai/glm-5.3", 52, cost="0.900000"),  # fleet traffic, not ours
         ]
-        attribute_costs(_run([stream]), rows)
-        self.assertNotIn("cost_usdc", stream)
+        attribute_costs(_run([core]), rows)
+        self.assertNotIn("cost_usdc", core)
 
     def test_rows_outside_window_ignored(self) -> None:
-        cell = _cell("zai/glm-5.3", "usage_pricing", {"prompt_tokens": 70, "completion_tokens": 18})
+        cell = _cell("zai/glm-5.3", "cache", {"prompt_tokens": 70, "completion_tokens": 18})
         rows = [_row("zai/glm-5.3", 10, prompt=70, completion=18, cost="0.000013")]
         summary = attribute_costs(_run([cell]), rows)
         self.assertNotIn("cost_usdc", cell)
         self.assertEqual(summary["total_usdc"], "0.000000")
 
     def test_other_model_rows_ignored(self) -> None:
-        cell = _cell("zai/glm-5.3", "stream_tools")
+        cell = _cell("zai/glm-5.3", "core")
         rows = [_row("cp/xai/grok-4.6", 51, cost="0.000100")]
         attribute_costs(_run([cell]), rows)
         self.assertNotIn("cost_usdc", cell)
 
     def test_alias_models_variant_pool(self) -> None:
         cell = _cell(
-            "glm-5.3", "usage_pricing", {"prompt_tokens": 70, "completion_tokens": 18}
+            "glm-5.3", "cache", {"prompt_tokens": 70, "completion_tokens": 18}
         )
         rows = [
             _row("cb/glm-5.3", 51, prompt=999, completion=1, cost="0.500000"),
@@ -134,8 +142,8 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual(summary["total_usdc"], "0.000021")
 
     def test_summary_counts(self) -> None:
-        a = _cell("zai/glm-5.3", "stream_tools")
-        b = _cell("zai/glm-5.3", "usage_pricing", {"prompt_tokens": 70, "completion_tokens": 18})
+        a = _cell("zai/glm-5.3", "core")
+        b = _cell("zai/glm-5.3", "cache", {"prompt_tokens": 70, "completion_tokens": 18})
         rows = [
             _row("zai/glm-5.3", 51, cost="0.000100"),
             _row("zai/glm-5.3", 53, prompt=70, completion=18, cost="0.000013"),

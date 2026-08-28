@@ -35,7 +35,7 @@ def collect_cells(
     cells = []
     errors = []
     for alias in aliases:
-        for spec in registry:
+        for i, spec in enumerate(registry):
             module = load_check_module(spec["id"])
             try:
                 cell = module.run(client, alias)
@@ -43,18 +43,28 @@ def collect_cells(
                 if balance_too_low(str(exc)):
                     raise BalanceTooLow(f"{alias}/{spec['id']}: {exc}") from exc
                 errors.append(f"{alias}/{spec['id']}: {exc}")
-                cells.append(
-                    result(
-                        check_id=spec["id"],
-                        alias=alias,
-                        status="error",
-                        summary=str(exc),
-                    )
+                cell = result(
+                    check_id=spec["id"],
+                    alias=alias,
+                    status="error",
+                    summary=str(exc),
                 )
-                continue
             if balance_too_low(cell.get("summary") or ""):
                 raise BalanceTooLow(f"{alias}/{spec['id']}: {cell.get('summary')}")
             cells.append(cell)
+            # Fail-fast: a failed or errored check means the route is broken —
+            # the remaining specs of this route are skipped, not run.
+            if cell.get("status") in ("fail", "error"):
+                for remaining in registry[i + 1 :]:
+                    cells.append(
+                        result(
+                            check_id=remaining["id"],
+                            alias=alias,
+                            status="skipped",
+                            summary="not run — earlier check failed",
+                        )
+                    )
+                break
     return cells, errors
 
 

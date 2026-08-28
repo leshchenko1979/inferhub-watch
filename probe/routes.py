@@ -31,11 +31,13 @@ def probe_routes(
     """Run every scoring check against every route; cells come back in order.
 
     A check that raises is recorded as an `error` cell so one dead route does
-    not stop the sweep. Stops early when InferHub reports balance too low.
+    not stop the sweep. Fail-fast: a fail or error cell skips the remaining
+    checks of that route. Stops early when InferHub reports balance too low.
     """
     cells = []
     for route in routes:
-        for spec in scoring_specs(registry):
+        specs = scoring_specs(registry)
+        for i, spec in enumerate(specs):
             module = load_check_module(spec["id"])
             try:
                 cell = module.run(client, route)
@@ -52,6 +54,17 @@ def probe_routes(
                     "summary": str(exc),
                 }
             cells.append({"route": route, **cell})
+            if cell.get("status") in ("fail", "error"):
+                for remaining in specs[i + 1 :]:
+                    cells.append(
+                        {
+                            "route": route,
+                            "check_id": remaining["id"],
+                            "status": "skipped",
+                            "summary": "not run — earlier check failed",
+                        }
+                    )
+                break
     return cells
 
 

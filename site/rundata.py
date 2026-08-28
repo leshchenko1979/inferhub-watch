@@ -48,12 +48,6 @@ def display_specs(registry: list[dict]) -> list[dict]:
 
 
 def scoring_short(check_id: str) -> str:
-    if check_id == "stream_tools":
-        return "tools"
-    if check_id == "cache_tools":
-        return "cache"
-    if check_id == "ru_mojibake":
-        return "mojibake"
     return check_id.replace("_", " ")
 
 
@@ -98,8 +92,8 @@ def candidate_failed_ids(run: dict, route: str, check_ids: list[str]) -> list[st
 
 
 def candidate_cache_pct(run: dict, route: str) -> float | None:
-    """Cache-hit share from the route's cache_tools probe cell; None without one."""
-    cell = candidate_cell_map(run).get((route, "cache_tools")) or {}
+    """Cache-hit share from the route's cache probe cell; None without one."""
+    cell = candidate_cell_map(run).get((route, "cache")) or {}
     ev = cell.get("evidence") or {}
     usage = ev.get("usage") or {}
     try:

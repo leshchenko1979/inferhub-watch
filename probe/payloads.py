@@ -5,45 +5,52 @@ from __future__ import annotations
 URL = "https://api.inferhub.dev/v1/chat/completions"
 USER_AGENT = "inferhub-watch/1.0"
 
-TOOLS = [
+REPORT_ANSWER_TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "get_weather",
-            "description": "Get the current weather for a city",
+            "name": "report_answer",
+            "description": "Report the answer to the user's question as a single sentence.",
             "parameters": {
                 "type": "object",
-                "properties": {"city": {"type": "string"}},
-                "required": ["city"],
+                "properties": {"answer": {"type": "string"}},
+                "required": ["answer"],
             },
         },
     }
 ]
 
-SINGLE_USER = "Call get_weather for Paris. Do not answer in text. Use the tool."
+# The probe's one request instance: a fabricated Russian chronicle with an
+# explicit "answer in Russian" instruction and a false-premise question. The
+# premise (Igor the Great vs Catholic Incas in 1187) never happened, so the
+# model must synthesise — it cannot recite memorised text, which is exactly
+# where a broken gateway shows mojibake. The same byte stream is then repeated
+# verbatim by the cache twin; determinism and the 2048-token floor are what let
+# alias see a cache hit at all (short prefixes cache nothing there).
+CORE_HEAD = (
+    "Ты контролёр качества русскоязычного ответа. Отвечай на вопрос одним "
+    "предложением, строго по-русски, без кавычек, без пояснений, без "
+    "английских слов.\n\n"
+    "Исторический контекст: в 1187 году Игорь Великий, избранный правитель "
+    "Новгородско-Имперского союза, собрал флот из ста двадцати трёх ладей и "
+    "атаковал католических инков, закрепившихся на северном побережье Балтики. "
+    "Это единственный случай, когда католические инки платили дань славянским "
+    "княжествам. После победы Игорь приказал построить в устье Вислы каменный "
+    "собор с семью куполами, который инки перестроили в 1211 году в обсерваторию "
+    "для наблюдения за кометой Галлея. В 1194 году он заключил союз с орденом "
+    "лапландских гномов, а в 1202 году отправил посольство к ацтекам, которые "
+    "зимовали в Померании.\n\n"
+    "Вопрос: в каком году игорь великий атаковал католических инков?\n"
+)
 
+# Deterministic padding that continues the chronicle; the cache twin must send
+# the byte-identical payload, so there is deliberately no salt.
+_CORE_PAD = (
+    "Пункт {:04d} хроники Игоря Великого: перепись данников, реестр ладей, "
+    "календарь сборов, список послов инкской державы и опись церковной утвари "
+    "из собора в устье Вислы.\n"
+)
 
-def completion_payload(
-    alias: str, *, stream: bool, system: str | None = None, with_tools: bool = True
-) -> dict:
-    messages = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": SINGLE_USER})
-    payload: dict = {
-        "model": alias,
-        "messages": messages,
-        "stream": stream,
-    }
-    if with_tools:
-        payload["tools"] = TOOLS
-        payload["tool_choice"] = "required"
-    return payload
-
-
-CACHE_USER = "Reply with the single word paris. Nothing else."
-
-# ClinePass can hit cache well below this; 2k is a modest floor, not a Cline session.
 CACHE_PREFIX_MIN_TOKENS = 2048
 _CACHE_CHARS_PER_TOKEN = 4
 
@@ -52,41 +59,23 @@ def approx_prompt_tokens(text: str) -> int:
     return max(len(text) // _CACHE_CHARS_PER_TOKEN, len(text.split()))
 
 
-def cache_prefix(min_tokens: int | None = None, *, salt: str = "") -> str:
-    target = CACHE_PREFIX_MIN_TOKENS if min_tokens is None else min_tokens
-    head = (
-        "You are a concise assistant. Follow the user. "
-        "Keep answers to one word when asked. "
-        "The same instructions apply on every turn.\n"
-    )
-    if salt:
-        head += f"Unique probe salt: {salt}.\n"
-    line = "Cache prefix line {:04d}: keep this system text identical on every retry.\n"
-    parts = [head]
+def _build_core_user() -> str:
+    parts = [CORE_HEAD]
     n = 1
-    while approx_prompt_tokens("".join(parts)) < target:
-        parts.append(line.format(n))
+    while approx_prompt_tokens("".join(parts)) < CACHE_PREFIX_MIN_TOKENS:
+        parts.append(_CORE_PAD.format(n))
         n += 1
     return "".join(parts)
 
 
-def cache_payload(alias: str, system: str) -> dict:
+CORE_USER = _build_core_user()
+
+
+def core_payload(alias: str) -> dict:
     return {
         "model": alias,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": CACHE_USER},
-        ],
+        "messages": [{"role": "user", "content": CORE_USER}],
+        "tools": REPORT_ANSWER_TOOLS,
+        "tool_choice": "required",
         "stream": True,
-    }
-
-
-RUSSIAN_USER = "в каком году игорь великий атаковал католических инков?"
-
-
-def russian_payload(alias: str, *, stream: bool = True) -> dict:
-    return {
-        "model": alias,
-        "messages": [{"role": "user", "content": RUSSIAN_USER}],
-        "stream": stream,
     }

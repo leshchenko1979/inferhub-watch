@@ -131,7 +131,8 @@ def run_window(run: dict) -> tuple[datetime, datetime]:
 def cell_token_triples(cell: dict) -> list[tuple[int, int]]:
     """(prompt, completion) for every request the cell sent.
 
-    Most checks send one request; cache_tools sends up to three (usage_all).
+    Every suite-v2 check sends one request (evidence['usage']); a legacy
+    multi-request cell (cache_tools) recorded usage_all and is still summed.
     """
     evidence = cell.get("evidence") or {}
     triples: list[tuple[int, int]] = []

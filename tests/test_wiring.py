@@ -44,10 +44,10 @@ class WiringTests(unittest.TestCase):
 
     def test_generate_includes_page_md_and_no_secrets(self) -> None:
         gen = _load_generate()
-        spec = next(s for s in load_registry() if s["id"] == "stream_tools")
+        spec = next(s for s in load_registry() if s["id"] == "core")
         html = gen.check_page(spec)
         self.assertIn("stream: true", html)
-        self.assertIn("get_weather", html)
+        self.assertIn("report_answer", html)
         self.assertLessEqual(html.lower().count("is_some"), 1)
         self.assertNotIn(os.environ.get("INFERHUB_API_KEY") or "sk-never", html)
         self.assertNotIn("OpenCrabs", html)
@@ -81,19 +81,19 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn('class="matrix"', html)
         self.assertNotIn('class="rank-table"', html)
         self.assertNotIn("check-col", html)
-        self.assertNotIn('href="#check-stream_tools"', html)
-        self.assertIn('id="check-stream_tools"', html)
+        self.assertNotIn('href="#check-core"', html)
+        self.assertIn('id="check-core"', html)
         self.assertIn("<details", html)
         self.assertIn("<summary>", html)
-        self.assertIn("get_weather", html)
+        self.assertIn("report_answer", html)
         self.assertIn('title="Prompt-cache share', html)
         self.assertNotIn("Safe to use", html)
         self.assertNotIn("Latest results", html)
         self.assertNotIn("No alias is safe to use this run.", html)
         self.assertIn("platform.openai.com", html)
         thead, _, after_head = html.partition("</thead>")
-        self.assertNotIn("checks/stream_tools.html", thead)
-        self.assertNotIn("checks/stream_tools.html", rest[rest.find('id="method"') :])
+        self.assertNotIn("checks/core.html", thead)
+        self.assertNotIn("checks/core.html", rest[rest.find('id="method"') :])
         self.assertNotIn("OpenCrabs", html)
         self.assertNotIn("Seven-day", html)
         self.assertNotIn("Who should care", html)
@@ -118,7 +118,7 @@ class WiringTests(unittest.TestCase):
         self.assertIn("The endpoint", html)
         self.assertNotIn("What we probe", html)
         self.assertIn("ClinePass", html)
-        self.assertIn("3/3: tools + cache + mojibake", html)
+        self.assertIn("2/2: core + cache", html)
         self.assertLess(html.find('id="results"'), html.find('id="pricing"'))
         self.assertLess(html.find('id="pricing"'), html.find('id="earlier"'))
         self.assertLess(html.find('id="earlier"'), html.find('id="method"'))
@@ -339,7 +339,7 @@ class BalanceAbortTests(unittest.TestCase):
     def test_collect_cells_raises_on_balance_cell(self) -> None:
         run_mod = _load_run()
         cell = {
-            "check_id": "stream_tools",
+            "check_id": "core",
             "alias": "x",
             "status": "error",
             "summary": 'HTTP 402: {"error":{"message":"balance too low"}}',
@@ -347,7 +347,7 @@ class BalanceAbortTests(unittest.TestCase):
         stub = types.SimpleNamespace(run=lambda client, alias: dict(cell))
         with mock.patch.object(run_mod, "load_check_module", return_value=stub):
             with self.assertRaises(run_mod.BalanceTooLow):
-                run_mod.collect_cells(object(), ["a"], [{"id": "stream_tools"}])
+                run_mod.collect_cells(object(), ["a"], [{"id": "core"}])
 
     def test_collect_cells_raises_on_balance_exception(self) -> None:
         run_mod = _load_run()
@@ -358,12 +358,12 @@ class BalanceAbortTests(unittest.TestCase):
         stub = types.SimpleNamespace(run=boom)
         with mock.patch.object(run_mod, "load_check_module", return_value=stub):
             with self.assertRaises(run_mod.BalanceTooLow):
-                run_mod.collect_cells(object(), ["a"], [{"id": "stream_tools"}])
+                run_mod.collect_cells(object(), ["a"], [{"id": "core"}])
 
     def test_main_aborts_without_writing_a_run(self) -> None:
         run_mod = _load_run()
         cell = {
-            "check_id": "stream_tools",
+            "check_id": "core",
             "alias": "x",
             "status": "error",
             "summary": 'HTTP 402: {"error":{"message":"balance too low"}}',
@@ -375,7 +375,7 @@ class BalanceAbortTests(unittest.TestCase):
             ), mock.patch.object(
                 run_mod, "load_aliases", return_value=["x"]
             ), mock.patch.object(
-                run_mod, "load_registry", return_value=[{"id": "stream_tools"}]
+                run_mod, "load_registry", return_value=[{"id": "core"}]
             ), mock.patch.object(
                 run_mod, "InferHubClient", return_value=object()
             ), mock.patch.object(
@@ -395,7 +395,7 @@ class BalanceAbortTests(unittest.TestCase):
     def test_main_writes_run_when_no_balance_error(self) -> None:
         run_mod = _load_run()
         cell = {
-            "check_id": "stream_tools",
+            "check_id": "core",
             "alias": "x",
             "status": "pass",
             "summary": "Named tools: get_weather.",
@@ -407,7 +407,7 @@ class BalanceAbortTests(unittest.TestCase):
             ), mock.patch.object(
                 run_mod, "load_aliases", return_value=["x"]
             ), mock.patch.object(
-                run_mod, "load_registry", return_value=[{"id": "stream_tools"}]
+                run_mod, "load_registry", return_value=[{"id": "core"}]
             ), mock.patch.object(
                 run_mod, "InferHubClient", return_value=object()
             ), mock.patch.object(
@@ -544,7 +544,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
                     "summary": "ok", "candidate": True, "model": "qwen3.8-max",
                     "resolved_model": route,
                 }
-                if cid == "cache_tools":
+                if cid == "cache":
                     cell["evidence"] = {
                         "cached_tokens": cached, "usage": {"prompt_tokens": 100},
                     }
@@ -564,8 +564,8 @@ class ProbeResultsSectionTests(unittest.TestCase):
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         # cp: 3/3 with 93% cache; cx: 3/3 with 40% cache -> cp ranks first
         run = self._run(scoring, [
-            ("cp/cline-pass/qwen3.8-max", 3, 93),
-            ("cx/qwen3.8-max", 3, 40),
+            ("cp/cline-pass/qwen3.8-max", 2, 93),
+            ("cx/qwen3.8-max", 2, 40),
         ])
         page, nav = self._page(gen, run, self.GROUPS)
         self.assertIn('id="results"', page)
@@ -577,16 +577,16 @@ class ProbeResultsSectionTests(unittest.TestCase):
         pos_cp = page.find("cp/cline-pass/qwen3.8-max", page.find('id="results"'))
         pos_cx = page.find("cx/qwen3.8-max", page.find('id="results"'))
         self.assertTrue(pos_inc < pos_cp < pos_cx)
-        self.assertIn('class="chip ok">ali/qwen3.8-max · 3/3', page)
-        self.assertIn('class="chip ok">cp/cline-pass/qwen3.8-max · 3/3 · 93%', page)
+        self.assertIn('class="chip ok">ali/qwen3.8-max · 2/2', page)
+        self.assertIn('class="chip ok">cp/cline-pass/qwen3.8-max · 2/2 · 93%', page)
         self.assertIn('class="model-name">qwen3.8-max', page)
 
     def test_failed_checks_rank_last_and_show_missed(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         run = self._run(scoring, [
-            ("cp/cline-pass/qwen3.8-max", 2, 93),   # missed one -> amber
-            ("cx/qwen3.8-max", 3, 40),              # all pass -> ranks first
+            ("cp/cline-pass/qwen3.8-max", 1, 93),   # missed one -> amber
+            ("cx/qwen3.8-max", 2, 40),              # all pass -> ranks first
         ])
         page, _ = self._page(gen, run, self.GROUPS)
         pos_cp = page.find("cp/cline-pass/qwen3.8-max", page.find('id="results"'))
@@ -604,7 +604,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
         page, _ = self._page(gen, run, self.GROUPS)
         seg = page[page.find('id="results"'):page.find('id="earlier"')]
         self.assertIn('class="tests-bad"', seg)
-        self.assertIn('class="chip bad">cp/cline-pass/qwen3.8-max · 0/3', seg)
+        self.assertIn('class="chip bad">cp/cline-pass/qwen3.8-max · 0/2', seg)
         self.assertIn('class="tests-none"', seg)      # cx unprobed
         self.assertIn('&#8212;', seg)
         self.assertIn('title="not probed in the latest run"', seg)
@@ -612,7 +612,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
     def test_candidates_stay_out_of_pricing_table(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
-        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 3, 93)])
+        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
         page, _ = self._page(gen, run, self.GROUPS)
         seg = page[page.find('id="pricing"'):page.find('id="earlier"')]
         self.assertIn("ali/qwen3.8-max", seg)          # incumbent has rate data
@@ -622,7 +622,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
     def test_section_omitted_without_config_or_cells(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
-        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 3, 93)])
+        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
         page, nav = self._page(gen, run, [])  # no candidates.toml groups
         self.assertNotIn('id="results"', page)
         self.assertNotIn("<h2>Probe results</h2>", page)
@@ -635,7 +635,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
     def test_rows_carry_fold_labels_and_column_hints(self) -> None:
         gen = _load_generate()
         scoring = gen.rundata.scoring_ids(gen.load_registry())
-        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 3, 93)])
+        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
         page, _ = self._page(gen, run, self.GROUPS)
         seg = page[page.find('id="results"'):page.find('id="earlier"')]
         self.assertIn('<details class="model-group" open>', seg)

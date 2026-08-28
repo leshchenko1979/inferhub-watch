@@ -14,16 +14,16 @@ import rundata  # noqa: E402
 
 class RundataBoardTests(unittest.TestCase):
     def test_scoring_short_and_rule(self) -> None:
-        self.assertEqual(rundata.scoring_short("stream_tools"), "tools")
-        self.assertEqual(rundata.scoring_short("cache_tools"), "cache")
-        self.assertEqual(rundata.scoring_short("ru_mojibake"), "mojibake")
+        self.assertEqual(rundata.scoring_short("core"), "core")
+        self.assertEqual(rundata.scoring_short("cache"), "cache")
+        self.assertEqual(rundata.scoring_short("cache_tools"), "cache tools")
         self.assertEqual(
-            rundata.scoring_rule(["stream_tools", "cache_tools", "ru_mojibake"]),
-            "3/3: tools + cache + mojibake",
+            rundata.scoring_rule(["core", "cache"]),
+            "2/2: core + cache",
         )
         self.assertEqual(
-            rundata.scoring_rule(["stream_tools", "cache_tools"]),
-            "2/2: tools + cache",
+            rundata.scoring_rule(["core"]),
+            "1/1: core",
         )
 
     def test_alias_probed(self) -> None:
@@ -292,11 +292,11 @@ class CandidatesHelpersTests(unittest.TestCase):
         self.assertEqual(rundata.candidate_pass_count(run, "other", self.SCORE), (0, 3))
 
     def test_candidate_cache_pct(self) -> None:
-        run = {"cells": [self._cell("c/m", "cache_tools", evidence={
+        run = {"cells": [self._cell("c/m", "cache", evidence={
             "cached_tokens": 930, "usage": {"prompt_tokens": 1000}})]}
         self.assertEqual(rundata.candidate_cache_pct(run, "c/m"), 93.0)
         self.assertIsNone(rundata.candidate_cache_pct(run, "ghost"))
-        empty = {"cells": [self._cell("c/m", "cache_tools", evidence={
+        empty = {"cells": [self._cell("c/m", "cache", evidence={
             "cached_tokens": 0, "usage": {"prompt_tokens": 1000}})]}
         self.assertEqual(rundata.candidate_cache_pct(empty, "c/m"), 0.0)
 
