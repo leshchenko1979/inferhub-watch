@@ -225,6 +225,18 @@ class WiringTests(unittest.TestCase):
         self.assertIn("td[data-tip]:focus-visible", css)
         self.assertIn("td.tip-open", css)
 
+    def test_viz_bar_fill_aligns_with_cell_content(self) -> None:
+        # desktop numeric cells are right-aligned, so the colored fill hugs
+        # the right edge of its track; the mobile fold left-aligns content
+        # and the fill follows that edge instead
+        css = (repo_root() / "site" / "style.css").read_text()
+        fill = css[css.index(".viz-bar i {") :]
+        fill = fill[: fill.index("}")]
+        self.assertIn("margin-left: auto", fill)
+        mobile_fill = css[css.index(".pricing .viz-bar i {") :]
+        mobile_fill = mobile_fill[: mobile_fill.index("}")]
+        self.assertIn("margin-left: 0", mobile_fill)
+
 
 class PricingSectionTests(unittest.TestCase):
     PAYLOAD = {

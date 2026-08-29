@@ -501,6 +501,7 @@ td {
 .viz-bar i {
   display: block;
   height: 100%;
+  margin-left: auto;
   border-radius: 2px;
 }
 
@@ -938,6 +939,11 @@ footer {
   }
 
   .pricing .viz-bar {
+    margin-left: 0;
+  }
+
+  /* folded cards are left-aligned — the fill follows the same edge */
+  .pricing .viz-bar i {
     margin-left: 0;
   }
 }
