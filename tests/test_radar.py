@@ -113,6 +113,46 @@ class VerdictTests(unittest.TestCase):
         self.assertAlmostEqual(v["challenger_cache_pct"], 90.0)
 
 
+class DatedOnlyVerdictTests(unittest.TestCase):
+    """A plain tail of a dated family is never a challenger."""
+
+    INCUMBENT = {"eff_per_mtok": 0.009, "cache_pct": 0.0, "tok_in": 900, "tok_out": 100}
+
+    def _run(self, candidate_alias: str) -> dict:
+        cells = [{"alias": "ali/deepseek-v4-flash-0731", "check_id": "core", "status": "pass"}]
+        for cid in ("core", "cache"):
+            cells.append({
+                "alias": candidate_alias, "check_id": cid, "status": "pass",
+                "candidate": True, "model": "deepseek-v4-flash",
+            })
+        return {"checks": ["core", "cache"], "cells": cells}
+
+    def test_plain_challenger_is_rejected(self) -> None:
+        routes = {
+            "ali/deepseek-v4-flash-0731": self.INCUMBENT,
+            # plain flash undercuts the bar hard — still never a challenger
+            "ocg/deepseek-v4-flash": {"ask_in": 0.0001, "ask_out": 0.0003},
+        }
+        (v,) = radar.family_verdicts(
+            self._run("ocg/deepseek-v4-flash"), routes, ["ali/deepseek-v4-flash-0731"]
+        )
+        self.assertEqual(v["family"], "deepseek-v4-flash")
+        self.assertIsNone(v["challenger"])
+        self.assertIsNone(v["margin_pct"])
+
+    def test_dated_challenger_still_lands(self) -> None:
+        routes = {
+            "ali/deepseek-v4-flash-0731": self.INCUMBENT,
+            # predicted 0.005*0.9 + 0.015*0.1 = 0.006 < 0.009
+            "cb/deepseek-v4-flash-0731": {"ask_in": 0.005, "ask_out": 0.015},
+        }
+        (v,) = radar.family_verdicts(
+            self._run("cb/deepseek-v4-flash-0731"), routes, ["ali/deepseek-v4-flash-0731"]
+        )
+        self.assertEqual(v["challenger"], "cb/deepseek-v4-flash-0731")
+        self.assertAlmostEqual(v["challenger_usd_m"], 0.006)
+
+
 class FamilyIsolationTests(unittest.TestCase):
     def test_poisoned_family_is_skipped_not_fatal(self) -> None:
         # the glm incumbent carries a non-numeric cache_pct: its family is

@@ -53,6 +53,24 @@ def family(route: str) -> str:
     return FAMILY_ALIASES.get(tail, tail)
 
 
+# Owner directive (2026-08-29): dated-only candidacy. Families that have a
+# dated snapshot admit only dated snapshots as candidates — a plain tail is
+# a different upstream model, not a cheaper substitute.
+DATED_FAMILIES = frozenset(FAMILY_ALIASES.values())
+
+
+def dated_eligible(route: str) -> bool:
+    """True when the route may stand as a candidate for its family.
+
+    Undated tails of a dated family (plain `deepseek-v4-flash` /
+    `deepseek-v4-pro` under any publisher) are ineligible; the dated
+    snapshots themselves and families without a dated alias pass.
+    """
+    if family(route) not in DATED_FAMILIES:
+        return True
+    return route.rsplit("/", 1)[-1] in FAMILY_ALIASES
+
+
 def load_pricing(root: Path | None = None) -> dict | None:
     """data/pricing.json payload, or None when absent/unreadable."""
     root = root or repo_root()
@@ -212,10 +230,16 @@ def family_context(pricing_routes: dict, aliases: list[str],
 
 
 def rank_family(catalog: dict, fam: str, ctx: dict, exclude: set[str]) -> list[dict]:
-    """Catalog routes of the family, cheapest predicted $/M first."""
+    """Catalog routes of the family, cheapest predicted $/M first.
+
+    Dated-only: plain tails of a dated family never rank as candidates
+    (`dated_eligible` gate).
+    """
     rows = []
     for route, (ask_in, ask_out) in catalog.items():
         if family(route) != fam or route in exclude:
+            continue
+        if not dated_eligible(route):
             continue
         rows.append(
             {
@@ -233,7 +257,10 @@ def rank_family(catalog: dict, fam: str, ctx: dict, exclude: set[str]) -> list[d
 
 def _pick(rows: list[dict], bar: float | None, proven: dict,
           now: datetime | None = None) -> list[str]:
-    """Top-N routes cheaper than the bar and outside the proven window."""
+    """Top-N routes cheaper than the bar and outside the proven window.
+
+    Rows arrive pre-filtered by `rank_family` (dated-only gate included).
+    """
     if bar is None:
         return []
     chosen: list[str] = []
@@ -252,8 +279,10 @@ def shortlist(key: str, pricing: dict | None, root: Path | None = None,
               now: datetime | None = None) -> list[dict]:
     """[{model, routes}] — the market's pick per board family.
 
-    Gates: predicted $/M strictly under the incumbent bar; board aliases
-    excluded; routes probed within the TTL skipped; at most TOP_N each.
+    Gates: predicted $/M strictly under the incumbent bar; dated-only
+    candidacy (plain tails of a dated family are never candidates); board
+    aliases excluded; routes probed within the TTL skipped; at most TOP_N
+    each.
     """
     root = root or repo_root()
     aliases = load_aliases()

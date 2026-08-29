@@ -117,7 +117,9 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn('class="hero"', html)
         self.assertIn("The endpoint", html)
         self.assertNotIn("What we probe", html)
-        self.assertIn("ClinePass", html)
+        # publisher labels render — dated-only board: cp/cline-pass left the
+        # board, z.ai carries the check now
+        self.assertIn("z.ai · zai/glm-5.3-flash", html)
         self.assertIn("2/2: core + cache", html)
         self.assertLess(html.find('id="results"'), html.find('id="pricing"'))
         self.assertLess(html.find('id="pricing"'), html.find('id="earlier"'))
@@ -214,6 +216,35 @@ class WiringTests(unittest.TestCase):
         results = page[page.find('id="results"') :]
         self.assertIn("cb/gpt-5.6-luna", results)
         self.assertIn("ocg/deepseek-v4-flash", page)
+
+    def test_board_alias_still_in_old_shortlist_renders_once(self) -> None:
+        # dated-only transition: a route that just joined the board can still
+        # sit in the previous run's candidate list; the board row wins and
+        # the duplicate candidate row is dropped.
+        gen = _load_generate()
+        registry = gen.load_registry()
+        scoring = gen.rundata.scoring_ids(registry)
+        run = {
+            "started_at": "2026-08-28T21:20:29",
+            "origin": "Actions · CI",
+            "cells": [
+                {
+                    "alias": "ali/deepseek-v4-pro-0813",
+                    "check_id": cid,
+                    "status": "fail",
+                    "summary": "x",
+                    "candidate": True,
+                    "model": "deepseek-v4-pro",
+                }
+                for cid in scoring
+            ],
+            "candidates": ["ali/deepseek-v4-pro-0813"],
+        }
+        with mock.patch.object(gen.rundata, "load_pricing", return_value=None):
+            page = gen.index_html([run], ["ali/deepseek-v4-pro-0813"], registry)
+        results = page[page.find('id="results"') : page.find('id="earlier"')]
+        self.assertEqual(results.count("<code>ali/deepseek-v4-pro-0813</code>"), 1)
+        self.assertIn('class="pill in-use"', results)
 
     def test_tooltip_engine_covers_every_data_tip_cell(self) -> None:
         # the board.js tip engine binds every td[data-tip] (hover + tap),

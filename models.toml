@@ -1,7 +1,6 @@
 aliases = [
   "ali/deepseek-v4-flash-0731",
-  "cp/cline-pass/deepseek-v4-pro",
+  "ali/deepseek-v4-pro-0813",
   "ali/qwen3.8-max",
   "zai/glm-5.3-flash",
-  "cmc/deepseek/deepseek-v4-pro",
 ]

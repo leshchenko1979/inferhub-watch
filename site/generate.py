@@ -583,7 +583,10 @@ def probe_results_section(
                 _candidate_route_row(runs, route_entries, alias, score_ids, candidate=False)
             )
         ranked = []
+        incumbent_set = set(incumbents)
         for route in group["routes"]:
+            if route in incumbent_set:
+                continue  # the board row already renders this route
             ok, _ = rundata.candidate_pass_count(latest, route, score_ids)
             cache = rundata.candidate_cache_pct(latest, route)
             entry = route_entries.get(route) or {}

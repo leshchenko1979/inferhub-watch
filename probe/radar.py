@@ -123,6 +123,8 @@ def _family_verdict(fam: str, info: dict, run: dict, checks: list[str],
     for route, route_statuses in statuses.items():
         if market.family(route) != fam:
             continue
+        if not market.dated_eligible(route):
+            continue  # plain tails of a dated family are never challengers
         if not checks or not all(route_statuses.get(cid) == "pass" for cid in checks):
             continue
         entry = pricing_routes.get(route) or {}

@@ -137,6 +137,70 @@ class FamilyContextBarTests(unittest.TestCase):
         self.assertIsNone(ctx["glm-5.3-flash"]["bar_source"])
 
 
+class DatedOnlyTests(unittest.TestCase):
+    def _shortlist(self, catalog, pricing, aliases, proven=None, now=NOW):
+        with mock.patch.object(market, "fetch_catalog", return_value=catalog), \
+                mock.patch.object(market, "load_aliases", return_value=aliases), \
+                mock.patch.object(market, "load_proven", return_value=proven or {}):
+            return market.shortlist("key", pricing, root=None, now=now)
+
+    def test_plain_tail_of_dated_family_is_ineligible(self) -> None:
+        # a plain flash/pro tail is a different upstream model, not a
+        # cheaper substitute of the dated snapshot
+        self.assertFalse(market.dated_eligible("ocg/deepseek-v4-flash"))
+        self.assertFalse(market.dated_eligible("cp/cline-pass/deepseek-v4-flash"))
+        self.assertFalse(market.dated_eligible("cmc/deepseek/deepseek-v4-pro"))
+
+    def test_dated_snapshot_of_dated_family_is_eligible(self) -> None:
+        self.assertTrue(market.dated_eligible("ali/deepseek-v4-flash-0731"))
+        self.assertTrue(market.dated_eligible("ali/deepseek-v4-pro-0813"))
+
+    def test_undated_family_is_unaffected(self) -> None:
+        # glm-5.3-flash has no dated alias -> plain tail stays eligible
+        self.assertTrue(market.dated_eligible("zai/glm-5.3-flash"))
+        self.assertTrue(market.dated_eligible("cbcn/glm-5.3-flash"))
+        self.assertTrue(market.dated_eligible("ali/qwen3.8-max"))
+
+    def test_rank_family_drops_plain_tail(self) -> None:
+        ctx = {"cache_rate": 0.0, "w_in": 0.75, "w_out": 0.25}
+        catalog = {
+            "ocg/deepseek-v4-flash": (0.0001, 0.0003),       # plain -> dropped
+            "ali/deepseek-v4-flash-0731": (0.0002, 0.0006),  # dated -> kept
+        }
+        rows = market.rank_family(catalog, "deepseek-v4-flash", ctx, exclude=set())
+        self.assertEqual([r["route"] for r in rows], ["ali/deepseek-v4-flash-0731"])
+
+    def test_shortlist_bars_plain_tail_even_when_cheapest(self) -> None:
+        # incumbent bar 0.010; the plain flash routes are cheapest but not
+        # valid candidates, and the dated alias is the board seat (excluded),
+        # so nothing shortlists — isolates the dated-only gate.
+        pricing = {"routes": {"ali/deepseek-v4-flash-0731": {
+            "eff_per_mtok": 0.010, "cache_pct": 0.0, "tok_in": 750, "tok_out": 250,
+        }}}
+        catalog = {
+            "ocg/deepseek-v4-flash": (0.0001, 0.0003),              # plain -> barred
+            "cp/cline-pass/deepseek-v4-flash": (0.0002, 0.0004),    # plain -> barred
+            "ali/deepseek-v4-flash-0731": (0.050, 0.050),           # board -> excluded
+        }
+        groups = self._shortlist(
+            catalog, pricing, aliases=["ali/deepseek-v4-flash-0731"],
+        )
+        self.assertEqual(groups, [])
+
+    def test_shortlist_admits_dated_snapshot(self) -> None:
+        # the dated sibling undercuts the bar -> it shortlists
+        pricing = {"routes": {"ocg/deepseek-v4-pro": {
+            "eff_per_mtok": 0.10, "cache_pct": 0.0, "tok_in": 750, "tok_out": 250,
+        }}}
+        catalog = {
+            "ali/deepseek-v4-pro-0813": (0.0488, 0.1465),  # predicted 0.0732 < 0.10
+        }
+        groups = self._shortlist(catalog, pricing, aliases=["ocg/deepseek-v4-pro"])
+        self.assertEqual(
+            groups, [{"model": "deepseek-v4-pro", "routes": ["ali/deepseek-v4-pro-0813"]}],
+        )
+
+
 class ShortlistTests(unittest.TestCase):
     def _shortlist(self, catalog=None, pricing=PRICING, aliases=ALIASES,
                    proven=None, root=None, now=NOW):
