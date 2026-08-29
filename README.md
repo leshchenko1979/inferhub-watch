@@ -16,7 +16,7 @@ Scoring checks: **core** (one request asserts the stream shape as the consuming 
 | [models.toml](models.toml) | Aliases to probe (the table is the list; open a GitHub issue to propose another) |
 | [checks/registry.toml](checks/registry.toml) | Check order, titles, scoring |
 | [checks/](checks/) | One folder per check (`check.py`, `page.md`, `test.py`) |
-| [tests/](tests/) | Cross-cutting wiring only |
+| [tests/](tests/) | The CI suite: probe-internal unit tests plus site and registry wiring |
 | [probe/run.py](probe/run.py) | Writes [data/runs/](data/runs/) |
 | [probe/market.py](probe/market.py) | Candidate shortlist from the catalog: predicted $/M under the in-use bar, 7-day no-reprobe |
 | [probe/radar.py](probe/radar.py) | Advisory verdict: cheapest passing candidate vs the in-use billed $/M, per family — `python3 -m probe.radar` |

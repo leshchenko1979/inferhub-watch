@@ -7,3 +7,5 @@ __pycache__/
 site/dist/
 .DS_Store
 .radar-ledger.json
+.pytest_cache/
+.impeccable/
