@@ -317,6 +317,12 @@ class PricingSectionTests(unittest.TestCase):
         # cost + candidates tables fold like the matrix
         self.assertIn(".pricing tbody,", mobile)
         self.assertIn(".pricing td[data-label]::before", mobile)
+        # folded cards lay their fields out in two columns, column-first:
+        # candidates get tests + cache hit on the left, ask + window right
+        self.assertIn(".pricing tr {", mobile)
+        self.assertIn("grid-template-columns: 1fr 1fr;", mobile)
+        self.assertIn("grid-auto-flow: column;", mobile)
+        self.assertIn("grid-column: 1 / -1;", mobile)
         # past runs keep the table layout (no .timeline fold in this block)
         self.assertNotIn(".timeline tbody,", mobile)
 
@@ -597,6 +603,21 @@ class ProbeResultsSectionTests(unittest.TestCase):
         self.assertIn("qwen3.8-max", section)
         self.assertIn("ali/qwen3.8-max", section)
         self.assertIn("chip price", section)
+
+    def test_candidate_row_field_order_matches_card_columns(self) -> None:
+        # mobile cards fill column-first (tests + cache hit left, ask +
+        # window right), so markup order must stay tests, cache, ask, window
+        gen = _load_generate()
+        scoring = gen.rundata.scoring_ids(gen.load_registry())
+        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
+        section = gen.probe_results_section(
+            [run], ["ali/qwen3.8-max"], gen.load_registry(), self.PAYLOAD
+        )
+        row = section[section.index('data-label="tests"'):]
+        cache = row.index('data-label="cache hit"')
+        ask = row.index('data-label="ask in / out"')
+        window = row.index('data-label="window"')
+        self.assertTrue(0 < cache < ask < window)
 
     def test_section_renders_incumbents_then_ranked_routes(self) -> None:
         gen = _load_generate()

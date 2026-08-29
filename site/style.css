@@ -885,10 +885,22 @@ footer {
     max-width: none;
   }
 
+  /* Folded card fields fill two columns, column-first: candidates land
+     tests + cache hit in the left column, ask + window in the right.
+     A row with an odd cell count spills its last cell into column three. */
   .pricing tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(2, auto);
+    grid-auto-flow: column;
+    column-gap: var(--space-4);
     margin: 0 0 var(--space-5);
     padding: var(--space-3) 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .pricing tr > th {
+    grid-column: 1 / -1;
   }
 
   .pricing tbody th,
