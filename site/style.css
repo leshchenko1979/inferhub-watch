@@ -938,14 +938,6 @@ footer {
     font-weight: 500;
   }
 
-  .pricing .viz-bar {
-    margin-left: 0;
-  }
-
-  /* folded cards are left-aligned — the fill follows the same edge */
-  .pricing .viz-bar i {
-    margin-left: 0;
-  }
 }
 
 @media (pointer: coarse) {
