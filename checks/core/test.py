@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from probe.payloads import CACHE_PREFIX_MIN_TOKENS, approx_prompt_tokens
+from probe.payloads import CORE_USER
 from probe.registry import load_check_module
 from probe.sse import inspect_stream
 
@@ -105,10 +105,9 @@ class CoreCheckTests(unittest.TestCase):
         self.assertEqual(payload["tool_choice"], "required")
         self.assertEqual(payload["tools"][0]["function"]["name"], "report_answer")
         self.assertEqual(payload["messages"][0]["role"], "user")
-        self.assertGreaterEqual(
-            approx_prompt_tokens(payload["messages"][0]["content"]),
-            CACHE_PREFIX_MIN_TOKENS,
-        )
+        # Byte-identical content is the cache twin's invariant; size went
+        # head-only with the 2026-08-29 floor bisection.
+        self.assertEqual(payload["messages"][0]["content"], CORE_USER)
         self.assertNotIn("max_tokens", payload)
 
     def test_pass_with_text_content_answer(self) -> None:

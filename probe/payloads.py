@@ -25,8 +25,10 @@ REPORT_ANSWER_TOOLS = [
 # premise (Igor the Great vs Catholic Incas in 1187) never happened, so the
 # model must synthesise — it cannot recite memorised text, which is exactly
 # where a broken gateway shows mojibake. The same byte stream is then repeated
-# verbatim by the cache twin; determinism and the 2048-token floor are what let
-# alias see a cache hit at all (short prefixes cache nothing there).
+# verbatim by the cache twin; determinism is what lets alias see a cache hit
+# at all. Head-only since 2026-08-29: a floor bisection proved every incumbent
+# seat caches this ~800-token head in full, so the old 2048-token padding was
+# dead weight (~75% input cost, ~2x latency per cell).
 CORE_HEAD = (
     "Ты контролёр качества русскоязычного ответа. Отвечай на вопрос одним "
     "предложением, строго по-русски, без кавычек, без пояснений, без "
@@ -43,33 +45,9 @@ CORE_HEAD = (
     "Вопрос: в каком году игорь великий атаковал католических инков?\n"
 )
 
-# Deterministic padding that continues the chronicle; the cache twin must
-# send the byte-identical prompt (transport params aside — they never touch
-# the token stream), so there is deliberately no salt.
-_CORE_PAD = (
-    "Пункт {:04d} хроники Игоря Великого: перепись данников, реестр ладей, "
-    "календарь сборов, список послов инкской державы и опись церковной утвари "
-    "из собора в устье Вислы.\n"
-)
-
-CACHE_PREFIX_MIN_TOKENS = 2048
-_CACHE_CHARS_PER_TOKEN = 4
-
-
-def approx_prompt_tokens(text: str) -> int:
-    return max(len(text) // _CACHE_CHARS_PER_TOKEN, len(text.split()))
-
-
-def _build_core_user() -> str:
-    parts = [CORE_HEAD]
-    n = 1
-    while approx_prompt_tokens("".join(parts)) < CACHE_PREFIX_MIN_TOKENS:
-        parts.append(_CORE_PAD.format(n))
-        n += 1
-    return "".join(parts)
-
-
-CORE_USER = _build_core_user()
+# Head-only since 2026-08-29 (floor bisection): every incumbent seat caches
+# this ~800-token head in full, so no padding is needed for the twin to bite.
+CORE_USER = CORE_HEAD
 
 
 def core_payload(alias: str, include_usage: bool = False) -> dict:
