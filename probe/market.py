@@ -98,6 +98,9 @@ def record_proven(run_payload: dict, root: Path | None = None) -> Path:
 
     last_probe = the run's started_at; statuses maps check_id -> status
     (skipped checks included, so a fail-fast death is visible too).
+    The TTL stamp lands only on CONCLUSIVE outcomes: a transient "error"
+    (one-off HTTP 5xx) records its status but must not start the
+    no-reprobe freeze, so a recovering route is retried on the next sweep.
     """
     root = root or repo_root()
     proven = load_proven(root)
@@ -110,9 +113,11 @@ def record_proven(run_payload: dict, root: Path | None = None) -> Path:
         route = cell.get("alias") or ""
         if not route:
             continue
-        entry = proven.setdefault(route, {"last_probe": stamp, "statuses": {}})
-        entry["last_probe"] = stamp
-        entry.setdefault("statuses", {})[cell.get("check_id") or ""] = cell.get("status")
+        status = cell.get("status")
+        entry = proven.setdefault(route, {"statuses": {}})
+        entry.setdefault("statuses", {})[cell.get("check_id") or ""] = status
+        if status != "error":
+            entry["last_probe"] = stamp
     path = root / "data" / "proven.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(proven, indent=2, sort_keys=True) + "\n")

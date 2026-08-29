@@ -263,6 +263,39 @@ class ProvenTests(unittest.TestCase):
         self.assertEqual(proven["cb/m"]["last_probe"], "2026-08-28T06:00:00+00:00")
         self.assertEqual(proven["cb/m"]["statuses"]["core"], "pass")
 
+    def test_transient_error_records_status_without_ttl_stamp(self) -> None:
+        # one-off HTTP 5xx must not freeze a recovering route for a week
+        run_payload = {
+            "started_at": "2026-08-28T06:00:00+00:00",
+            "cells": [
+                {"alias": "cb/m", "check_id": "core", "status": "error",
+                 "candidate": True},
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            market.record_proven(run_payload, root=Path(tmp))
+            proven = market.load_proven(Path(tmp))
+        self.assertEqual(proven["cb/m"]["statuses"], {"core": "error"})
+        self.assertNotIn("last_probe", proven["cb/m"])
+        self.assertFalse(market.proven_recent(proven, "cb/m", NOW))
+
+    def test_fail_and_pass_still_stamp_ttl(self) -> None:
+        # the absolute no-reprobe rule for genuine fails stays untouched
+        run_payload = {
+            "started_at": "2026-08-28T06:00:00+00:00",
+            "cells": [
+                {"alias": "cb/m", "check_id": "core", "status": "fail",
+                 "candidate": True},
+                {"alias": "cx/m", "check_id": "core", "status": "pass",
+                 "candidate": True},
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            market.record_proven(run_payload, root=Path(tmp))
+            proven = market.load_proven(Path(tmp))
+        self.assertEqual(proven["cb/m"]["last_probe"], "2026-08-28T06:00:00+00:00")
+        self.assertEqual(proven["cx/m"]["last_probe"], "2026-08-28T06:00:00+00:00")
+
     def test_proven_recent_boundaries(self) -> None:
         def proven_for(delta):
             return {"r": {"last_probe": (NOW - delta).isoformat()}}
