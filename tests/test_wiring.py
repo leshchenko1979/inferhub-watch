@@ -594,7 +594,6 @@ class ProbeResultsSectionTests(unittest.TestCase):
             [run], ["ali/qwen3.8-max"], gen.load_registry(), self.PAYLOAD
         )
         self.assertIn('class="model-group"', section)
-        self.assertIn('class="group-grid"', section)
         self.assertIn("qwen3.8-max", section)
         self.assertIn("ali/qwen3.8-max", section)
         self.assertIn("chip price", section)

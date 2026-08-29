@@ -646,7 +646,7 @@ def probe_results_section(
         '<section class="probe-results" id="results">'
         f"<h2>{html.escape(section_title('results'))}</h2>"
         f'<p class="section-note">{note}</p>'
-        f'<div class="group-grid">{"".join(blocks)}</div>'
+        + "".join(blocks)
         + "</section>"
     )
 
