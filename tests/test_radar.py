@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import os
 import sys
 import tempfile
@@ -110,6 +111,31 @@ class VerdictTests(unittest.TestCase):
         (v,) = radar.family_verdicts(run, PRICING_ROUTES, ALIASES)
         self.assertEqual(v["challenger_cache_source"], "probe")
         self.assertAlmostEqual(v["challenger_cache_pct"], 90.0)
+
+
+class FamilyIsolationTests(unittest.TestCase):
+    def test_poisoned_family_is_skipped_not_fatal(self) -> None:
+        # the glm incumbent carries a non-numeric cache_pct: its family is
+        # skipped with a note, the healthy qwen verdict still lands
+        routes = {
+            "ali/qwen3.8-max": PRICING_ROUTES["ali/qwen3.8-max"],
+            "cb/qwen3.8-max": PRICING_ROUTES["cb/qwen3.8-max"],
+            "zai/glm-5.3": {"eff_per_mtok": 0.02, "cache_pct": "garbage",
+                            "tok_in": 750, "tok_out": 250},
+        }
+        buf = io.StringIO()
+        with mock.patch.object(sys, "stderr", buf):
+            verdicts = radar.family_verdicts(RUN_PASS, routes, ALIASES + ["zai/glm-5.3"])
+        self.assertEqual([v["family"] for v in verdicts], ["qwen3.8-max"])
+        self.assertIn("glm-5.3 skipped", buf.getvalue())
+
+    def test_unbilled_family_stays_silent(self) -> None:
+        # no billed incumbent is a normal skip — no stderr noise
+        routes = {"ali/qwen3.8-max": {"eff_per_mtok": None}}
+        buf = io.StringIO()
+        with mock.patch.object(sys, "stderr", buf):
+            self.assertEqual(radar.family_verdicts(RUN_PASS, routes, ALIASES), [])
+        self.assertEqual(buf.getvalue(), "")
 
 
 class AlertLedgerTests(unittest.TestCase):

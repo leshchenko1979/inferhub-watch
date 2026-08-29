@@ -548,9 +548,13 @@ def probe_results_section(
         return ""
     score_ids = rundata.scoring_ids(registry)
     route_entries = (payload or {}).get("routes") or {}
-    verdict_by_fam = {
-        v["family"]: v for v in radar.family_verdicts(latest, route_entries, aliases)
-    }
+    try:
+        verdict_by_fam = {
+            v["family"]: v for v in radar.family_verdicts(latest, route_entries, aliases)
+        }
+    except Exception as exc:  # noqa: BLE001 — chips are optional; the site must build
+        print(f"generate: price chips skipped: {exc}", file=sys.stderr)
+        verdict_by_fam = {}
     blocks = []
     for group in groups:
         incumbents = rundata.incumbent_aliases(aliases, group["model"])
