@@ -215,6 +215,16 @@ class WiringTests(unittest.TestCase):
         self.assertIn("cb/gpt-5.6-luna", results)
         self.assertIn("ocg/deepseek-v4-flash", page)
 
+    def test_tooltip_engine_covers_every_data_tip_cell(self) -> None:
+        # the board.js tip engine binds every td[data-tip] (hover + tap),
+        # and style.css outlines any focused/open tip cell — not just the
+        # timeline's, since pricing and candidates cells carry tips too
+        js = (repo_root() / "site" / "templates" / "board.js").read_text()
+        css = (repo_root() / "site" / "style.css").read_text()
+        self.assertIn('querySelectorAll("td[data-tip]")', js)
+        self.assertIn("td[data-tip]:focus-visible", css)
+        self.assertIn("td.tip-open", css)
+
 
 class PricingSectionTests(unittest.TestCase):
     PAYLOAD = {
@@ -310,6 +320,10 @@ class PricingSectionTests(unittest.TestCase):
         self.assertIn('data-label="cache hit"', page)
         self.assertIn('data-label="30d traffic"', page)
         self.assertIn('data-label="30d cost"', page)
+        # cost cells explain themselves on hover and tap
+        self.assertIn("Billed cost per M tokens over all traffic", page)
+        self.assertIn("Billed requests and tokens in the window", page)
+        self.assertIn("vs the previous daily snapshot", page)
 
     def test_mobile_fold_css_covers_pricing_but_not_timeline(self) -> None:
         css = (repo_root() / "site" / "style.css").read_text()
@@ -674,7 +688,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
         self.assertIn('class="chip bad">cp/cline-pass/qwen3.8-max · 0/2', seg)
         self.assertIn('class="tests-none"', seg)      # cx unprobed
         self.assertIn('&#8212;', seg)
-        self.assertIn('title="not probed in the latest run"', seg)
+        self.assertIn('data-tip="Not probed in the latest run"', seg)
 
     def test_candidates_stay_out_of_pricing_table(self) -> None:
         gen = _load_generate()
@@ -718,6 +732,33 @@ class ProbeResultsSectionTests(unittest.TestCase):
             'title="All-pass runs',
         ):
             self.assertIn(hint, seg)
+
+    def test_candidate_cells_carry_hover_and_touch_explanations(self) -> None:
+        gen = _load_generate()
+        scoring = gen.rundata.scoring_ids(gen.load_registry())
+        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
+        section = gen.probe_results_section(
+            [run], ["ali/qwen3.8-max"], gen.load_registry(), self.PAYLOAD
+        )
+        start = section.index('data-label="tests"')
+        row = section[start:section.index("</tr>", start)]
+        for tip in (
+            "Scoring checks passed in the latest probe",
+            "Prompt-cache share",
+            "Ask price per M tokens",
+            "All-pass runs / probed runs since the route was first seen.",
+        ):
+            self.assertIn(tip, row)
+        self.assertNotIn("title=", row)
+
+    def test_failed_probe_cell_names_the_missed_check_in_its_tip(self) -> None:
+        gen = _load_generate()
+        scoring = gen.rundata.scoring_ids(gen.load_registry())
+        run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 1, None)])
+        section = gen.probe_results_section(
+            [run], ["ali/qwen3.8-max"], gen.load_registry(), self.PAYLOAD
+        )
+        self.assertIn("failed:", section)
 
 
 if __name__ == "__main__":

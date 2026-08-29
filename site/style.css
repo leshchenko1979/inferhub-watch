@@ -970,8 +970,8 @@ footer {
   display: none;
 }
 
-.timeline td[data-tip]:focus-visible,
-.timeline td.tip-open {
+td[data-tip]:focus-visible,
+td.tip-open {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
 }

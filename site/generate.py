@@ -169,7 +169,13 @@ def shell(
     )
 
 
-def _viz_cell(label: str, bar_pct: float, color_cls: str, data_label: str = "") -> str:
+def _viz_cell(
+    label: str,
+    bar_pct: float,
+    color_cls: str,
+    data_label: str = "",
+    data_tip: str = "",
+) -> str:
     """Value on top, a 4px bar underneath (Gatus-style)."""
     bar = (
         f'<i class="{color_cls}" style="width:{bar_pct:.0f}%"></i>'
@@ -177,6 +183,7 @@ def _viz_cell(label: str, bar_pct: float, color_cls: str, data_label: str = "") 
         else ""
     )
     attr = f' data-label="{html.escape(data_label)}"' if data_label else ""
+    attr += f' data-tip="{html.escape(data_tip)}"' if data_tip else ""
     return (
         f'<td class="num viz"{attr}><span class="viz-val">{label}</span>'
         f'<span class="viz-bar">{bar}</span></td>'
@@ -300,12 +307,16 @@ def _delta_span(delta: float) -> str:
 
 def ask_delta_cell(payload: dict | None, prior: dict | None, route: str) -> str:
     """One Δ ask cell: in/out movement vs the prior snapshot, '—' without one."""
+    tip = (
+        ' data-tip="&#916; ask vs the previous daily snapshot: &#8595; green cheaper, '
+        '&#8593; red pricier, &#8212; no earlier snapshot."'
+    )
     deltas = rundata.ask_deltas(payload, prior, route)
     if deltas is None:
-        return '<td class="num ask-delta" data-label="&#916; ask in / out">' \
+        return f'<td class="num ask-delta" data-label="&#916; ask in / out"{tip}>' \
             '<span class="delta-flat" title="no earlier snapshot for this route">&#8212;</span></td>'
     return (
-        '<td class="num ask-delta" data-label="&#916; ask in / out">'
+        f'<td class="num ask-delta" data-label="&#916; ask in / out"{tip}>'
         + _delta_span(deltas["in"])
         + '<span class="delta-sep"> / </span>'
         + _delta_span(deltas["out"])
@@ -347,24 +358,28 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
                 rundata.log_bar_pct(eff_raw, 0.001, 10.0),
                 rundata.rate_color_class(eff_raw),
                 data_label="effective $/M",
+                data_tip="Billed cost per M tokens over all traffic in the window, cache discounts included.",
             )
             + _viz_cell(
                 rundata.cache_label(row.get("cache_pct")) or "n/a",
                 rundata.cache_bar_pct(row.get("cache_pct")),
                 rundata.cache_color_class(row.get("cache_pct")),
                 data_label="cache hit",
+                data_tip="Prompt-cache share in the billing window.",
             )
             + _viz_cell(
                 f"{reqs} req · {toks} tok",
                 rundata.log_bar_pct(reqs, *req_bounds),
                 "neutral",
                 data_label=f"{span} traffic",
+                data_tip="Billed requests and tokens in the window; bar relative to the busiest route.",
             )
             + _viz_cell(
                 rundata.cost_label(row.get("cost_usdc")) or "n/a",
                 rundata.log_bar_pct(float(row.get("cost_usdc") or 0), *cost_bounds),
                 "gold",
                 data_label=f"{span} cost",
+                data_tip="Billed cost in the window; bar relative to the busiest route.",
             )
             + "</tr>"
         )
@@ -447,13 +462,16 @@ def _candidate_route_row(
         miss = ", ".join(rundata.scoring_short(cid) for cid in failed)
         probe_sub = f'<span class="route-ask">missed: {html.escape(miss)}</span>' if miss else ""
         cell_title = (
-            f' title="failed: {html.escape(miss)}"' if miss else ' title="all checks passed"'
+            ' data-tip="Scoring checks passed in the latest probe"'
+            if not miss
+            else ' data-tip="Scoring checks passed in the latest probe'
+            f" &#8212; failed: {html.escape(miss)}\""
         )
     else:
         probe_val = "&#8212;"
         probe_sub = ""
         val_cls = "tests-none"
-        cell_title = ' title="not probed in the latest run"'
+        cell_title = ' data-tip="Not probed in the latest run"'
     ask_in = rundata.rate_label(entry.get("ask_in")) or "n/a"
     ask_out = rundata.rate_label(entry.get("ask_out")) or "n/a"
     passed, seen = rundata.route_window_record(runs, route, score_ids, candidate)
@@ -468,9 +486,10 @@ def _candidate_route_row(
             rundata.cache_bar_pct(cache_raw),
             rundata.cache_color_class(cache_raw),
             data_label="cache hit",
+            data_tip="Prompt-cache share — board routes from the 30-day billing window, audition routes from probe evidence.",
         )
-        + f'<td class="num" data-label="ask in / out">{ask_in} / {ask_out}</td>'
-        + f'<td class="num" data-label="window" title="runs all-pass / runs probed since first seen">{window}</td>'
+        + f'<td class="num" data-label="ask in / out" data-tip="Ask price per M tokens (input / output); audition routes are billed on probe traffic.">{ask_in} / {ask_out}</td>'
+        + f'<td class="num" data-label="window" data-tip="All-pass runs / probed runs since the route was first seen.">{window}</td>'
         "</tr>"
     )
 

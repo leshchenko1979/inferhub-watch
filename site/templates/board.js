@@ -38,7 +38,7 @@
 
 /* Timeline tooltips: hover on pointer devices, tap to toggle on touch. */
 (function () {
-  var cells = document.querySelectorAll(".timeline td[data-tip]");
+  var cells = document.querySelectorAll("td[data-tip]");
   if (!cells.length) return;
 
   var tip = document.createElement("div");
