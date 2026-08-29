@@ -428,6 +428,20 @@ def _resolved_for(run: dict, route: str, candidate: bool) -> str:
     return resolved
 
 
+def _effective_probe(run: dict, alias: str, score_ids: list[str]) -> tuple[int, int, bool]:
+    """(ok, total, probed) for an alias from the run's board cells — or,
+    for a seat that joined the board after the sweep probed it, from its
+    latest audition cells."""
+    if rundata.alias_probed(run, alias):
+        ok, total = rundata.scoring_pass_count(run, alias, score_ids)
+        return ok, total, True
+    if any(c.get("alias") == alias for c in rundata.candidate_cells(run)):
+        ok, total = rundata.candidate_pass_count(run, alias, score_ids)
+        return ok, total, True
+    ok, total = rundata.scoring_pass_count(run, alias, score_ids)
+    return ok, total, False
+
+
 def _candidate_route_row(
     runs: list[dict],
     route_entries: dict,
@@ -439,18 +453,23 @@ def _candidate_route_row(
     """One route row for the candidates tables (incumbent or audition)."""
     latest = runs[-1]
     entry = route_entries.get(route) or {}
+    source_candidate = candidate
     if candidate:
         ok, total = rundata.candidate_pass_count(latest, route, score_ids)
         failed = rundata.candidate_failed_ids(latest, route, score_ids)
         probed = any(c.get("alias") == route for c in rundata.candidate_cells(latest))
         cache_raw = rundata.candidate_cache_pct(latest, route)
     else:
-        ok, total = rundata.scoring_pass_count(latest, route, score_ids)
-        failed = rundata.scoring_failed_ids(latest, route, score_ids)
-        probed = rundata.alias_probed(latest, route)
+        ok, total, probed = _effective_probe(latest, route, score_ids)
+        source_candidate = probed and not rundata.alias_probed(latest, route)
+        failed = (
+            rundata.candidate_failed_ids(latest, route, score_ids)
+            if source_candidate
+            else rundata.scoring_failed_ids(latest, route, score_ids)
+        )
         cache_raw = entry.get("cache_pct")
     pill = "" if candidate else ' <span class="pill in-use">in use</span>'
-    resolved = _resolved_for(latest, route, candidate)
+    resolved = _resolved_for(latest, route, source_candidate)
     if probed:
         probe_val = f"{ok}/{total}"
         if total and ok == total:
@@ -615,10 +634,9 @@ def probe_results_section(
         if incumbents:
             best = max(
                 incumbents,
-                key=lambda a: rundata.scoring_pass_count(latest, a, score_ids)[0],
+                key=lambda a: _effective_probe(latest, a, score_ids)[0],
             )
-            ok, total = rundata.scoring_pass_count(latest, best, score_ids)
-            probed = rundata.alias_probed(latest, best)
+            ok, total, probed = _effective_probe(latest, best, score_ids)
             chips.append(
                 f'<span class="chip {_chip_cls(ok, total) if probed else "dim"}">'
                 f"{html.escape(best)} · {ok}/{total}</span>"

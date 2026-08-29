@@ -245,6 +245,13 @@ class WiringTests(unittest.TestCase):
         results = page[page.find('id="results"') : page.find('id="earlier"')]
         self.assertEqual(results.count("<code>ali/deepseek-v4-pro-0813</code>"), 1)
         self.assertIn('class="pill in-use"', results)
+        # the board row carries the audition probe evidence, not "not probed"
+        self.assertIn("tests-bad", results)
+        self.assertIn("missed: core, cache", results)
+        self.assertNotIn("Not probed in the latest run", results)
+        # the incumbent summary chip agrees (probed via the audition cells),
+        # so it is scored, not the gray "unprobed" dim
+        self.assertNotIn("chip dim", results)
 
     def test_tooltip_engine_covers_every_data_tip_cell(self) -> None:
         # the board.js tip engine binds every td[data-tip] (hover + tap),
