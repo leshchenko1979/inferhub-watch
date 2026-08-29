@@ -885,19 +885,27 @@ footer {
     max-width: none;
   }
 
-  /* Folded card fields fill two columns, column-first: candidates land
-     tests + cache hit in the left column, ask + window in the right.
-     A row with an odd cell count spills its last cell into column three. */
+  /* Folded cards: two field columns. The route name spans both columns;
+     candidates pair tests + cache hit in the left column and ask + window
+     in the right via explicit order (DOM order stays semantic). A row's
+     fifth cell — the cost card's billed total — spans both columns. */
   .pricing tr {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: repeat(2, auto);
-    grid-auto-flow: column;
     column-gap: var(--space-4);
     margin: 0 0 var(--space-5);
     padding: var(--space-3) 0;
     border-bottom: 1px solid var(--line);
   }
+
+  .pricing tr > td:nth-of-type(5) {
+    grid-column: 1 / -1;
+  }
+
+  .candidates tr > td:nth-of-type(1) { order: 1; }
+  .candidates tr > td:nth-of-type(2) { order: 3; }
+  .candidates tr > td:nth-of-type(3) { order: 2; }
+  .candidates tr > td:nth-of-type(4) { order: 4; }
 
   .pricing tr > th {
     grid-column: 1 / -1;

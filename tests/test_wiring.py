@@ -317,12 +317,18 @@ class PricingSectionTests(unittest.TestCase):
         # cost + candidates tables fold like the matrix
         self.assertIn(".pricing tbody,", mobile)
         self.assertIn(".pricing td[data-label]::before", mobile)
-        # folded cards lay their fields out in two columns, column-first:
-        # candidates get tests + cache hit on the left, ask + window right
+        # folded cards lay their fields out in two columns: candidates pair
+        # tests + cache hit in the left column, ask + window in the right,
+        # placed by explicit order so DOM order stays semantic
         self.assertIn(".pricing tr {", mobile)
         self.assertIn("grid-template-columns: 1fr 1fr;", mobile)
-        self.assertIn("grid-auto-flow: column;", mobile)
+        self.assertIn(".candidates tr > td:nth-of-type(2) { order: 3; }", mobile)
+        self.assertIn(".candidates tr > td:nth-of-type(3) { order: 2; }", mobile)
+        # an odd fifth cell (the cost card's billed total) spans both columns
+        self.assertIn(".pricing tr > td:nth-of-type(5) {", mobile)
         self.assertIn("grid-column: 1 / -1;", mobile)
+        # column-flow auto-placement mis-placed cells beside the spanning name
+        self.assertNotIn("grid-auto-flow", mobile)
         # past runs keep the table layout (no .timeline fold in this block)
         self.assertNotIn(".timeline tbody,", mobile)
 
