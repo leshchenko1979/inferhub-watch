@@ -1,11 +1,4 @@
 {
-  "ali/deepseek-v4-pro-0813": {
-    "last_probe": "2026-08-29T12:21:36.820931+00:00",
-    "statuses": {
-      "cache": "fail",
-      "core": "pass"
-    }
-  },
   "cb/glm-5.3": {
     "last_probe": "2026-08-28T19:50:09.435030+00:00",
     "statuses": {
