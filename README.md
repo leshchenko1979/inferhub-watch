@@ -35,9 +35,24 @@ Scoring checks: **core** (one request asserts the stream shape as the consuming 
 
 1. Create `checks/<id>/check.py` with `run(client, alias) -> dict` using [probe/result.py](probe/result.py).
 2. Write `checks/<id>/page.md` in plain language (what / pass / fail / who cares), including the request JSON when it matters.
-3. Put fixtures in `checks/<id>/test.py`. Keep [tests/](tests/) for registry and site wiring only.
-4. Append a `[[checks]]` block to [checks/registry.toml](checks/registry.toml). Set `scores_rank = true` only if the check should rank aliases.
+3. Put the check's own fixtures in `checks/<id>/test.py`; probe-level unit tests live in [tests/](tests/).
+4. Append a `[[checks]]` block to [checks/registry.toml](checks/registry.toml) — see the schema below. Set `scores_rank = true` only if the check should rank aliases.
 5. Keep the runner on the Python 3.12 standard library.
+
+## Registry schema
+
+Both registries are plain TOML, loaded by [probe/registry.py](probe/registry.py) with `tomllib` and **no validation** — every key passes through verbatim, nothing is rewritten or dropped.
+
+**How to add a provider route** — append its alias string to the `aliases` array in [models.toml](models.toml). The next run probes it and the site picks it up; no other wiring needed. (Prefer opening a GitHub issue to propose one — see Layout.)
+
+**Check entries** — one `[[checks]]` block per check in [checks/registry.toml](checks/registry.toml):
+
+| Key | Consumed by | Meaning |
+| --- | --- | --- |
+| `id` | runner, site | Folder name under `checks/`; also the nav anchor and page filename |
+| `title` | site | Heading in the results list and the check page |
+| `scores_rank` | runner, radar, site | `true` = counts toward alias ranking; `false` = informational only |
+| `blurb`, `severity`, `contract` | — | Documentation metadata; no code reads them today |
 
 ## Local
 
