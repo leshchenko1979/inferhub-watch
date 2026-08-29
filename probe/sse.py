@@ -1,3 +1,15 @@
+"""SSE / completion-chunk parsers — the stream contract this repo scores by.
+
+All functions here are pure: they take parsed JSON chunks (or raw SSE text,
+for parse_sse) and return plain data. Two deliberate deviations from the
+textbook OpenAI spec, scored to the consuming runtime's actual behaviour:
+
+* empty-string ``finish_reason`` — counted by inspect_stream and treated as
+  TERMINAL by the core check (the consumer's accumulator flushes on it);
+* empty-string tool names — counted as tolerated evidence only (the consumer
+  skips them, first non-empty name sticks).
+"""
+
 from __future__ import annotations
 
 import json
@@ -5,6 +17,12 @@ from typing import Any
 
 
 def parse_sse(raw: str) -> list[dict[str, Any]]:
+    """Split raw SSE text into JSON chunks.
+
+    Only ``data:`` payloads are kept; ``[DONE]`` and empty data lines end
+    nothing and add nothing. Malformed JSON lines are silently dropped —
+    providers do emit them, and a probe must score around one, not die on it.
+    """
     chunks: list[dict[str, Any]] = []
     for line in raw.split("\n"):
         stripped = line.strip()
@@ -21,6 +39,11 @@ def parse_sse(raw: str) -> list[dict[str, Any]]:
 
 
 def tool_deltas(chunk: dict[str, Any]) -> list[dict[str, Any]]:
+    """tool_calls on the first choice — streaming (delta) or whole (message).
+
+    Returns [] when the chunk has no choices or no tool_calls. delta wins
+    over message when both are present (streaming providers never set both).
+    """
     choices = chunk.get("choices") or []
     if not choices:
         return []
@@ -31,6 +54,11 @@ def tool_deltas(chunk: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def finish_reason(chunk: dict[str, Any]) -> Any:
+    """finish_reason of the first choice, None when there are no choices.
+
+    May legitimately be "" — that is a real (broken) provider behaviour the
+    caller must handle, not an absent value. Distinguish "" from None.
+    """
     choices = chunk.get("choices") or []
     if not choices:
         return None
@@ -38,6 +66,7 @@ def finish_reason(chunk: dict[str, Any]) -> Any:
 
 
 def resolved_model(chunks: list[dict[str, Any]], fallback: str = "") -> str:
+    """First non-empty string ``model`` seen in the stream, else fallback."""
     for chunk in chunks:
         model = chunk.get("model")
         if isinstance(model, str) and model:
@@ -46,6 +75,11 @@ def resolved_model(chunks: list[dict[str, Any]], fallback: str = "") -> str:
 
 
 def last_usage(chunks: list[dict[str, Any]]) -> dict[str, Any]:
+    """Last non-empty ``usage`` dict in the stream, else {}.
+
+    Providers send usage on the final chunk (with stream_options), so the
+    scan runs backwards; earlier partial usage blocks are ignored.
+    """
     for chunk in reversed(chunks):
         usage = chunk.get("usage")
         if isinstance(usage, dict) and usage:
@@ -58,7 +92,13 @@ def inspect_stream(chunks: list[dict[str, Any]]) -> dict[str, Any]:
 
     Empty-string finish_reason and empty-string tool names are both counted;
     the CORE CHECK decides the verdict: finish_reason "" fails (terminal to
-    the consumer's accumulator), name "" is tolerated evidence only."""
+    the consumer's accumulator), name "" is tolerated evidence only.
+
+    Returns a dict with keys: chunk_count, empty_name_chunks (chunks carrying
+    a tool_call whose name is ""), empty_finish_chunks (chunks whose
+    finish_reason is ""), names (unique non-empty tool names, first-seen
+    order), last_finish_reason (last non-None finish_reason, "" included).
+    """
     empty_names = 0
     empty_finish = 0
     names: list[str] = []
@@ -87,6 +127,12 @@ def inspect_stream(chunks: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def usage_pricing_fields(usage: dict[str, Any]) -> dict[str, Any]:
+    """InferHub pricing extras present on ``usage``, passed through verbatim.
+
+    Only keys the provider actually sent are returned (no defaults injected);
+    cached_tokens is additionally lifted out of prompt_tokens_details when
+    the provider nests it there.
+    """
     keys = (
         "cost",
         "market_cost",
@@ -114,6 +160,13 @@ def _int_tokens(value: Any) -> int:
 
 
 def cached_tokens(usage: dict[str, Any]) -> int:
+    """Cache-hit tokens under whichever alias the provider used; 0 if none.
+
+    Providers disagree on the field name (cached_tokens,
+    prompt_cache_hit_tokens, cache_read_input_tokens, or nested inside
+    prompt_tokens_details), so all known aliases are read and the maximum
+    wins. Non-numeric values (including bools) count as 0.
+    """
     details = usage.get("prompt_tokens_details")
     if not isinstance(details, dict):
         details = {}
