@@ -621,6 +621,26 @@ td {
   margin-top: 0;
 }
 
+/* Collapsible groups try a two-column grid; each cell's table keeps its
+   own horizontal scroll when it outgrows the half-width. */
+
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.group-grid .model-group {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .group-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .model-group .pricing {
   margin-top: var(--space-3);
 }
