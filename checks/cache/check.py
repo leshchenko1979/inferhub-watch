@@ -1,7 +1,15 @@
-"""Cache twin: repeats the core payload byte-for-byte and asks whether the
-second identical request hit the prompt cache. One request, one verdict —
+"""Cache twin: repeats the core probe's prompt byte-for-byte and asks whether
+the second identical request hit the prompt cache. One request, one verdict —
 the core payload already carries tools and the 2048-token Russian chronicle,
-so no extra prefix requests are needed (that is the suite-v2 win)."""
+so no extra prefix requests are needed (that is the suite-v2 win).
+
+The twin sets ``stream_options.include_usage``: the OpenAI spec returns usage
+on streamed responses ONLY when requested, and spec-strict upstreams stay
+silent otherwise (the ali deepseek lesson — invisible usage scored as a
+proven cache miss while gateway billing showed real hits). Some InferHub
+routes 400 unknown params (the max_tokens precedent), so on HTTP 400 the twin
+retries ONCE without stream_options — worst case is the old usage-blind
+behaviour, never a worse one."""
 
 from __future__ import annotations
 
@@ -18,8 +26,16 @@ from probe.sse import (
 
 
 def run(client: InferHubClient, alias: str) -> dict:
-    payload = core_payload(alias)
+    payload = core_payload(alias, include_usage=True)
     status, raw, ms = client.post(payload)
+    usage_requested = True
+    if status == 400:
+        # Some routes 400 unknown params (the max_tokens precedent). Drop
+        # stream_options and retry ONCE — worst case is the old usage-blind
+        # behaviour, never a worse one.
+        payload = core_payload(alias)
+        usage_requested = False
+        status, raw, ms = client.post(payload)
     if status != 200:
         return result(
             check_id="cache",
@@ -40,6 +56,9 @@ def run(client: InferHubClient, alias: str) -> dict:
         "prompt_tokens": prompt,
         "chunk_count": len(chunks),
         "usage": usage_pricing_fields(usage),
+        # False only when the route 400'd stream_options and we fell back —
+        # usage was then NOT requested, so absence says nothing about caching.
+        "usage_requested": usage_requested,
     }
     if prompt:
         evidence["hit_ratio"] = cached / prompt

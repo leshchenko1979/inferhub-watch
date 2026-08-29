@@ -43,8 +43,9 @@ CORE_HEAD = (
     "Вопрос: в каком году игорь великий атаковал католических инков?\n"
 )
 
-# Deterministic padding that continues the chronicle; the cache twin must send
-# the byte-identical payload, so there is deliberately no salt.
+# Deterministic padding that continues the chronicle; the cache twin must
+# send the byte-identical prompt (transport params aside — they never touch
+# the token stream), so there is deliberately no salt.
 _CORE_PAD = (
     "Пункт {:04d} хроники Игоря Великого: перепись данников, реестр ладей, "
     "календарь сборов, список послов инкской державы и опись церковной утвари "
@@ -71,11 +72,21 @@ def _build_core_user() -> str:
 CORE_USER = _build_core_user()
 
 
-def core_payload(alias: str) -> dict:
-    return {
+def core_payload(alias: str, include_usage: bool = False) -> dict:
+    payload = {
         "model": alias,
         "messages": [{"role": "user", "content": CORE_USER}],
         "tools": REPORT_ANSWER_TOOLS,
         "tool_choice": "required",
         "stream": True,
     }
+    if include_usage:
+        # OpenAI spec: streamed responses carry usage ONLY when requested.
+        # Spec-strict upstreams stay silent otherwise (the ali deepseek
+        # lesson: an invisible usage block was scored as a proven cache
+        # miss while gateway billing showed 44.8%/26.7% real hits).
+        # Some InferHub routes 400 unknown params (the max_tokens
+        # precedent), so callers must fall back to the plain payload on
+        # HTTP 400 — worst case is the old usage-blind behaviour.
+        payload["stream_options"] = {"include_usage": True}
+    return payload

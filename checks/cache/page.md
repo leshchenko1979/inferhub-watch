@@ -1,6 +1,6 @@
 # Prompt cache on an identical repeat
 
-This check is the **cache twin**: it sends the exact same request as the core probe — `stream: true`, `tool_choice: required`, the same `report_answer` tool, the same ~2k-token Russian chronicle — and asks whether the repeat hit the prompt cache.
+This check is the **cache twin**: it repeats the core probe's request — `stream: true`, `tool_choice: required`, the same `report_answer` tool, the same ~2k-token Russian chronicle — plus `stream_options.include_usage`, and asks whether the repeat hit the prompt cache. Usage on a streamed response only arrives when asked for (OpenAI spec), and spec-strict upstreams stay silent otherwise; a route that 400s the param gets one fallback retry without it — worst case the old usage-blind behaviour.
 
 There is no separate prefix request. The core payload already carries the tokens a cache needs to bite (text dense enough for ali's floor), so suite v2 folds "russian" and "tools" into request one and measures the cache on request two. The route is probed twice per day — or once, when the core probe already failed (fail-fast).
 
@@ -14,4 +14,4 @@ The identical repeat still reports `cached_tokens` 0, or the stream has no SSE c
 
 ## What we record
 
-`cached_tokens`, `prompt_tokens`, `hit_ratio` (cached ÷ prompt), and the full pricing-shaped usage fields (`cost`, `market_cost`, `gateway_cost`, `credit` …) when the gateway reports them — the pricing observability of the retired usage-pricing check rides free on this request.
+`cached_tokens`, `prompt_tokens`, `hit_ratio` (cached ÷ prompt), the full pricing-shaped usage fields (`cost`, `market_cost`, `gateway_cost`, `credit` …) when the gateway reports them — the pricing observability of the retired usage-pricing check rides free on this request — and `usage_requested` (`false` only when the route 400'd `stream_options` and we fell back, so a missing usage block says nothing about caching).
