@@ -137,6 +137,23 @@ class FamilyIsolationTests(unittest.TestCase):
             self.assertEqual(radar.family_verdicts(RUN_PASS, routes, ALIASES), [])
         self.assertEqual(buf.getvalue(), "")
 
+    def test_estimate_cache_verdict_never_alerts(self) -> None:
+        # 80% margin but challenger priced on the family cache estimate
+        (v,) = radar.family_verdicts(RUN_PASS, PRICING_ROUTES, ALIASES)
+        self.assertEqual(v["challenger_cache_source"], "family")
+        self.assertAlmostEqual(v["margin_pct"], 80.0)
+        self.assertEqual(radar.due_alerts([v], {}), [])
+
+    def test_measured_cache_verdict_alerts(self) -> None:
+        # same 80% margin with probe-measured cache evidence is due
+        run = make_run({"core": "pass", "cache": "pass"})
+        for cell in run["cells"]:
+            if cell.get("candidate") and cell["check_id"] == "cache":
+                cell["evidence"] = {"cached_tokens": 0, "usage": {"prompt_tokens": 1000}}
+        (v,) = radar.family_verdicts(run, PRICING_ROUTES, ALIASES)
+        self.assertEqual(v["challenger_cache_source"], "probe")
+        self.assertEqual(len(radar.due_alerts([v], {})), 1)
+
 
 class AlertLedgerTests(unittest.TestCase):
     def _verdict(self, margin):
@@ -146,6 +163,7 @@ class AlertLedgerTests(unittest.TestCase):
             "incumbent_usd_m": 0.005,
             "challenger": "cb/qwen3.8-max",
             "challenger_usd_m": 0.001,
+            "challenger_cache_source": "probe",
             "margin_pct": margin,
         }
 

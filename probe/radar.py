@@ -160,9 +160,16 @@ def _family_verdict(fam: str, info: dict, run: dict, checks: list[str],
 
 
 def due_alerts(verdicts: list[dict], ledger: dict) -> list[dict]:
-    """Verdicts whose margin crossed the threshold newly or widened."""
+    """Verdicts whose margin crossed the threshold newly or widened.
+
+    Alert-eligible only with MEASURED cache evidence ("probe"): a
+    challenger priced on the family cache estimate may be a phantom until
+    its own cache cell runs — estimates stay on the site chip, never ping.
+    """
     due = []
     for verdict in verdicts:
+        if verdict.get("challenger_cache_source") != "probe":
+            continue
         margin = verdict["margin_pct"]
         if margin is None or margin < MARGIN_ALERT_PCT:
             continue
