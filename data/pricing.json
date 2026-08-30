@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-30T11:31:24+00:00",
+  "generated_at": "2026-08-30T20:51:16+00:00",
   "range": "30d",
-  "requests_scanned": 10026,
+  "requests_scanned": 10477,
   "days": [
     {
       "date": "2026-08-25",
@@ -20,67 +20,67 @@
     },
     {
       "date": "2026-08-28",
-      "cost_usdc": "1.607366",
-      "requests": 3842
+      "cost_usdc": "1.607276",
+      "requests": 3840
     },
     {
       "date": "2026-08-29",
-      "cost_usdc": "13.078327",
-      "requests": 4208
+      "cost_usdc": "13.077919",
+      "requests": 4207
     },
     {
       "date": "2026-08-30",
-      "cost_usdc": "1.881746",
-      "requests": 513
+      "cost_usdc": "3.849989",
+      "requests": 967
     }
   ],
   "routes": {
     "ali/deepseek-v4-flash-0731": {
-      "ask_in": 0.044,
-      "ask_out": 0.132,
+      "ask_in": 0.011,
+      "ask_out": 0.033,
       "eff_per_mtok": 0.0092,
       "cache_pct": 44.3,
-      "reqs": 34,
-      "tok_in": 891861,
-      "tok_out": 13811,
-      "cost_usdc": "0.008317",
-      "last_ts": "2026-08-30T11:20:30.056Z",
+      "reqs": 36,
+      "tok_in": 893559,
+      "tok_out": 13899,
+      "cost_usdc": "0.008340",
+      "last_ts": "2026-08-30T20:48:06.367Z",
       "source": "usage-logs"
     },
     "ali/deepseek-v4-pro-0813": {
-      "ask_in": 0.09174,
-      "ask_out": 0.27522,
-      "eff_per_mtok": 0.0452,
-      "cache_pct": 26.1,
-      "reqs": 25,
-      "tok_in": 172687,
-      "tok_out": 1758,
-      "cost_usdc": "0.007877",
-      "last_ts": "2026-08-30T11:20:34.490Z",
+      "ask_in": 0.033,
+      "ask_out": 0.099,
+      "eff_per_mtok": 0.0451,
+      "cache_pct": 25.8,
+      "reqs": 27,
+      "tok_in": 174384,
+      "tok_out": 1818,
+      "cost_usdc": "0.007939",
+      "last_ts": "2026-08-30T20:48:10.866Z",
       "source": "usage-logs"
     },
     "ali/qwen3.8-max": {
-      "ask_in": 0.15,
-      "ask_out": 0.45,
-      "eff_per_mtok": 0.0252,
-      "cache_pct": 76.1,
-      "reqs": 9028,
-      "tok_in": 653594095,
-      "tok_out": 9827524,
-      "cost_usdc": "16.748893",
-      "last_ts": "2026-08-30T11:20:37.928Z",
+      "ask_in": 0.14,
+      "ask_out": 0.42,
+      "eff_per_mtok": 0.0269,
+      "cache_pct": 75.8,
+      "reqs": 9455,
+      "tok_in": 684625299,
+      "tok_out": 10439079,
+      "cost_usdc": "18.696416",
+      "last_ts": "2026-08-30T20:48:14.986Z",
       "source": "usage-logs"
     },
     "zai/glm-5.3-flash": {
-      "ask_in": 0.01275,
-      "ask_out": 0.0425,
-      "eff_per_mtok": 0.0253,
-      "cache_pct": 42.7,
-      "reqs": 11,
-      "tok_in": 25659,
-      "tok_out": 1018,
-      "cost_usdc": "0.000675",
-      "last_ts": "2026-08-30T11:20:44.946Z",
+      "ask_in": 0.0672,
+      "ask_out": 0.224,
+      "eff_per_mtok": 0.0206,
+      "cache_pct": 86.7,
+      "reqs": 31,
+      "tok_in": 979762,
+      "tok_out": 31091,
+      "cost_usdc": "0.020812",
+      "last_ts": "2026-08-30T20:48:29.109Z",
       "source": "usage-logs"
     }
   }

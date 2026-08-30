@@ -1,0 +1,258 @@
+{
+  "started_at": "2026-08-30T20:48:03.211681+00:00",
+  "finished_at": "2026-08-30T20:48:29.319966+00:00",
+  "origin": "github-actions",
+  "api": "https://api.inferhub.dev/v1/chat/completions",
+  "aliases": [
+    "ali/deepseek-v4-flash-0731",
+    "ali/deepseek-v4-pro-0813",
+    "ali/qwen3.8-max",
+    "zai/glm-5.3-flash"
+  ],
+  "candidates": [],
+  "checks": [
+    "core",
+    "cache"
+  ],
+  "cells": [
+    {
+      "check_id": "core",
+      "alias": "ali/deepseek-v4-flash-0731",
+      "resolved_model": "ali/deepseek-v4-flash-0731",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 54 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 1859.6,
+      "evidence": {
+        "chunk_count": 14,
+        "empty_name_chunks": 12,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {},
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "deepseek-v4-flash",
+      "cost_usdc": "0.000013",
+      "cost_match": "order"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ali/deepseek-v4-flash-0731",
+      "resolved_model": "ali/deepseek-v4-flash-0731",
+      "status": "fail",
+      "summary": "First identical repeat showed no prompt-cache hit (560 input tokens): usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 1491.2,
+      "evidence": {
+        "cached_tokens": 0,
+        "prompt_tokens": 560,
+        "chunk_count": 15,
+        "usage": {
+          "prompt_tokens": 560,
+          "completion_tokens": 61,
+          "cached_tokens": 0
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.0
+      },
+      "model": "deepseek-v4-flash",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "ali/deepseek-v4-pro-0813",
+      "resolved_model": "ali/deepseek-v4-pro-0813",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 12 chars, 5 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 2319.9,
+      "evidence": {
+        "chunk_count": 6,
+        "empty_name_chunks": 4,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {},
+        "chars": 12,
+        "cyrillic_chars": 5,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 12,
+        "finish_reason": "tool_calls",
+        "sample": "\u0412 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "deepseek-v4-pro",
+      "cost_usdc": "0.000039",
+      "cost_match": "order"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ali/deepseek-v4-pro-0813",
+      "resolved_model": "ali/deepseek-v4-pro-0813",
+      "status": "fail",
+      "summary": "First identical repeat showed no prompt-cache hit (560 input tokens): usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 2193.5,
+      "evidence": {
+        "cached_tokens": 0,
+        "prompt_tokens": 560,
+        "chunk_count": 7,
+        "usage": {
+          "prompt_tokens": 560,
+          "completion_tokens": 46,
+          "cached_tokens": 0
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.0
+      },
+      "model": "deepseek-v4-pro",
+      "cost_usdc": "0.000023",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "ali/qwen3.8-max",
+      "resolved_model": "ali/qwen3.8-max",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 53 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 2613.3,
+      "evidence": {
+        "chunk_count": 13,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "prompt_tokens": 549,
+          "completion_tokens": 46,
+          "cached_tokens": 0
+        },
+        "chars": 53,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 53,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443"
+      },
+      "model": "qwen3.8-max",
+      "cost_usdc": "0.000096",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ali/qwen3.8-max",
+      "resolved_model": "ali/qwen3.8-max",
+      "status": "fail",
+      "summary": "First identical repeat showed no prompt-cache hit (549 input tokens): usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 1491.5,
+      "evidence": {
+        "cached_tokens": 0,
+        "prompt_tokens": 549,
+        "chunk_count": 13,
+        "usage": {
+          "prompt_tokens": 549,
+          "completion_tokens": 47,
+          "cached_tokens": 0
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.0
+      },
+      "model": "qwen3.8-max",
+      "cost_usdc": "0.000097",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "zai/glm-5.3-flash",
+      "resolved_model": "zai/glm-5.3-flash",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 24 chars, 10 Cyrillic, as text content.",
+      "http_status": 200,
+      "latency_ms": 8075.6,
+      "evidence": {
+        "chunk_count": 46,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "prompt_tokens": 408,
+          "completion_tokens": 61,
+          "cached_tokens": 0
+        },
+        "chars": 24,
+        "cyrillic_chars": 10,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 12,
+        "argument_chars": 12,
+        "finish_reason": "tool_calls",
+        "sample": "\u0412 1187 \u0433\u043e\u0434\u0443.\u0412 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "glm-5.3-flash",
+      "cost_usdc": "0.000041",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "zai/glm-5.3-flash",
+      "resolved_model": "zai/glm-5.3-flash",
+      "status": "pass",
+      "summary": "Prompt cache hit on the identical repeat: 384 of 408 input tokens reused (94%).",
+      "http_status": 200,
+      "latency_ms": 6053.4,
+      "evidence": {
+        "cached_tokens": 384,
+        "prompt_tokens": 408,
+        "chunk_count": 43,
+        "usage": {
+          "prompt_tokens": 408,
+          "completion_tokens": 70,
+          "cached_tokens": 384
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.9411764705882353
+      },
+      "model": "glm-5.3-flash",
+      "cost_usdc": "0.000020",
+      "cost_match": "tokens"
+    }
+  ],
+  "runner_errors": [],
+  "cost": {
+    "matched": 8,
+    "cells": 8,
+    "total_usdc": "0.000339",
+    "source": "usage-logs"
+  }
+}
