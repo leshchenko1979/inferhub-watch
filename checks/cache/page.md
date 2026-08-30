@@ -1,8 +1,8 @@
 # Prompt cache on an identical repeat
 
-This check is the **cache twin**: it repeats the core probe's request — `stream: true`, `tool_choice: required`, the same `report_answer` tool, the same head-only Russian chronicle (~800 tokens) — plus `stream_options.include_usage`, and asks whether the repeat hit the prompt cache. Usage on a streamed response only arrives when asked for (OpenAI spec), and spec-strict upstreams stay silent otherwise; a route that 400s the param gets one fallback retry without it — worst case the old usage-blind behaviour.
+This check is the **cache twin**: it repeats the core probe's request — `stream: true`, `tool_choice: required`, the same `report_answer` tool, the same Russian chronicle (head + 12 pad blocks, ~1530 ali-billed tokens) — plus `stream_options.include_usage`, and asks whether the repeat hit the prompt cache. Usage on a streamed response only arrives when asked for (OpenAI spec), and spec-strict upstreams stay silent otherwise; a route that 400s the param gets one fallback retry without it — worst case the old usage-blind behaviour.
 
-There is no separate prefix request. The core payload already carries the tokens a cache needs to bite — a 2026-08-29 floor bisection proved every incumbent seat caches the ~800-token head in full — so suite v2 folds "russian" and "tools" into request one and measures the cache on request two. The route is probed twice per day — or once, when the core probe already failed (fail-fast).
+There is no separate prefix request. The core payload already carries the tokens a cache needs to bite — sized 2026-08-30 so it clears every incumbent's floor: ali's qwen3.8-max and deepseek-v4-pro refuse to cache below a ~1024-token minimum cacheable prefix (a spike measured 0% hits at 878-913 billed tokens, 96%/81% at 1206-1265), so the chronicle is the head plus 12 pad blocks (~1530 ali-billed tokens; all three ali routes cache 63-75% there). deepseek-v4-flash caches at any size but stochastically — per-replica lottery, so a rare miss on it is noise, not a floor. Suite v2 folds "russian" and "tools" into request one and measures the cache on request two. The route is probed twice per day — or once, when the core probe already failed (fail-fast).
 
 ## Pass
 
@@ -10,8 +10,8 @@ The repeat reports a cache hit: `cached_tokens`, `prompt_tokens_details.cached_t
 
 ## Fail
 
-The identical repeat still reports `cached_tokens` 0, or the stream has no SSE chunks. This is a single attempt — the old "three tries with a prefix" dance is retired; if the route cannot cache an ~800-token repeat, that is already the answer.
+The identical repeat still reports `cached_tokens` 0, or the stream has no SSE chunks. This is a single attempt — the old "three tries with a prefix" dance is retired; if the route cannot cache a repeat of the ~1530-token chronicle, that is already the answer. (deepseek-v4-flash's occasional miss is the per-replica lottery, not a floor — see above.)
 
 ## What we record
 
-`cached_tokens`, `prompt_tokens`, `hit_ratio` (cached ÷ prompt), the full pricing-shaped usage fields (`cost`, `market_cost`, `gateway_cost`, `credit` …) when the gateway reports them — the pricing observability of the retired usage-pricing check rides free on this request — and `usage_requested` (`false` only when the route 400'd `stream_options` and we fell back, so a missing usage block says nothing about caching). Runs before 2026-08-30 used a padded ~2048-token chronicle; each run's `prompt_tokens` says which payload era it belongs to, so hit ratios stay comparable only within an era.
+`cached_tokens`, `prompt_tokens`, `hit_ratio` (cached ÷ prompt), the full pricing-shaped usage fields (`cost`, `market_cost`, `gateway_cost`, `credit` …) when the gateway reports them — the pricing observability of the retired usage-pricing check rides free on this request — and `usage_requested` (`false` only when the route 400'd `stream_options` and we fell back, so a missing usage block says nothing about caching). Payload eras, distinguishable by each run's `prompt_tokens`: padded ~2048 chronicle (before 2026-08-30), head-only ~550-800 (a few hours on 2026-08-30), 12-block ~1530-1620 (from 2026-08-30) — hit ratios stay comparable only within an era.

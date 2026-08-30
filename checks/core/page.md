@@ -10,7 +10,7 @@ OpenAI documents streaming chat completions and tool-call deltas here: [Chat Com
 
 ## What we send
 
-`stream: true`, `tool_choice: required`, one `report_answer` tool. The user message is a **fabricated Russian chronicle** (Igor the Great attacks the Catholic Incas in 1187) sent head-only (**~800 tokens**) — the same byte stream is repeated verbatim by the cache check, and a 2026-08-29 floor bisection proved every incumbent seat caches the head in full, so the old 2k padding was dead weight. We do **not** send `max_tokens`; some InferHub routes reject it. We request the **alias** in `model`; InferHub may return a different `model` string.
+`stream: true`, `tool_choice: required`, one `report_answer` tool. The user message is a **fabricated Russian chronicle** (Igor the Great attacks the Catholic Incas in 1187): the head plus 12 deterministic pad blocks (**~1530 ali-billed tokens**, sized 2026-08-30 to clear ali's ~1024-token minimum cacheable prefix — the 2026-08-29 head-only shrink fell under it and ali's cache went dark; see the cache check's page for the spike numbers). The same byte stream is repeated verbatim by the cache check. We do **not** send `max_tokens`; some InferHub routes reject it. We request the **alias** in `model`; InferHub may return a different `model` string.
 
 ```json
 {
@@ -18,7 +18,7 @@ OpenAI documents streaming chat completions and tool-call deltas here: [Chat Com
   "messages": [
     {
       "role": "user",
-      "content": "<русская хроника целиком, ~800 токенов: игорь великий, католические инки, 1187 год>"
+      "content": "<русская хроника целиком, ~1530 токенов: игорь великий, католические инки, 1187 год + 12 блоков пединга>"
     }
   ],
   "tools": [

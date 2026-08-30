@@ -26,9 +26,10 @@ REPORT_ANSWER_TOOLS = [
 # model must synthesise — it cannot recite memorised text, which is exactly
 # where a broken gateway shows mojibake. The same byte stream is then repeated
 # verbatim by the cache twin; determinism is what lets alias see a cache hit
-# at all. Head-only since 2026-08-29: a floor bisection proved every incumbent
-# seat caches this ~800-token head in full, so the old 2048-token padding was
-# dead weight (~75% input cost, ~2x latency per cell).
+# at all. Sizing history: 2048-token padding (pre 2026-08-29) -> head-only
+# (~550-800 billed, a few hours) -> 12 pad blocks (2026-08-30 spike): ali's
+# qwen/pro refuse to cache under a ~1024-token minimum cacheable prefix, so
+# the head alone fell under their floor. See the _PAD block below.
 CORE_HEAD = (
     "Ты контролёр качества русскоязычного ответа. Отвечай на вопрос одним "
     "предложением, строго по-русски, без кавычек, без пояснений, без "
@@ -45,9 +46,23 @@ CORE_HEAD = (
     "Вопрос: в каком году игорь великий атаковал католических инков?\n"
 )
 
-# Head-only since 2026-08-29 (floor bisection): every incumbent seat caches
-# this ~800-token head in full, so no padding is needed for the twin to bite.
-CORE_USER = CORE_HEAD
+# Chronicle sizing, 2026-08-30 spike (owner: "make the cache work"): ali's
+# qwen3.8-max and deepseek-v4-pro refuse to cache below a ~1024-token minimum
+# cacheable prefix (0% hits at 878/913 billed tokens, 96%/81% at 1206/1265);
+# deepseek-v4-flash caches at any size but stochastically (per-replica
+# lottery: 2/3 head-only pairs hit 91%, one missed — today's production
+# probe lost that dice roll). CORE_HEAD alone bills ~549-560 ali tokens —
+# under the floor. 12 deterministic pad blocks bill ~1530-1620 and cache on
+# all three ali routes (63-75%); zai/glm-5.3-flash caches at any size.
+# Caching is chunk-granular (512/1024), so partial hits are normal.
+_PAD = (
+    "Хроника {}: флот Игорь Великий вёл вдоль берега, ладьи шли гуськом, "
+    "вёсла мерно ударяли по волне, дозорные всматривались в туман, и каждый "
+    "день хроники добавлял к свитку новую строку о ветре, течении и дальних "
+    "кострах на чужом берегу. "
+)
+CACHE_FLOOR_BLOCKS = 12
+CORE_USER = CORE_HEAD + "".join(_PAD.format(i) for i in range(CACHE_FLOOR_BLOCKS))
 
 
 def core_payload(alias: str, include_usage: bool = False) -> dict:

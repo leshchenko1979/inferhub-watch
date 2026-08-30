@@ -105,8 +105,9 @@ class CoreCheckTests(unittest.TestCase):
         self.assertEqual(payload["tool_choice"], "required")
         self.assertEqual(payload["tools"][0]["function"]["name"], "report_answer")
         self.assertEqual(payload["messages"][0]["role"], "user")
-        # Byte-identical content is the cache twin's invariant; size went
-        # head-only with the 2026-08-29 floor bisection.
+        # Byte-identical content is the cache twin's invariant; size is the
+        # 12-block chronicle (2026-08-30 spike: clears ali's ~1024-token
+        # cacheable-prefix floor — head-only fell under it).
         self.assertEqual(payload["messages"][0]["content"], CORE_USER)
         self.assertNotIn("max_tokens", payload)
 

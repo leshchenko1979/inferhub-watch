@@ -1,7 +1,8 @@
 """Cache twin: repeats the core probe's prompt byte-for-byte and asks whether
 the second identical request hit the prompt cache. One request, one verdict —
-the core payload already carries tools and the ~800-token Russian chronicle,
-so no extra prefix requests are needed (that is the suite-v2 win).
+the core payload already carries tools and the Russian chronicle (sized to
+clear every incumbent's cache floor), so no extra prefix requests are needed
+(that is the suite-v2 win).
 
 The twin sets ``stream_options.include_usage``: the OpenAI spec returns usage
 on streamed responses ONLY when requested, and spec-strict upstreams stay
