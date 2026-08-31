@@ -473,6 +473,16 @@ td {
   font-weight: 500;
 }
 
+/* Tablet band: nowrap still applies above 720px and the official-price
+   table overflows its container (~826px in a ~736px box at 768px);
+   let pricing cells wrap there like they do on mobile. */
+@media (min-width: 721px) and (max-width: 900px) {
+  .pricing th,
+  .pricing td {
+    white-space: normal;
+  }
+}
+
 .route-ask {
   display: block;
   margin-top: 2px;
