@@ -149,6 +149,7 @@ def route_entry(stats: dict | None, catalog: dict, alias: str, *, candidate: boo
             "tok_out": 0,
             "cost_usdc": None,
             "last_ts": None,
+            "hit_ask_ratio": None,
             "source": "catalog" if ask_in is not None else "none",
         }
     else:
@@ -165,6 +166,8 @@ def route_entry(stats: dict | None, catalog: dict, alias: str, *, candidate: boo
             "tok_out": stats["tok_out"],
             "cost_usdc": f'{stats["cost"]:.6f}',
             "last_ts": stats["last_ts"],
+            "hit_ask_ratio": round(stats["hit_ask_ratio"], 4)
+            if stats.get("hit_ask_ratio") is not None else None,
             "source": "usage-logs",
         }
     if candidate:
@@ -179,15 +182,23 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
     stats = aggregate_rows(rows)
     catalog = fetch_catalog(key)
     cand = set(candidates or [])
+
+    from probe.official_compare import cache_rule_stats
+
+    def _entry(alias: str) -> dict:
+        st = stats.get(alias)
+        entry_stats = None
+        if st:
+            entry_stats = dict(st)
+            entry_stats["hit_ask_ratio"] = cache_rule_stats(rows, alias)
+        return route_entry(entry_stats, catalog, alias, candidate=alias in cand)
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "range": range_,
         "requests_scanned": len(rows),
         "days": daily_series(rows),
-        "routes": {
-            alias: route_entry(stats.get(alias), catalog, alias, candidate=alias in cand)
-            for alias in aliases
-        },
+        "routes": {alias: _entry(alias) for alias in aliases},
     }
 
 

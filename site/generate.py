@@ -19,7 +19,7 @@ import tmpl  # noqa: E402
 from probe.publishers import publisher_label  # noqa: E402
 from probe.registry import load_aliases, load_registry  # noqa: E402
 
-from probe import market, radar  # noqa: E402
+from probe import market, radar, official_compare  # noqa: E402
 
 GITHUB = "https://github.com/leshchenko1979/inferhub-watch"
 CLONE = (
@@ -412,7 +412,94 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         f'<th scope="col" class="num">{html.escape(span)} cost</th>'
         "</tr></thead>"
         f"<tbody>{''.join(body_rows)}</tbody>"
-        "</table></div></section>"
+        "</table></div>"
+        + official_table(payload, rundata.load_catalog(ROOT))
+        + "</section>"
+    )
+
+
+def official_table(payload: dict | None, catalog: dict | None) -> str:
+    """Forward-looking official-price sub-table inside #pricing, or ''.
+
+    Every number is rebuilt from the latest billed asks + the window's hit
+    rate (design v3-final, owner-approved 2026-08-31): nothing here goes
+    stale when a publisher reprices - the table moves with the prices.
+    """
+    if not payload or not catalog:
+        return ""
+    rows = official_compare.comparison_rows(payload, catalog)
+    if not any(r["ih_eff"] is not None and r["off_eff"] is not None for r in rows):
+        return ""
+    routes = payload.get("routes") or {}
+    body: list[str] = []
+    tot_toks = 0
+    tot_here = 0.0
+    tot_official = 0.0
+    for r in rows:
+        route = html.escape(r["route"])
+        if r["ih_eff"] is None or r["off_eff"] is None:
+            gap = html.escape(r["note"] or "no comparison")
+            body.append(
+                "<tr>"
+                f'<th scope="row"><code>{route}</code></th>'
+                f'<td class="num" colspan="3">{gap}</td>'
+                "</tr>"
+            )
+            continue
+        st = routes.get(r["route"]) or {}
+        toks = int(st.get("tok_in") or 0) + int(st.get("tok_out") or 0)
+        tot_toks += toks
+        tot_here += r["ih_eff"] * toks / 1e6
+        tot_official += r["off_eff"] * toks / 1e6
+        ratio = f'{r["ratio"]:g}&times;' if r["ratio"] else "n/a"
+        body.append(
+            "<tr>"
+            f'<th scope="row"><code>{route}</code></th>'
+            f'<td class="num">{rundata.rate_label(r["ih_eff"]) or "n/a"}</td>'
+            f'<td class="num">{rundata.rate_label(r["off_eff"]) or "n/a"}</td>'
+            f'<td class="num">{ratio}</td>'
+            "</tr>"
+        )
+    drift = [r["route"] for r in rows if r["drift"]]
+    drift_note = ""
+    if drift:
+        names = ", ".join(f"<code>{html.escape(d)}</code>" for d in drift)
+        drift_note = (
+            f'<p class="section-note">Cache-rule drift on {names}: billed rows no '
+            "longer match cached-input = 10% of the input ask &#8212; the rates "
+            "below may be off until the next sweep confirms the rule.</p>"
+        )
+    projection = ""
+    if tot_toks and tot_here > 0:
+        projection = (
+            f'<p class="section-note">Rerunning this window&#8217;s workload '
+            f"({rundata.token_label(tot_toks)}) at current rates: &#8776;"
+            f"{rundata.cost_label(tot_here)} here vs &#8776;"
+            f"{rundata.cost_label(tot_official)} at official rates "
+            f"&#8212; official costs {tot_official / tot_here:.1f}&times; more.</p>"
+        )
+    caption = (
+        "Forward-looking comparison, rebuilt every sweep from each route&#8217;s "
+        "latest billed ask and the window&#8217;s cache-hit rate. Official side "
+        "prices the same token mix at the upstream&#8217;s official rates; where "
+        "the upstream supports cache, official cached input is assumed at 10% "
+        "of list (the only rule verified on this gateway) and undiscounted "
+        "otherwise &#8212; real official hit prices can be lower, so official "
+        "costs are, if anything, overstated."
+    )
+    return (
+        drift_note
+        + '<div class="scroll"><table class="pricing">'
+        f"<caption>{caption}</caption>"
+        "<thead><tr>"
+        '<th scope="col">Route</th>'
+        '<th scope="col" class="num">here, current rates $/M</th>'
+        '<th scope="col" class="num">official $/M, same workload</th>'
+        '<th scope="col" class="num">official costs</th>'
+        "</tr></thead>"
+        f"<tbody>{''.join(body)}</tbody>"
+        "</table></div>"
+        + projection
     )
 
 

@@ -219,6 +219,17 @@ def load_pricing(root: Path) -> dict | None:
     return payload
 
 
+def load_catalog(root: Path) -> dict | None:
+    """data/catalog.json as written by probe.catalog, or None when unusable."""
+    try:
+        payload = json.loads((root / "data" / "catalog.json").read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get("models"), dict):
+        return None
+    return payload
+
+
 def pricing_rows(payload: dict | None) -> list[dict]:
     """Board routes with any billed rate, in the order the probe wrote them.
 
