@@ -444,6 +444,91 @@ td {
   overflow-x: auto;
 }
 
+/* ── Verdict ticket: the dispatch-card signature ── */
+
+.eyebrow {
+  margin: 0 0 var(--space-2);
+  font-family: var(--mono);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ticket {
+  margin: 0 0 var(--space-7);
+  padding: var(--space-5) var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--teal);
+}
+
+.ticket-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5) var(--space-8);
+}
+
+.ticket-line {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-ui);
+  color: var(--muted);
+}
+
+.ticket-route {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-title);
+}
+
+.ticket-route code {
+  font-size: inherit;
+}
+
+.ticket-big {
+  margin: 0 0 var(--space-3);
+  font-family: var(--mono);
+  font-size: 2.6rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.ticket-unit {
+  font-size: var(--text-ui);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.ticket-why {
+  margin: 0;
+  font-size: var(--text-ui);
+  color: var(--muted);
+}
+
+.ticket-why .tick-down { color: var(--teal); }
+
+.ticket-spark .ask-spark {
+  width: 300px;
+  height: auto;
+}
+
+.ticket-spark .s-line { stroke-width: 1.8; }
+
+.ticket-alt {
+  margin: var(--space-5) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--line);
+  font-size: var(--text-ui);
+  color: var(--muted);
+}
+
+.ticket-alt code {
+  color: var(--ink);
+}
+
 /* ── Cost per M tokens ── */
 
 .pricing {

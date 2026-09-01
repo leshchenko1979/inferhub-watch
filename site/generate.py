@@ -375,6 +375,93 @@ def _iq_cells(route: str, eff: float | None, intel: dict | None) -> str:
     return f'<td class="num">{iq:.1f}</td><td class="num">{iq_per_dollar}</td>'
 
 
+def verdict_section(payload: dict | None) -> str:
+    """The dispatch ticket at the top of the board, or ''.
+
+    Answers the site's one question — where to route bulk workload today —
+    from the same sweep data as the board: the best IQ-per-$ route, its
+    reason (ask trend, cache hit), the runner-up as the stamped alternate.
+    Never hardcodes a model; '' when intelligence or effective prices are
+    missing so the plain board stands alone.
+    """
+    if not payload:
+        return ""
+    intel = rundata.load_intelligence(ROOT)
+    models = (intel or {}).get("models") or {}
+    ranked: list[tuple[float, dict]] = []
+    for row in rundata.pricing_rows(payload):
+        slug = rundata.aa_slug(str(row["route"]))
+        entry = models.get(slug) if slug else None
+        iq = entry.get("iq") if entry else None
+        eff = row.get("eff_per_mtok")
+        try:
+            ratio = iq / eff if iq is not None and eff else None
+        except ZeroDivisionError:
+            ratio = None
+        if ratio:
+            ranked.append((ratio, row))
+    # Billed evidence beats catalog floor: prefer usage-logged routes when
+    # any qualify, so the ticket never recommends an unverified floor ask.
+    logged = [(ratio, row) for ratio, row in ranked if row.get("source") == "usage-logs"]
+    ranked = logged or ranked
+    if not ranked:
+        return ""
+    ranked.sort(key=lambda pair: pair[0], reverse=True)
+    best_ratio, best = ranked[0]
+    route = str(best["route"])
+    floor = best.get("source") != "usage-logs"
+
+    # Ask trend: consecutive strictly-cheaper snapshots from the newest end.
+    dated = rundata.load_dated_pricing(ROOT)
+    series = rundata.ask_series(dated, route, payload)
+    downs = 0
+    for (_, a0, o0), (_, a1, o1) in zip(series, series[1:]):
+        if a1 + o1 < a0 + o0:
+            downs += 1
+        else:
+            break
+    why: list[str] = []
+    if downs >= 2:
+        why.append(f"ask down {downs} sweeps straight")
+    elif downs == 1:
+        why.append("ask easing")
+    elif len(series) >= 2:
+        why.append("ask holding")
+    if floor:
+        why.append("floor ask — no billed traffic yet")
+    hit = best.get("cache_pct")
+    if hit is not None:
+        why.append(f"{hit:.0f}% cached")
+
+    why_html = ""
+    if why:
+        why_html = '<p class="ticket-why">' + " &#183; ".join(html.escape(w) for w in why) + "</p>"
+    alt = ""
+    if len(ranked) > 1:
+        alt_ratio, alt_row = ranked[1]
+        alt = (
+            f'<p class="ticket-alt">Alternate: <code>{html.escape(str(alt_row["route"]))}</code>'
+            f" &#8212; {alt_ratio:,.0f} IQ per $</p>"
+        )
+    spark = _ask_spark(series)
+    return (
+        '<section class="ticket" id="verdict">'
+        '<p class="eyebrow">Verdict</p>'
+        '<div class="ticket-main">'
+        '<div class="ticket-facts">'
+        '<p class="ticket-line">Route bulk here</p>'
+        f'<h2 class="ticket-route"><code>{html.escape(route)}</code></h2>'
+        f'<p class="ticket-big">{best_ratio:,.0f}'
+        '<span class="ticket-unit"> IQ per $</span></p>'
+        + why_html
+        + "</div>"
+        + (f'<div class="ticket-spark">{spark}</div>' if spark else "")
+        + "</div>"
+        + alt
+        + "</section>"
+    )
+
+
 def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     """The #pricing section, or '' when there is no usable pricing data."""
     rows = rundata.pricing_rows(payload)
@@ -468,6 +555,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     )
     return (
         '<section class="pricing-block" id="pricing">'
+        '<p class="eyebrow">Board</p>'
         f"<h2>{html.escape(section_title('pricing'))}</h2>"
         f'<p class="section-note">{html.escape(note)}.</p>'
         + spend_block(payload, runs) +
@@ -981,6 +1069,7 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
         f'<time datetime="{html.escape(started_raw)}">{started}</time>'
         f"{cost_bit}</p>"
     )
+    payload = rundata.load_pricing(ROOT)
     body = tmpl.render(
         "board.html",
         earlier_title=section_title("earlier"),
@@ -989,9 +1078,10 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
         score_label="check" if n_score == 1 else "checks",
         rule=rule,
         grid_rows="".join(grid_rows),
-        pricing_section=pricing_section(rundata.load_pricing(ROOT), runs),
+        verdict_section=verdict_section(payload),
+        pricing_section=pricing_section(payload, runs),
         probe_results_section=probe_results_section(
-            runs, aliases, registry, rundata.load_pricing(ROOT)
+            runs, aliases, registry, payload
         ),
         explainers="".join(explainers),
         github=GITHUB,
