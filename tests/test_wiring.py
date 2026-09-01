@@ -73,8 +73,8 @@ class WiringTests(unittest.TestCase):
         self.assertIn("/issues/new", html)
         self.assertIn("models.toml", html)
         self.assertIn("github.com/leshchenko1979/inferhub-watch", rest)
-        self.assertIn("Run locally", rest)
-        self.assertNotIn("<footer", rest)
+        self.assertIn("board-footer", rest)
+        self.assertIn("<footer", rest)
         self.assertIn("INFERHUB_API_KEY", rest)
         self.assertNotIn(os.environ.get("INFERHUB_API_KEY") or "sk-never", html)
         # the score matrix is retired; collapsible probe-results groups rule

@@ -2,16 +2,20 @@ $verdict_section
 $probe_results_section
 $pricing_section
 <section class="history" id="earlier">
+  <p class="eyebrow">Evidence</p>
   <h2>$earlier_title</h2>
   <p class="section-note">Each column is one committed probe. Same-day reruns stay separate. A cell is how many of the
     $n_score scoring $score_label passed ($rule), and which ones missed. A blank slot means the alias was not on the
     board that run.</p>
-  <div class="scroll">
-    <table class="timeline">
-      <caption>Hover or tap a bar for the run stamp, origin, pass count, and missed checks.</caption>
-      <tbody>$grid_rows</tbody>
-    </table>
-  </div>
+  <details class="evidence-item" id="evidence-runs">
+    <summary>Show run history</summary>
+    <div class="scroll">
+      <table class="timeline">
+        <caption>Hover or tap a bar for the run stamp, origin, pass count, and missed checks.</caption>
+        <tbody>$grid_rows</tbody>
+      </table>
+    </div>
+  </details>
 </section>
 <section class="explanations" id="method">
   <h2>$method_title</h2>
@@ -39,6 +43,9 @@ $pricing_section
     describe the request JSON and what should pass or fail. Pull requests follow the README <a
       href="$github/blob/main/README.md#add-a-check">Add a check</a> steps.
   </p>
-  <h3>Run locally</h3>
-  <p>$clone The public board uses the site owner’s InferHub key on GitHub Actions.</p>
 </section>
+<footer class="board-footer">
+  <p>$clone The public board uses the site owner’s InferHub key on GitHub Actions.
+    Intelligence data: <a href="https://artificialanalysis.ai">Artificial Analysis</a> Data API, fetched fresh every
+    sweep. Official prices: upstream price pages, joined via each route’s publisher catalog.</p>
+</footer>

@@ -584,10 +584,36 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         "</tr></thead>"
         f"<tbody>{''.join(body_rows)}</tbody>"
         "</table></div>"
-        + official_table(payload, rundata.load_catalog(ROOT))
-        + failures_table(payload)
+        + evidence_block(payload, rundata.load_catalog(ROOT))
         + "</section>"
     )
+
+
+def evidence_block(payload: dict | None, catalog: dict | None) -> str:
+    """The EVIDENCE layer: official-price and reliability, open on demand.
+
+    Sits at the bottom of #pricing; collapsed by default so the decision
+    surface (verdict + board) stays uncluttered. Renders only when at
+    least one sub-table has data.
+    """
+    official = official_table(payload, catalog)
+    failures = failures_table(payload)
+    if not official and not failures:
+        return ""
+    items = ""
+    if official:
+        items += (
+            '<details class="evidence-item" id="evidence-official">'
+            "<summary>What you&#8217;d pay official</summary>"
+            f"<div>{official}</div></details>"
+        )
+    if failures:
+        items += (
+            '<details class="evidence-item" id="evidence-failures">'
+            "<summary>Reliability &#8212; failed requests</summary>"
+            f"<div>{failures}</div></details>"
+        )
+    return f'<div class="evidence"><p class="eyebrow">Evidence</p>{items}</div>'
 
 
 def official_table(payload: dict | None, catalog: dict | None) -> str:
@@ -685,7 +711,9 @@ def failures_table(payload: dict | None) -> str:
     """
     if not payload:
         return ""
-    failures = payload.get("failures") or {}
+    # Legacy "errors" key until the 2026-09-02 sweep renames it — same
+    # fallback _route_failures uses; remove both after the sweep lands.
+    failures = payload.get("failures") or payload.get("errors") or {}
     total = int(failures.get("total") or 0)
     failed = int(failures.get("failed") or 0)
     if not total:

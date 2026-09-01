@@ -1151,3 +1151,56 @@ td.tip-open {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
 }
+
+/* Evidence layer: collapsed detail blocks */
+.evidence {
+  margin-top: var(--space-7);
+}
+
+.evidence-item {
+  border-top: 1px solid var(--line);
+}
+
+.evidence-item summary {
+  cursor: pointer;
+  list-style: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--mono);
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.evidence-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.evidence-item summary::before {
+  content: "▸";
+  color: var(--muted);
+  font-size: var(--text-caption);
+}
+
+.evidence-item[open] summary::before {
+  content: "▾";
+}
+
+.evidence-item > div {
+  padding: 0 0 var(--space-5);
+}
+
+.board-footer {
+  padding: var(--space-7) 0 3.5rem;
+  border-top: 1px solid var(--line);
+  margin-top: var(--space-8);
+  color: var(--muted);
+  font-size: var(--text-ui);
+  max-width: 68ch;
+}
+
+.board-footer a {
+  color: var(--primary);
+}
