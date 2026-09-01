@@ -490,6 +490,29 @@ def _route_failures(payload: dict | None, route: str, reqs: int) -> str:
     return line
 
 
+def _route_retries(runs: list[dict], route: str) -> str:
+    """Per-route retry evidence from the latest run — '' when no sweep had
+    to replay this route. Recovered cells passed on their second attempt;
+    'still down' cells did not recover on either attempt."""
+    if not runs:
+        return ""
+    latest = runs[-1]
+    recovered = down = 0
+    for cell in rundata.board_cells(latest) + rundata.candidate_cells(latest):
+        if cell.get("alias") != route:
+            continue
+        if cell.get("flaky_recovered"):
+            recovered += 1
+        elif cell.get("first_attempt"):
+            down += 1
+    parts = []
+    if recovered:
+        parts.append(f"{recovered} recovered on retry")
+    if down:
+        parts.append(f"{down} still down after retry")
+    return "; ".join(parts)
+
+
 def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     """The #pricing section, or '' when there is no usable pricing data."""
     rows = rundata.pricing_rows(payload)
@@ -551,14 +574,14 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             (f"{span} cost", rundata.cost_label(row.get("cost_usdc")) or "n/a"),
             ("failures", _route_failures(payload, str(row["route"]), reqs)),
             ("ask source", "billed ask" if logged else "floor ask"),
-        ]))
+        ] + ([("retries", retries)] if (retries := _route_retries(runs, str(row["route"]))) else [])))
     caption = (
         "&#8220;ask&#8221; under each route is the per-M rate billed on fresh "
         "(uncached) input / output; &#8220;effective&#8221; is billed cost over all "
         "tokens, cache discounts included. Effective bars are log-scaled over "
         "$0.001&#8211;$10 per M and colored teal &#8804; $0.02, amber &#8804; $0.20, red above. "
         "Show plumbing folds each route&#8217;s cache hit, traffic, window cost, "
-        "failures, and ask source. "
+        "failures, ask source, and retries (when a sweep replayed a route)."
         "* = floor ask &#8212; catalog minimum, shown when the route has no billed traffic in the window. "
         "IQ = Artificial Analysis Intelligence Index (composite of 9 public evals, "
         "artificialanalysis.ai, effort level max), refreshed every sweep; IQ per $ divides it by the route&#8217;s effective $/M &#8212; higher is smarter per dollar. "

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -24,6 +25,35 @@ class BalanceTooLow(RuntimeError):
     """InferHub reported an out-of-balance error; the probe must abort."""
 
 
+RETRY_WAIT_SECONDS = 20
+RETRYABLE_HTTP_STATUSES = frozenset(range(500, 600))
+
+
+def _attempt(
+    module, client, alias: str, check_id: str
+) -> tuple[dict | None, Exception | None]:
+    """One probe attempt. Transport-level errors come back as (None, exc)
+    instead of blowing up the loop; a balance abort still raises."""
+    try:
+        return module.run(client, alias), None
+    except Exception as exc:  # noqa: BLE001
+        if balance_too_low(str(exc)):
+            raise BalanceTooLow(f"{alias}/{check_id}: {exc}") from exc
+        return None, exc
+
+
+def _retryable(cell: dict | None, exc: Exception | None) -> bool:
+    """Timeout (transport error) or 5xx — transient congestion, worth one
+    replay. Real assertion fails (status 'fail') are never retried: those
+    say something about the endpoint, not the window."""
+    if exc is not None:
+        return True
+    if cell is None or cell.get("status") != "error":
+        return False
+    status = cell.get("http_status")
+    return isinstance(status, int) and status in RETRYABLE_HTTP_STATUSES
+
+
 def balance_too_low(text: str) -> bool:
     lowered = (text or "").lower()
     return any(marker in lowered for marker in BALANCE_MARKERS)
@@ -37,11 +67,17 @@ def collect_cells(
     for alias in aliases:
         for i, spec in enumerate(registry):
             module = load_check_module(spec["id"])
-            try:
-                cell = module.run(client, alias)
-            except Exception as exc:  # noqa: BLE001 — keep the day, record the cell
-                if balance_too_low(str(exc)):
-                    raise BalanceTooLow(f"{alias}/{spec['id']}: {exc}") from exc
+            cell, exc = _attempt(module, client, alias, spec["id"])
+            # One retry after a short wait: a timeout or 5xx in a congested
+            # window (the 2026-09-01 inferhub degradation) says nothing about
+            # the endpoint. Recovery is recorded on the cell as evidence —
+            # "recovered on retry", not silently green.
+            flaky_from: str | None = None
+            if _retryable(cell, exc):
+                flaky_from = str(exc) if exc is not None else str(cell.get("summary"))
+                time.sleep(RETRY_WAIT_SECONDS)
+                cell, exc = _attempt(module, client, alias, spec["id"])
+            if exc is not None:
                 errors.append(f"{alias}/{spec['id']}: {exc}")
                 cell = result(
                     check_id=spec["id"],
@@ -49,6 +85,12 @@ def collect_cells(
                     status="error",
                     summary=str(exc),
                 )
+            if flaky_from is not None:
+                if exc is None:
+                    cell["flaky_recovered"] = flaky_from
+                else:
+                    # Retried and still down — keep the transient context.
+                    cell["first_attempt"] = flaky_from
             if balance_too_low(cell.get("summary") or ""):
                 raise BalanceTooLow(f"{alias}/{spec['id']}: {cell.get('summary')}")
             cell["model"] = market.family(alias)
