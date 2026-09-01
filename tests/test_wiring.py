@@ -367,6 +367,11 @@ class PricingSectionTests(unittest.TestCase):
         # every decision cell carries a fold label for the mobile card view;
         # plumbing (cache/traffic/cost/failures/source) folds under each route
         self.assertIn('data-label="effective $/M"', page)
+        # rate cells pair the ranking basis (realized, gate not passed on
+        # this history) with the projection as the dimmed alternate
+        self.assertIn('class="pair-main"', page)
+        self.assertIn('class="pair-alt"', page)
+        self.assertIn("backtest gate", page)
         self.assertIn('data-label="cache hit"', page)  # candidates table
         self.assertIn("Show plumbing", page)
         self.assertIn("<dt>30d traffic</dt>", page)

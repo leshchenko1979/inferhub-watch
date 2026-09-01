@@ -65,6 +65,27 @@ class VerdictTest(unittest.TestCase):
         self.assertIn("ali/qwen3.8-max", out)
         self.assertIn("830", out)
 
+    def test_gate_pass_flips_ranking_to_projection(self):
+        import probe.official_compare as oc
+
+        gate = {"pass": True, "n": 20, "within": 20, "share": 1.0, "tol": 0.2}
+        # production payload always carries routes (load_pricing enforces
+        # it) and _proj_eff reads stats from it — mirror that shape here
+        payload = {"range": "30d", "requests_scanned": 100,
+                   "routes": {QWEN["route"]: QWEN, LUNA["route"]: LUNA}}
+        patches = self._patched([QWEN, LUNA])
+        with mock.patch.object(oc, "projection_gate", lambda d: gate), \
+             mock.patch.object(oc, "projection_hit", lambda *a, **k: (0.5, "ok")), \
+             patches[0], patches[1], patches[2], patches[3], patches[4]:
+            out = self.mod.verdict_section(payload)
+        # luna now ranks on its projected eff (current asks at 50% hit),
+        # not the realized 6,153 IQ/$
+        proj = oc.inferhub_eff(LUNA, hit=0.5)
+        self.assertIn("cx/gpt-5.6-luna", out)
+        self.assertIn(f"{52.3 / proj:,.0f}", out)
+        self.assertNotIn("6,153", out)
+        self.assertIn("projects", out)
+
     def test_billed_rows_beat_floor_rows(self):
         patches = self._patched([QWEN, LUNA, GHOST])
         with patches[0], patches[1], patches[2], patches[3], patches[4]:

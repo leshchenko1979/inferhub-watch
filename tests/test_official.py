@@ -10,6 +10,7 @@ from probe.official_compare import (
     drift_flag,
     inferhub_eff,
     official_eff,
+    projection_gate,
     projection_hit,
 )
 
@@ -168,6 +169,49 @@ class ProjectionHitTest(unittest.TestCase):
     def test_no_hit_evidence_gives_none(self):
         stats = {"tok_in": 0, "tok_out": 0, "reqs": 0}
         self.assertEqual(projection_hit([], "x", stats, {}), (None, "low"))
+
+
+class ProjectionGateTest(unittest.TestCase):
+    """projection_gate: backtest transitions against the next snapshot."""
+
+    @staticmethod
+    def _dated(days: int, realized_scale: float = 1.0) -> list:
+        """Dated snapshots for one route; day t+1 stamps the realized eff."""
+        st = {
+            "ask_in": 0.14, "ask_out": 0.42, "cache_pct": 50.0,
+            "reqs": 200, "tok_in": 1_000_000, "tok_out": 100_000,
+            "cached": 500_000,
+        }
+        proj = inferhub_eff(st)
+        out = []
+        for i in range(days):
+            day_st = dict(st)
+            if i > 0:  # realized eff only matters on the newer side of a pair
+                day_st["eff_per_mtok"] = round(proj * realized_scale, 4)
+            out.append((f"2026-08-{i + 1:02d}", {"routes": {"r/x": day_st}}))
+        return out
+
+    def test_passes_when_transitions_land_within_tolerance(self):
+        gate = projection_gate(self._dated(21, realized_scale=1.0))
+        self.assertEqual(gate["n"], 20)
+        self.assertEqual(gate["within"], 20)
+        self.assertTrue(gate["pass"])
+
+    def test_fails_when_projections_miss(self):
+        gate = projection_gate(self._dated(21, realized_scale=2.0))
+        self.assertEqual(gate["n"], 20)
+        self.assertEqual(gate["within"], 0)
+        self.assertFalse(gate["pass"])
+
+    def test_thin_history_never_passes(self):
+        gate = projection_gate(self._dated(3))
+        self.assertLess(gate["n"], 20)
+        self.assertFalse(gate["pass"])
+
+    def test_empty_or_malformed_history_is_an_honest_fail(self):
+        self.assertFalse(projection_gate([])["pass"])
+        self.assertFalse(projection_gate({})["pass"])
+        self.assertFalse(projection_gate([("d", "not-a-payload")])["pass"])
 
 
 class ComparisonRowsTest(unittest.TestCase):

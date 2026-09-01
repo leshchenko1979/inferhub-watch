@@ -112,6 +112,8 @@ def drift_flag(stats: dict) -> bool:
 def hit_series(dated: list, route: str) -> list[float]:
     """Hit rates for one route across dated snapshots, oldest first."""
     series: list[float] = []
+    if not isinstance(dated, list):
+        return series
     for _day, payload in dated:
         entry = (payload.get("routes") or {}).get(route) or {}
         hit = _hit_rate(entry)
@@ -178,6 +180,55 @@ def projection_hit(
     return hit, "ok"
 
 
+GATE_MIN_N = 20    # transitions the backtest needs before the gate may pass
+GATE_SHARE = 0.8   # share of transitions that must land within tolerance
+GATE_TOL = 0.20    # |projection/realized - 1| a transition may miss by
+
+
+def projection_gate(dated: list) -> dict:
+    """Backtest: does the projection predict the next snapshot's realized eff?
+
+    For every route and every pair of consecutive dated snapshots, price
+    the route's workload at day t exactly as the board would have shown
+    it (its stored billed asks, window hit rate, token mix) and compare
+    with the effective $/M the NEXT snapshot actually billed. The gate
+    passes only when at least GATE_MIN_N transitions exist and a
+    GATE_SHARE fraction of them land within GATE_TOL of realized - until
+    then the verdict and board sorting stay on the realized basis,
+    because the forward view has not yet earned the crown.
+
+    Recomputed every render from committed history; nothing about the
+    basis is hardcoded. Returns {"n", "within", "share", "tol", "pass"}.
+    """
+    n = within = 0
+    if isinstance(dated, list):
+        for older, newer in zip(dated, dated[1:]):
+            if not isinstance(older[1], dict) or not isinstance(newer[1], dict):
+                continue
+            routes_old = older[1].get("routes") or {}
+            routes_new = newer[1].get("routes") or {}
+            for route, st in routes_old.items():
+                if not isinstance(st, dict) or (st.get("reqs") or 0) < MIN_REQS:
+                    continue
+                realized = (routes_new.get(route) or {}).get("eff_per_mtok")
+                if not realized or realized <= 0:
+                    continue
+                proj = inferhub_eff(st)
+                if proj is None or proj <= 0:
+                    continue
+                n += 1
+                if abs(proj / realized - 1) <= GATE_TOL:
+                    within += 1
+    share = within / n if n else None
+    return {
+        "n": n,
+        "within": within,
+        "share": round(share, 3) if share is not None else None,
+        "tol": GATE_TOL,
+        "pass": n >= GATE_MIN_N and share is not None and share >= GATE_SHARE,
+    }
+
+
 def cache_rule_stats(rows: list[dict], model: str) -> float | None:
     """Median implied cached-input ask ÷ input ask over one model's rows.
 
@@ -228,10 +279,10 @@ def comparison_rows(pricing: dict, catalog: dict, dated: list | None = None) -> 
     with a note so the page shows what it could not compare - it never
     crashes the build.
 
-    With `dated` snapshots passed, the forward columns price the workload
-    at the smoothed projection hit rate (projection_hit) instead of the
-    raw window rate; without them the window rate is used, preserving the
-    pre-EWMA behavior for legacy callers.
+    With a non-empty `dated` snapshot list, the forward columns price the
+    workload at the smoothed projection hit rate (projection_hit) instead
+    of the raw window rate; without them the window rate is used,
+    preserving the pre-EWMA behavior for legacy callers.
     """
     models = catalog.get("models") or {}
     catalog_families: dict[str, str] = {}
@@ -245,7 +296,7 @@ def comparison_rows(pricing: dict, catalog: dict, dated: list | None = None) -> 
             continue  # no traffic in the window - no workload to compare
         model = models.get(alias) or models.get(catalog_families.get(family(alias), ""))
         hit, hit_conf = (None, "ok")
-        if dated is not None:
+        if dated:
             hit, hit_conf = projection_hit(dated, alias, stats, routes)
         row = {
             "route": alias,

@@ -662,6 +662,17 @@ dl.plumb dd {
   display: block;
 }
 
+/* Rate cell pair: bold figure = the basis the board ranks on (30d
+   realized, or the projection once the backtest gate passes); the
+   alternate basis rides along dimmed. */
+.viz-val .pair-alt {
+  margin-left: 0.4em;
+  font-size: var(--text-caption);
+  font-weight: 400;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .viz-bar {
   display: block;
   width: 72px;

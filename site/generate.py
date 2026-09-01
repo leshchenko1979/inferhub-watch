@@ -375,25 +375,44 @@ def _iq_cells(route: str, eff: float | None, intel: dict | None) -> str:
     return f'<td class="num">{iq:.1f}</td><td class="num">{iq_per_dollar}</td>'
 
 
+def _proj_eff(dated: list, payload: dict, route: str) -> float | None:
+    """The forward-looking $/M for one route: current billed asks priced
+    at the smoothed projection hit rate. None without hit evidence or
+    asks - callers fall back to the realized eff."""
+    stats = (payload.get("routes") or {}).get(route) or {}
+    hit, _conf = official_compare.projection_hit(
+        dated, route, stats, payload.get("routes") or {}
+    )
+    return official_compare.inferhub_eff(stats, hit=hit)
+
+
 def verdict_section(payload: dict | None) -> str:
     """The dispatch ticket at the top of the board, or ''.
 
     Answers the site's one question — where to route bulk workload today —
     from the same sweep data as the board: the best IQ-per-$ route, its
     reason (ask trend, cache hit), the runner-up as the stamped alternate.
-    Never hardcodes a model; '' when intelligence or effective prices are
+    IQ per $ ranks on the projection once the backtest gate passes
+    (projection_gate), on the realized 30d eff before that. Never
+    hardcodes a model; '' when intelligence or effective prices are
     missing so the plain board stands alone.
     """
     if not payload:
         return ""
     intel = rundata.load_intelligence(ROOT)
     models = (intel or {}).get("models") or {}
+    dated = rundata.load_dated_pricing(ROOT)
+    use_proj = bool(official_compare.projection_gate(dated).get("pass"))
     ranked: list[tuple[float, dict]] = []
     for row in rundata.pricing_rows(payload):
         slug = rundata.aa_slug(str(row["route"]))
         entry = models.get(slug) if slug else None
         iq = entry.get("iq") if entry else None
         eff = row.get("eff_per_mtok")
+        if use_proj:
+            proj = _proj_eff(dated, payload, str(row["route"]))
+            if proj is not None:
+                eff = proj
         try:
             ratio = iq / eff if iq is not None and eff else None
         except ZeroDivisionError:
@@ -412,7 +431,6 @@ def verdict_section(payload: dict | None) -> str:
     floor = best.get("source") != "usage-logs"
 
     # Ask trend: consecutive strictly-cheaper snapshots from the newest end.
-    dated = rundata.load_dated_pricing(ROOT)
     series = rundata.ask_series(dated, route, payload)
     downs = 0
     for (_, a0, o0), (_, a1, o1) in zip(series, series[1:]):
@@ -432,6 +450,11 @@ def verdict_section(payload: dict | None) -> str:
     hit = best.get("cache_pct")
     if hit is not None:
         why.append(f"{hit:.0f}% cached")
+    if use_proj:
+        proj = _proj_eff(dated, payload, route)
+        if proj is not None:
+            label = rundata.rate_label(proj) or "n/a"
+            why.append(f"projects {label} $/M now")
 
     why_html = ""
     if why:
@@ -526,13 +549,26 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     dated = rundata.load_dated_pricing(ROOT)
     prior = rundata.prior_pricing(dated, payload)
     intel = rundata.load_intelligence(ROOT)
+    # The basis the board ranks on: realized 30d eff, or the projection
+    # once the backtest gate says the forward view predicts the next
+    # snapshot within tolerance (projection_gate - recomputed per render).
+    gate = official_compare.projection_gate(dated)
+    use_proj = bool(gate.get("pass"))
+
+    def _basis(row: dict) -> float | None:
+        if use_proj:
+            proj = _proj_eff(dated, payload, str(row["route"]))
+            if proj is not None:
+                return proj
+        return row.get("eff_per_mtok")
+
     # Board order: IQ per $ descending (ontology: the smarter-per-dollar verdict
     # is the point of the board). Routes without an IQ mapping or eff sink last.
     def _iq_per_dollar(row: dict) -> float:
         slug = rundata.aa_slug(str(row["route"]))
         entry = (intel.get("models") or {}).get(slug) if slug else None
         iq = entry.get("iq") if entry else None
-        eff = row.get("eff_per_mtok")
+        eff = _basis(row)
         try:
             return iq / eff if iq is not None and eff else float("-inf")
         except ZeroDivisionError:
@@ -552,6 +588,32 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         )
         # Decision row: the columns that answer "where do I route?" —
         # plumbing (cache, traffic, cost, failures, source) folds below.
+        # The rate cell pairs the 30d effective with "now" (the forward
+        # projection); the basis the board ranks on is the bold figure.
+        eff_raw = row.get("eff_per_mtok")
+        proj = _proj_eff(dated, payload, str(row["route"]))
+        basis = _basis(row)
+        eff_label = rundata.rate_label(eff_raw) or "n/a"
+        proj_label = rundata.rate_label(proj) if proj is not None else None
+        if use_proj and proj_label is not None:
+            pair = f'<span class="pair-main">{proj_label}</span>'
+            alt = f"30d {eff_label}"
+            data_label = "projected $/M"
+            data_tip = (
+                "Forward cost per M tokens at current billed asks (median ask, "
+                "smoothed hit rate); 30d is the realized window average."
+            )
+        else:
+            pair = f'<span class="pair-main">{eff_label}</span>'
+            alt = f"now {proj_label}" if proj_label is not None else ""
+            data_label = "effective $/M"
+            data_tip = (
+                "Billed cost per M tokens over all traffic in the window, cache "
+                'discounts included. The "now" figure is the forward '
+                "projection at current billed asks (median ask, smoothed hit rate)."
+            )
+        if alt:
+            pair += f'<span class="pair-alt">{html.escape(alt)}</span>'
         body_rows.append(
             "<tr>"
             f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>'
@@ -559,13 +621,13 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             f"{_ask_spark(rundata.ask_series(dated, str(row['route']), payload))}</th>"
             + ask_delta_cell(payload, prior, str(row["route"]))
             + _viz_cell(
-                rundata.rate_label(eff_raw) or "n/a",
-                rundata.log_bar_pct(eff_raw, 0.001, 10.0),
-                rundata.rate_color_class(eff_raw),
-                data_label="effective $/M",
-                data_tip="Billed cost per M tokens over all traffic in the window, cache discounts included.",
+                pair,
+                rundata.log_bar_pct(basis, 0.001, 10.0),
+                rundata.rate_color_class(basis),
+                data_label=data_label,
+                data_tip=data_tip,
             )
-            + _iq_cells(str(row["route"]), eff_raw, intel)
+            + _iq_cells(str(row["route"]), basis, intel)
             + "</tr>"
         )
         body_rows.append(_plumb_row(span, [
@@ -578,7 +640,14 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     caption = (
         "&#8220;ask&#8221; under each route is the per-M rate billed on fresh "
         "(uncached) input / output; &#8220;effective&#8221; is billed cost over all "
-        "tokens, cache discounts included. Effective bars are log-scaled over "
+        "tokens, cache discounts included. Each rate cell pairs that 30d figure "
+        "with &#8220;now&#8221;, the forward projection at current billed asks "
+        "(median ask, smoothed hit rate) &#8212; the bold figure is the basis IQ "
+        f"per $ ranks on ({'projection' if use_proj else 'realized'} basis, "
+        f"backtest gate {'passed' if use_proj else 'not passed'}: "
+        f"{gate.get('within')}/{gate.get('n')} transitions within "
+        f"{int((gate.get('tol') or 0.2) * 100)}%). "
+        "Effective bars are log-scaled over "
         "$0.001&#8211;$10 per M and colored teal &#8804; $0.02, amber &#8804; $0.20, red above. "
         "Show plumbing folds each route&#8217;s cache hit, traffic, window cost, "
         "failures, ask source, and retries (when a sweep replayed a route)."
@@ -607,19 +676,21 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         "</tr></thead>"
         f"<tbody>{''.join(body_rows)}</tbody>"
         "</table></div>"
-        + evidence_block(payload, rundata.load_catalog(ROOT))
+        + evidence_block(payload, rundata.load_catalog(ROOT), dated)
         + "</section>"
     )
 
 
-def evidence_block(payload: dict | None, catalog: dict | None) -> str:
+def evidence_block(payload: dict | None, catalog: dict | None,
+                   dated: list | None = None) -> str:
     """The EVIDENCE layer: official-price and reliability, open on demand.
 
     Sits at the bottom of #pricing; collapsed by default so the decision
     surface (verdict + board) stays uncluttered. Renders only when at
-    least one sub-table has data.
+    least one sub-table has data. `dated` snapshots switch the official
+    table's forward columns onto the smoothed projection hit rate.
     """
-    official = official_table(payload, catalog)
+    official = official_table(payload, catalog, dated)
     failures = failures_table(payload)
     if not official and not failures:
         return ""
@@ -639,16 +710,19 @@ def evidence_block(payload: dict | None, catalog: dict | None) -> str:
     return f'<div class="evidence"><p class="eyebrow">Evidence</p>{items}</div>'
 
 
-def official_table(payload: dict | None, catalog: dict | None) -> str:
+def official_table(payload: dict | None, catalog: dict | None,
+                   dated: list | None = None) -> str:
     """Forward-looking official-price sub-table inside #pricing, or ''.
 
-    Every number is rebuilt from the latest billed asks + the window's hit
-    rate (design v3-final, owner-approved 2026-08-31): nothing here goes
-    stale when a publisher reprices - the table moves with the prices.
+    Every number is rebuilt from the latest billed asks + the hit rate
+    (design v3-final, owner-approved 2026-08-31): nothing here goes stale
+    when a publisher reprices - the table moves with the prices. With
+    `dated` snapshots the hit rate is the smoothed projection rate and
+    thin-data routes are flagged.
     """
     if not payload or not catalog:
         return ""
-    rows = official_compare.comparison_rows(payload, catalog)
+    rows = official_compare.comparison_rows(payload, catalog, dated=dated)
     if not any(r["ih_eff"] is not None and r["off_eff"] is not None for r in rows):
         return ""
     routes = payload.get("routes") or {}
@@ -690,6 +764,18 @@ def official_table(payload: dict | None, catalog: dict | None) -> str:
             "longer match cached-input = 10% of the input ask &#8212; the rates "
             "below may be off until the next sweep confirms the rule.</p>"
         )
+    soft = [
+        r["route"] for r in rows
+        if r.get("hit_conf") == "low" and r["ih_eff"] is not None
+    ]
+    soft_note = ""
+    if soft and dated:
+        names = ", ".join(f"<code>{html.escape(d)}</code>" for d in soft)
+        soft_note = (
+            f'<p class="section-note">Hit rate projected from thin data for {names}'
+            " &#8212; their &#8220;here, current rates&#8221; numbers are soft until "
+            "more billed traffic lands.</p>"
+        )
     projection = ""
     if tot_toks and tot_here > 0:
         projection = (
@@ -710,6 +796,7 @@ def official_table(payload: dict | None, catalog: dict | None) -> str:
     )
     return (
         drift_note
+        + soft_note
         + '<div class="scroll"><table class="pricing">'
         f"<caption>{caption}</caption>"
         "<thead><tr>"
