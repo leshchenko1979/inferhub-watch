@@ -135,6 +135,40 @@ def daily_series(rows: list[dict]) -> list[dict]:
     ]
 
 
+def error_stats(rows: list[dict]) -> dict:
+    """Failure counts and http-code breakdown over the fetched rows.
+
+    Usage-log rows carry `status` ("ok" / "failed") and `http_status`.
+    Failed rows carry no tokens and zero cost, so they never skew the
+    price math — but they are real reliability data: every failed row
+    here is a request the router accepted and the upstream dropped.
+    """
+    total = len(rows)
+    failed = 0
+    codes: dict[str, int] = {}
+    by_model: dict[str, dict] = {}
+    for row in rows:
+        model = row.get("model") or ""
+        if not model:
+            continue
+        m = by_model.setdefault(model, {"reqs": 0, "failed": 0, "codes": {}})
+        m["reqs"] += 1
+        if row.get("status") == "ok":
+            continue
+        failed += 1
+        m["failed"] += 1
+        code = str(row.get("http_status") or "unknown")
+        codes[code] = codes.get(code, 0) + 1
+        m["codes"][code] = m["codes"].get(code, 0) + 1
+    return {
+        "total": total,
+        "failed": failed,
+        "rate_pct": round(failed / total * 100, 2) if total else None,
+        "codes": dict(sorted(codes.items(), key=lambda kv: -kv[1])),
+        "by_model": dict(sorted(by_model.items(), key=lambda kv: -kv[1]["failed"])),
+    }
+
+
 def route_entry(stats: dict | None, catalog: dict, alias: str, *, candidate: bool = False) -> dict:
     """One route as it lands in pricing.json — logs first, catalog fallback."""
     if not stats:
@@ -198,6 +232,7 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
         "range": range_,
         "requests_scanned": len(rows),
         "days": daily_series(rows),
+        "errors": error_stats(rows),
         "routes": {alias: _entry(alias) for alias in aliases},
     }
 

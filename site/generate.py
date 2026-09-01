@@ -414,6 +414,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         f"<tbody>{''.join(body_rows)}</tbody>"
         "</table></div>"
         + official_table(payload, rundata.load_catalog(ROOT))
+        + errors_table(payload)
         + "</section>"
     )
 
@@ -500,6 +501,73 @@ def official_table(payload: dict | None, catalog: dict | None) -> str:
         f"<tbody>{''.join(body)}</tbody>"
         "</table></div>"
         + projection
+    )
+
+
+def errors_table(payload: dict | None) -> str:
+    """Reliability sub-table inside #pricing, or ''.
+
+    Counts failed rows straight from the same usage-log window the price
+    board uses: status="failed" rows carry no tokens and zero cost, so
+    they never touch the price math — this table is where they surface.
+    Renders only when the payload carries an errors block.
+    """
+    if not payload:
+        return ""
+    errors = payload.get("errors") or {}
+    total = int(errors.get("total") or 0)
+    failed = int(errors.get("failed") or 0)
+    if not total:
+        return ""
+    span = html.escape(str(payload.get("range") or "30d"))
+    codes = errors.get("codes") or {}
+    code_line = ", ".join(f"{html.escape(c)}&#215;{n}" for c, n in codes.items()) or "&#8212;"
+    rate = errors.get("rate_pct")
+    headline = (
+        f'<p class="section-note"><span class="chip {"bad" if failed else "ok"}">'
+        f"{failed}&#8202;/&#8202;{total} failed</span> ({rate:g}% of requests) "
+        f"over the {span} window &#8212; codes: {code_line}. Failed rows carry "
+        "no tokens and no cost; the traffic column on the board counts attempts.</p>"
+    )
+    by_model = errors.get("by_model") or {}
+    body: list[str] = []
+    for model, m in by_model.items():
+        m_failed = int(m.get("failed") or 0)
+        m_reqs = int(m.get("reqs") or 0)
+        m_rate = m_failed / m_reqs * 100 if m_reqs else 0.0
+        rate_cell = f"{m_rate:.1f}%"
+        if m_failed:
+            rate_cell = f'<span class="chip bad">{rate_cell}</span>'
+        m_codes = ", ".join(
+            f"{html.escape(c)}&#215;{n}" for c, n in (m.get("codes") or {}).items()
+        )
+        body.append(
+            "<tr>"
+            f'<th scope="row"><code>{html.escape(model)}</code></th>'
+            f'<td class="num">{m_reqs}</td>'
+            f'<td class="num">{m_failed}</td>'
+            f'<td class="num">{rate_cell}</td>'
+            f'<td class="num">{html.escape(m_codes) or "&#8212;"}</td>'
+            "</tr>"
+        )
+    caption = (
+        "Reliability over the same window: requests the gateway accepted but "
+        "the upstream dropped, by route. 502 = upstream gateway error, 429 = "
+        "rate limited, 400 = rejected request."
+    )
+    return (
+        headline
+        + '<div class="scroll"><table class="pricing">'
+        f"<caption>{caption}</caption>"
+        "<thead><tr>"
+        '<th scope="col">Route</th>'
+        '<th scope="col" class="num">attempts</th>'
+        '<th scope="col" class="num">failed</th>'
+        '<th scope="col" class="num">fail %</th>'
+        '<th scope="col" class="num">codes</th>'
+        "</tr></thead>"
+        f"<tbody>{''.join(body)}</tbody>"
+        "</table></div>"
     )
 
 
