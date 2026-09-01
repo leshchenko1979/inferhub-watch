@@ -230,6 +230,28 @@ def load_catalog(root: Path) -> dict | None:
     return payload
 
 
+def ask_series(dated: list[tuple[str, dict]], route: str, current: dict | None = None) -> list[tuple[str, float, float]]:
+    """(day, ask_in, ask_out) points for one route across dated snapshots.
+
+    Days with no logged ask for the route are skipped (the sparkline plots
+    known points, not gaps); the live snapshot is appended as the final
+    point so today's ask always ends the line.
+    """
+    points: list[tuple[str, float, float]] = []
+    for day, payload in dated:
+        entry = (payload.get("routes") or {}).get(route) or {}
+        a_in, a_out = entry.get("ask_in"), entry.get("ask_out")
+        if a_in is not None and a_out is not None:
+            points.append((day, float(a_in), float(a_out)))
+    if current is not None:
+        entry = (current.get("routes") or {}).get(route) or {}
+        a_in, a_out = entry.get("ask_in"), entry.get("ask_out")
+        day = ((current.get("generated_at") or "")[:10]) or "now"
+        if a_in is not None and a_out is not None and (not points or points[-1][0] != day):
+            points.append((day, float(a_in), float(a_out)))
+    return points
+
+
 def pricing_rows(payload: dict | None) -> list[dict]:
     """Board routes with any billed rate, in the order the probe wrote them.
 

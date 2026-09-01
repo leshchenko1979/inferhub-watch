@@ -324,6 +324,44 @@ def ask_delta_cell(payload: dict | None, prior: dict | None, route: str) -> str:
     )
 
 
+def _ask_spark(points: list[tuple[str, float, float]]) -> str:
+    """Little inline-SVG line graph of a route's ask history, or ''.
+
+    Two lines on one shared scale (honest: in and out stay proportional);
+    ask_in is the brighter stroke, ask_out dimmed, last point dotted.
+    Needs >= 2 points; days without a logged ask are absent from `points`.
+    """
+    if len(points) < 2:
+        return ""
+    w, h, pad = 120.0, 26.0, 2.5
+    n = len(points)
+    hi = max(max(p[1] for p in points), max(p[2] for p in points)) or 1.0
+
+    def polyline(vals: list[float]) -> tuple[str, str, str]:
+        coords = []
+        for i, v in enumerate(vals):
+            x = pad + i * (w - 2 * pad) / (n - 1)
+            y = h - pad - (v / hi) * (h - 2 * pad)
+            coords.append((x, y))
+        dots = "".join(f'<circle class="s-dot" cx="{x:.1f}" cy="{y:.1f}" r="1.5"/>' for x, y in coords)
+        path = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
+        lx, ly = coords[-1]
+        return (f'<polyline class="s-line" points="{path}"/>', dots,
+                f'<circle class="s-last" cx="{lx:.1f}" cy="{ly:.1f}" r="2"/>')
+
+    in_path, in_dots, _ = polyline([p[1] for p in points])
+    out_path, _, out_last = polyline([p[2] for p in points])
+    first, last = points[0][0], points[-1][0]
+    tip = " / ".join(f"{d}: {a:g}/{o:g}" for d, a, o in points)
+    return (
+        f'<svg class="ask-spark" width="{w:g}" height="{h:g}" viewBox="0 0 {w:g} {h:g}" '
+        f'role="img" aria-label="ask history {first} to {last}" '
+        f'data-tip="Ask $/M, {html.escape(tip)}">'
+        f'<title>ask in/out, {html.escape(first)} &#8594; {html.escape(last)}</title>'
+        f"{in_path}{in_dots}{out_path}{out_last}</svg>"
+    )
+
+
 def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     """The #pricing section, or '' when there is no usable pricing data."""
     rows = rundata.pricing_rows(payload)
@@ -337,6 +375,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     req_bounds = rundata.peer_bounds(int(r.get("reqs") or 0) for r in rows)
     cost_bounds = rundata.peer_bounds(float(r.get("cost_usdc") or 0) for r in rows)
     prior = rundata.prior_pricing(rundata.load_dated_pricing(ROOT), payload)
+    dated = rundata.load_dated_pricing(ROOT)
     body_rows = []
     for row in rows:
         logged = row.get("source") == "usage-logs"
@@ -351,7 +390,8 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         body_rows.append(
             "<tr>"
             f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>'
-            f'<span class="route-ask">ask {ask_in} / {ask_out} per M{mark}</span></th>'
+            f'<span class="route-ask">ask {ask_in} / {ask_out} per M{mark}</span>'
+            f"{_ask_spark(rundata.ask_series(dated, str(row['route']), payload))}</th>"
             + ask_delta_cell(payload, prior, str(row["route"]))
             + _viz_cell(
                 rundata.rate_label(eff_raw) or "n/a",

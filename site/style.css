@@ -491,6 +491,26 @@ td {
   color: var(--muted);
 }
 
+/* ask-history sparkline under the route ask */
+.ask-spark {
+  display: block;
+  margin-top: 3px;
+}
+
+.ask-spark .s-line {
+  fill: none;
+  stroke: var(--mid);
+  stroke-width: 1.2;
+}
+
+.ask-spark .s-dot {
+  fill: var(--mid);
+}
+
+.ask-spark .s-last {
+  fill: var(--ink);
+}
+
 .pricing td.viz {
   vertical-align: middle;
 }
