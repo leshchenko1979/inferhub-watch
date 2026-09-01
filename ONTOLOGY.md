@@ -13,6 +13,9 @@ enforced by `tests/test_ontology.py`.
 | **Probe** | One *billed* measurement request against a route — costs real money. Dispatched by the sweep or on explicit owner OK only | `probe/` package; `probe/payloads.py` |
 | **Sweep** | The scheduled full run (06:00Z): probe every route, pull the usage-log window, regenerate all data files | `.github/workflows/watch.yml` |
 | **Board** | The main pricing table — one row per traffic-carrying route; rows sort by **IQ per $** descending (best intelligence-per-dollar first), unmapped routes last | `site/generate.py::pricing_section`, `#pricing` |
+| **Verdict** | The decision ticket at the top of the page: the best IQ-per-$ route right now (billed ask beats floor ask when picking), why it wins (ask streak, cache share), and the runner-up as the alternate. Never hardcoded — recomputed every sweep | `site/generate.py::verdict_section`, `#verdict` |
+| **Plumbing** | The per-route detail row folded under the board decision columns (cache hit, traffic, window cost, failures, ask source). Open on demand via "Show plumbing"; the decision surface stays five columns | `site/generate.py::_plumb_row`, `tr.plumb-row` |
+| **Evidence** | The collapsed proof layer: what you'd pay official, reliability (failed requests), and run history — opened on demand, never part of the glance | `site/generate.py::evidence_block`, `.evidence-item` |
 | **Window** | The 30-day usage-log pull that feeds all aggregates (tokens, billed asks, hit rates, failures) | `window` / `span` labels; `aggregate_rows` input |
 | **Snapshot** | Dated `data/pricing/YYYY-MM-DD.json` — one history point per day | `probe/pricing.py::snapshot`, `site/rundata.py` |
 | **Catalog snapshot** | `data/catalog.json` — the fetched `/api/catalog` model list with official prices and price points | `probe/catalog.py`, `site/rundata.py::load_catalog` |
