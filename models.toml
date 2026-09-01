@@ -2,5 +2,9 @@ aliases = [
   "ali/deepseek-v4-flash-0731",
   "ali/deepseek-v4-pro-0813",
   "ali/qwen3.8-max",
+  "ali/kimi-k3",
   "zai/glm-5.3-flash",
+  "cx/gpt-5.6-terra",
+  "cx/gpt-5.6-sol",
+  "cx/gpt-5.6-luna",
 ]
