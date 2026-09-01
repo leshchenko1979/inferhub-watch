@@ -26,6 +26,9 @@ from probe.market import family
 
 MIN_REQS = 3  # below this the window is too thin to quote - cell shows a gap
 DRIFT_TOL = 0.02  # predicted-vs-actual cost mismatch beyond 2% flags the cache rule
+MIN_CONF_REQS = 50  # below this a route's own hit rate is workload noise, not model behavior
+SHRINK_K = 20  # thin-route shrinkage strength toward the fleet hit prior
+HIT_EWMA_ALPHA = 0.4  # weight of the newest snapshot in the hit-rate EWMA
 
 
 def _hit_rate(stats: dict) -> float | None:
@@ -58,10 +61,15 @@ def blended_eff(
     return cost / (total / 1e6)
 
 
-def inferhub_eff(stats: dict) -> float | None:
-    """What the route's workload costs NOW at its latest billed asks."""
+def inferhub_eff(stats: dict, hit: float | None = None) -> float | None:
+    """What the route's workload costs NOW at its latest billed asks.
+
+    hit overrides the window hit rate - the projection passes its smoothed
+    rate here; None derives the rate from the stats like before.
+    """
     ask_in, ask_out = stats.get("ask_in"), stats.get("ask_out")
-    hit = _hit_rate(stats)
+    if hit is None:
+        hit = _hit_rate(stats)
     if ask_in is None or ask_out is None or hit is None:
         return None
     return blended_eff(
@@ -70,14 +78,16 @@ def inferhub_eff(stats: dict) -> float | None:
     )
 
 
-def official_eff(stats: dict, model: dict) -> float | None:
+def official_eff(stats: dict, model: dict, hit: float | None = None) -> float | None:
     """Same workload at official upstream rates, same hit rate.
 
     Hit price = CACHE_RATE x official_in when the upstream supports cache,
     else full official_in (no discount assumed - conservative).
+    hit overrides the window hit rate, mirroring inferhub_eff.
     """
     official_in, official_out = model.get("official_in"), model.get("official_out")
-    hit = _hit_rate(stats)
+    if hit is None:
+        hit = _hit_rate(stats)
     if not official_in or not official_out or hit is None:
         return None
     in_hit = CACHE_RATE * official_in if model.get("supports_cache") else official_in
@@ -97,6 +107,75 @@ def drift_flag(stats: dict) -> bool:
     """
     ratio = stats.get("hit_ask_ratio")
     return ratio is not None and abs(ratio - CACHE_RATE) > DRIFT_TOL
+
+
+def hit_series(dated: list, route: str) -> list[float]:
+    """Hit rates for one route across dated snapshots, oldest first."""
+    series: list[float] = []
+    for _day, payload in dated:
+        entry = (payload.get("routes") or {}).get(route) or {}
+        hit = _hit_rate(entry)
+        if hit is not None:
+            series.append(hit)
+    return series
+
+
+def fleet_hit_prior(routes: dict) -> float | None:
+    """Median hit rate over routes with confident traffic in the snapshot.
+
+    The prior a thin route is shrunk toward: cache behavior is a property
+    of the upstream (prefix reuse), so peers with real traffic carry the
+    estimate. None when fewer than 3 routes have >= MIN_CONF_REQS
+    requests - a prior from one or two peers is a rumor, not a prior.
+    """
+    hits = []
+    for entry in routes.values():
+        if not isinstance(entry, dict) or (entry.get("reqs") or 0) < MIN_CONF_REQS:
+            continue
+        hit = _hit_rate(entry)
+        if hit is not None:
+            hits.append(hit)
+    if len(hits) < 3:
+        return None
+    hits.sort()
+    mid = len(hits) // 2
+    if len(hits) % 2:
+        return hits[mid]
+    return (hits[mid - 1] + hits[mid]) / 2
+
+
+def projection_hit(
+    dated: list, route: str, stats: dict, routes: dict,
+) -> tuple[float | None, str]:
+    """Forward-looking hit rate: EWMA over snapshots, shrunk when thin.
+
+    The window hit rate is workload-inherited, not model-inherent: a route
+    whose few requests never reused prefixes projected 0% cache (luna/
+    terra/sol, backtest 2026-09-01) and a chatty route swung 27 -> 43 -> 87%
+    in three days. The EWMA damps the swing; a route with fewer than
+    MIN_CONF_REQS own requests is shrunk toward the fleet median,
+    (n*own + K*prior) / (n + K), and flagged "low" confidence.
+
+    Returns (hit, confidence) with confidence "ok" or "low". (None, "low")
+    when there is no hit evidence at all - callers fall back to the
+    window rate, which is None in that case anyway.
+    """
+    series = hit_series(dated, route)
+    own = _hit_rate(stats)
+    if own is not None:
+        series.append(own)  # the live snapshot enters the EWMA last
+    if not series:
+        return None, "low"
+    hit = series[0]
+    for value in series[1:]:
+        hit = HIT_EWMA_ALPHA * value + (1 - HIT_EWMA_ALPHA) * hit
+    n = int(stats.get("reqs") or 0)
+    if n < MIN_CONF_REQS:
+        prior = fleet_hit_prior(routes)
+        if prior is not None:
+            hit = (n * hit + SHRINK_K * prior) / (n + SHRINK_K)
+        return hit, "low"
+    return hit, "ok"
 
 
 def cache_rule_stats(rows: list[dict], model: str) -> float | None:
@@ -141,24 +220,33 @@ def _num(raw: object) -> float | None:
     return value
 
 
-def comparison_rows(pricing: dict, catalog: dict) -> list[dict]:
+def comparison_rows(pricing: dict, catalog: dict, dated: list | None = None) -> list[dict]:
     """One decision row per pricing route that maps into the catalog.
 
     Row fields: route, reqs, hit_pct, ih_eff, off_eff, ratio, drift,
-    note (why a number is a gap). Unknown-family routes are kept with a
-    note so the page shows what it could not compare - it never crashes
-    the build.
+    hit_conf, note (why a number is a gap). Unknown-family routes are kept
+    with a note so the page shows what it could not compare - it never
+    crashes the build.
+
+    With `dated` snapshots passed, the forward columns price the workload
+    at the smoothed projection hit rate (projection_hit) instead of the
+    raw window rate; without them the window rate is used, preserving the
+    pre-EWMA behavior for legacy callers.
     """
     models = catalog.get("models") or {}
     catalog_families: dict[str, str] = {}
     for key in models:
         catalog_families.setdefault(family(key), key)
+    routes = pricing.get("routes") or {}
     rows: list[dict] = []
     for alias in sorted(pricing.get("routes") or {}):
-        stats = pricing["routes"][alias] or {}
+        stats = routes[alias] or {}
         if not (stats.get("reqs") or 0):
             continue  # no traffic in the window - no workload to compare
         model = models.get(alias) or models.get(catalog_families.get(family(alias), ""))
+        hit, hit_conf = (None, "ok")
+        if dated is not None:
+            hit, hit_conf = projection_hit(dated, alias, stats, routes)
         row = {
             "route": alias,
             "reqs": stats.get("reqs") or 0,
@@ -167,6 +255,7 @@ def comparison_rows(pricing: dict, catalog: dict) -> list[dict]:
             "off_eff": None,
             "ratio": None,
             "drift": drift_flag(stats),
+            "hit_conf": hit_conf,
             "note": None,
         }
         if model is None:
@@ -177,8 +266,8 @@ def comparison_rows(pricing: dict, catalog: dict) -> list[dict]:
             row["note"] = f"thin window (<{MIN_REQS} reqs)"
             rows.append(row)
             continue
-        ih = inferhub_eff(stats)
-        off = official_eff(stats, model)
+        ih = inferhub_eff(stats, hit=hit)
+        off = official_eff(stats, model, hit=hit)
         if ih is None:
             row["note"] = "missing billed ask in window"
         elif off is None:

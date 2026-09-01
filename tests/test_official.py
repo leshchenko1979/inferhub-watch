@@ -10,6 +10,7 @@ from probe.official_compare import (
     drift_flag,
     inferhub_eff,
     official_eff,
+    projection_hit,
 )
 
 # Real qwen3.8-max window (2026-08-30 snapshot): 684.6M in / 10.4M out,
@@ -118,6 +119,57 @@ CATALOG = {
 }
 
 
+def _snapshot(hit: float, reqs: int = 200) -> dict:
+    """A pricing-route entry whose window hit rate is `hit`."""
+    tok_in = 1_000_000
+    return {
+        "ask_in": 0.14, "ask_out": 0.42, "cache_pct": hit * 100,
+        "reqs": reqs, "tok_in": tok_in, "tok_out": 100_000,
+        "cached": round(tok_in * hit),
+    }
+
+
+def _dated(points: list[tuple[str, float]], route: str = "ali/qwen3.8-max") -> list:
+    """Dated payloads shaped like rundata.load_dated_pricing output."""
+    return [
+        (day, {"routes": {route: _snapshot(hit)}})
+        for day, hit in points
+    ]
+
+
+class ProjectionHitTest(unittest.TestCase):
+    """projection_hit: EWMA over snapshots, shrinkage + flag when thin."""
+
+    def test_ewma_weights_recent_snapshots(self):
+        dated = _dated([("2026-08-28", 0.0), ("2026-08-29", 1.0)])
+        stats = _snapshot(1.0)  # live window: full hit
+        hit, conf = projection_hit(dated, "ali/qwen3.8-max", stats, {})
+        # seed 0.0 -> 0.4*1.0 + 0.6*0.0 = 0.4 -> 0.4*1.0 + 0.6*0.4 = 0.64
+        self.assertAlmostEqual(hit, 0.64, delta=1e-9)
+        self.assertEqual(conf, "ok")  # reqs 200 >= MIN_CONF_REQS
+
+    def test_thin_route_shrinks_toward_fleet_prior(self):
+        stats = _snapshot(0.0, reqs=10)  # thin: few requests, zero hits
+        routes = {
+            "r/thin": stats,
+            "p/one": _snapshot(0.5), "p/two": _snapshot(0.6), "p/three": _snapshot(0.7),
+        }
+        hit, conf = projection_hit([], "r/thin", stats, routes)
+        # (10*0.0 + 20*0.6) / 30 - prior is the fleet median 0.6
+        self.assertAlmostEqual(hit, 0.4, delta=1e-9)
+        self.assertEqual(conf, "low")
+
+    def test_no_fleet_prior_leaves_thin_route_flagged_unshrunk(self):
+        stats = _snapshot(0.0, reqs=10)
+        hit, conf = projection_hit([], "r/thin", stats, {"r/thin": stats})
+        self.assertEqual(hit, 0.0)  # no confident peers - raw EWMA stands, flagged
+        self.assertEqual(conf, "low")
+
+    def test_no_hit_evidence_gives_none(self):
+        stats = {"tok_in": 0, "tok_out": 0, "reqs": 0}
+        self.assertEqual(projection_hit([], "x", stats, {}), (None, "low"))
+
+
 class ComparisonRowsTest(unittest.TestCase):
     def test_rows_ratios_and_notes(self):
         pricing = {"routes": {
@@ -152,6 +204,17 @@ class ComparisonRowsTest(unittest.TestCase):
 
     def test_empty_inputs_do_not_crash(self):
         self.assertEqual(comparison_rows({}, {}), [])
+
+    def test_dated_smooths_forward_columns_and_flags_confidence(self):
+        pricing = {"routes": {"ali/qwen3.8-max": _with_cached(QWEN)}}
+        # dated history says the route cached 0% before today's 75.8% window
+        dated = _dated([("2026-08-28", 0.0), ("2026-08-29", 0.0), ("2026-08-30", 0.0)])
+        smooth = {r["route"]: r for r in comparison_rows(pricing, CATALOG, dated)}
+        window = {r["route"]: r for r in comparison_rows(pricing, CATALOG)}
+        # smoothed hit (0.303) is below the window's 75.8% -> projection is dearer
+        self.assertGreater(smooth["ali/qwen3.8-max"]["ih_eff"], window["ali/qwen3.8-max"]["ih_eff"])
+        self.assertEqual(smooth["ali/qwen3.8-max"]["hit_conf"], "ok")  # 9455 reqs
+        self.assertEqual(window["ali/qwen3.8-max"]["hit_conf"], "ok")
 
 
 class OfficialTableRenderTest(unittest.TestCase):
