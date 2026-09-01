@@ -364,14 +364,17 @@ class PricingSectionTests(unittest.TestCase):
         self.assertNotIn("ask in $/M", page)
         self.assertIn('class="viz-bar"', page)
         self.assertIn('class="route-ask"', page)
-        # every metric cell carries a fold label for the mobile card view
+        # every decision cell carries a fold label for the mobile card view;
+        # plumbing (cache/traffic/cost/failures/source) folds under each route
         self.assertIn('data-label="effective $/M"', page)
-        self.assertIn('data-label="cache hit"', page)
-        self.assertIn('data-label="30d traffic"', page)
-        self.assertIn('data-label="30d cost"', page)
+        self.assertIn('data-label="cache hit"', page)  # candidates table
+        self.assertIn("Show plumbing", page)
+        self.assertIn("<dt>30d traffic</dt>", page)
+        self.assertIn("<dt>30d cost</dt>", page)
+        self.assertIn("<dt>failures</dt>", page)
+        self.assertIn("<dt>ask source</dt>", page)
         # cost cells explain themselves on hover and tap
         self.assertIn("Billed cost per M tokens over all traffic", page)
-        self.assertIn("Billed requests and tokens in the window", page)
         self.assertIn("vs the previous daily snapshot", page)
 
     def test_mobile_fold_css_covers_pricing_but_not_timeline(self) -> None:

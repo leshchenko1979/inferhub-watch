@@ -46,6 +46,11 @@ class SiteCopyTermsTest(unittest.TestCase):
             # permitted: non-copy technical strings
             if s.startswith("test") or "cache miss" in s:
                 continue
+            if s == "errors":
+                # transitional legacy data-key fallback in _route_failures —
+                # old snapshots carry "errors" until the sweep renames it.
+                # Remove this allowance after 2026-09-02.
+                continue
             self.fail(f"banned 'error' noun in site copy: {s!r}")
 
     def test_failures_table_uses_ontology_labels(self) -> None:

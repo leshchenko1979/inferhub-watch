@@ -308,8 +308,8 @@ def _delta_span(delta: float) -> str:
 def ask_delta_cell(payload: dict | None, prior: dict | None, route: str) -> str:
     """One Δ ask cell: in/out movement vs the prior snapshot, '—' without one."""
     tip = (
-        ' data-tip="&#916; ask vs the previous daily snapshot: &#8595; green cheaper, '
-        '&#8593; red pricier, &#8212; no earlier snapshot."'
+        ' data-tip="&#916; ask vs the previous daily snapshot: &#8595; teal cheaper, '
+        '&#8593; amber pricier, &#8212; no earlier snapshot."'
     )
     deltas = rundata.ask_deltas(payload, prior, route)
     if deltas is None:
@@ -462,6 +462,34 @@ def verdict_section(payload: dict | None) -> str:
     )
 
 
+def _plumb_row(span: str, cells: list[tuple[str, str]]) -> str:
+    """One collapsed plumbing row under a board route: <details><dl>."""
+    pairs = "".join(
+        f"<div><dt>{html.escape(k)}</dt><dd>{v}</dd></div>" for k, v in cells
+    )
+    return (
+        '<tr class="plumb-row"><td colspan="5"><details>'
+        "<summary>Show plumbing</summary>"
+        f'<dl class="plumb">{pairs}</dl></details></td></tr>'
+    )
+
+
+def _route_failures(payload: dict | None, route: str, reqs: int) -> str:
+    """Per-route failure line for the plumbing row, '' without stats."""
+    if not payload:
+        return ""
+    stats = (payload.get("failures") or payload.get("errors") or {}).get("by_model") or {}  # noqa: legacy key until the 2026-09-02 sweep writes "failures"
+    entry = stats.get(route)
+    if not entry:
+        return "0 in window"
+    failed, seen = int(entry.get("failed") or 0), int(entry.get("reqs") or 0)
+    codes = entry.get("codes") or {}
+    line = f"{failed} / {seen} req"
+    if codes:
+        line += " (" + ", ".join(f"{c} &times; {n}" for c, n in sorted(codes.items())) + ")"
+    return line
+
+
 def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     """The #pricing section, or '' when there is no usable pricing data."""
     rows = rundata.pricing_rows(payload)
@@ -472,8 +500,6 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     note = f"{span} window"
     if scanned:
         note += f" · {scanned} billed requests"
-    req_bounds = rundata.peer_bounds(int(r.get("reqs") or 0) for r in rows)
-    cost_bounds = rundata.peer_bounds(float(r.get("cost_usdc") or 0) for r in rows)
     dated = rundata.load_dated_pricing(ROOT)
     prior = rundata.prior_pricing(dated, payload)
     intel = rundata.load_intelligence(ROOT)
@@ -501,6 +527,8 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         toks = rundata.token_label(
             int(row.get("tok_in") or 0) + int(row.get("tok_out") or 0)
         )
+        # Decision row: the columns that answer "where do I route?" —
+        # plumbing (cache, traffic, cost, failures, source) folds below.
         body_rows.append(
             "<tr>"
             f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>'
@@ -515,41 +543,27 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
                 data_tip="Billed cost per M tokens over all traffic in the window, cache discounts included.",
             )
             + _iq_cells(str(row["route"]), eff_raw, intel)
-            + _viz_cell(
-                rundata.cache_label(row.get("cache_pct")) or "n/a",
-                rundata.cache_bar_pct(row.get("cache_pct")),
-                rundata.cache_color_class(row.get("cache_pct")),
-                data_label="cache hit",
-                data_tip="Prompt-cache share in the billing window.",
-            )
-            + _viz_cell(
-                f"{reqs} req · {toks} tok",
-                rundata.log_bar_pct(reqs, *req_bounds),
-                "neutral",
-                data_label=f"{span} traffic",
-                data_tip="Billed requests and tokens in the window; bar relative to the busiest route.",
-            )
-            + _viz_cell(
-                rundata.cost_label(row.get("cost_usdc")) or "n/a",
-                rundata.log_bar_pct(float(row.get("cost_usdc") or 0), *cost_bounds),
-                "gold",
-                data_label=f"{span} cost",
-                data_tip="Billed cost in the window; bar relative to the busiest route.",
-            )
             + "</tr>"
         )
+        body_rows.append(_plumb_row(span, [
+            ("cache hit", rundata.cache_label(row.get("cache_pct")) or "n/a"),
+            (f"{span} traffic", f"{reqs} req · {toks} tok"),
+            (f"{span} cost", rundata.cost_label(row.get("cost_usdc")) or "n/a"),
+            ("failures", _route_failures(payload, str(row["route"]), reqs)),
+            ("ask source", "billed ask" if logged else "floor ask"),
+        ]))
     caption = (
         "&#8220;ask&#8221; under each route is the per-M rate billed on fresh "
         "(uncached) input / output; &#8220;effective&#8221; is billed cost over all "
         "tokens, cache discounts included. Effective bars are log-scaled over "
-        "$0.001&#8211;$10 per M and colored green &#8804; $0.02, amber &#8804; $0.20, red above; "
-        "cache bars are linear, green &#8805; 70%. Traffic and cost bars are relative "
-        "to the busiest route in the window. "
+        "$0.001&#8211;$10 per M and colored teal &#8804; $0.02, amber &#8804; $0.20, red above. "
+        "Show plumbing folds each route&#8217;s cache hit, traffic, window cost, "
+        "failures, and ask source. "
         "* = floor ask &#8212; catalog minimum, shown when the route has no billed traffic in the window. "
         "IQ = Artificial Analysis Intelligence Index (composite of 9 public evals, "
         "artificialanalysis.ai, effort level max), refreshed every sweep; IQ per $ divides it by the route&#8217;s effective $/M &#8212; higher is smarter per dollar. "
         "&#916; ask compares the billed rates with the previous daily snapshot: "
-        "&#8595; green = cheaper, &#8593; red = pricier, &#8212; = no earlier snapshot "
+        "&#8595; teal = cheaper, &#8593; amber = pricier, &#8212; = no earlier snapshot "
         "to compare yet. Sparkline bars are log-scaled $0.001&#8211;$10 per day. "
         "Rates for this board&#8217;s routes only; other traffic is not listed."
     )
@@ -567,9 +581,6 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         '<th scope="col" class="num">effective $/M</th>'
         '<th scope="col" class="num">IQ</th>'
         '<th scope="col" class="num">IQ per $</th>'
-        '<th scope="col" class="num">cache hit</th>'
-        f'<th scope="col" class="num">{html.escape(span)} traffic</th>'
-        f'<th scope="col" class="num">{html.escape(span)} cost</th>'
         "</tr></thead>"
         f"<tbody>{''.join(body_rows)}</tbody>"
         "</table></div>"

@@ -529,6 +529,60 @@ td {
   color: var(--ink);
 }
 
+/* Collapsed plumbing row under each board route */
+.plumb-row td {
+  padding: 0;
+}
+
+.plumb-row summary {
+  cursor: pointer;
+  list-style: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--muted);
+}
+
+.plumb-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.plumb-row summary::before {
+  content: "▸";
+  font-size: var(--text-caption);
+}
+
+.plumb-row details[open] summary::before {
+  content: "▾";
+}
+
+.plumb-row details[open] summary {
+  color: var(--ink);
+}
+
+dl.plumb {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-4) var(--space-6);
+  margin: 0;
+  padding: var(--space-2) 0 var(--space-5);
+}
+
+dl.plumb dt {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+dl.plumb dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* ── Cost per M tokens ── */
 
 .pricing {
@@ -1019,6 +1073,11 @@ footer {
   }
 
   .pricing tr > td:nth-of-type(5) {
+    grid-column: 1 / -1;
+  }
+
+  /* plumbing folds full-width under its route card */
+  .plumb-row td {
     grid-column: 1 / -1;
   }
 
