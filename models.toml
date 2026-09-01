@@ -8,3 +8,16 @@ aliases = [
   "cx/gpt-5.6-sol",
   "cx/gpt-5.6-luna",
 ]
+
+# Route -> Artificial Analysis slug (identity strings, stable; data fetched
+# fresh every sweep into data/intelligence.json - never curated prices).
+# Effort-level variants are pinned to (max): that matches what our probes hit.
+[aa]
+"ali/deepseek-v4-flash-0731" = "deepseek-v4-flash"
+"ali/deepseek-v4-pro-0813" = "deepseek-v4-pro"
+"ali/qwen3.8-max" = "qwen3-8-max"
+"ali/kimi-k3" = "kimi-k3"
+"zai/glm-5.3-flash" = "glm-5-3-flash"
+"cx/gpt-5.6-terra" = "gpt-5-6-terra"
+"cx/gpt-5.6-sol" = "gpt-5-6-sol"
+"cx/gpt-5.6-luna" = "gpt-5-6-luna"

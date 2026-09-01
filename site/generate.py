@@ -362,6 +362,19 @@ def _ask_spark(points: list[tuple[str, float, float]]) -> str:
     )
 
 
+def _iq_cells(route: str, eff: float | None, intel: dict | None) -> str:
+    """IQ and IQ-per-$ cells; em-dashes when no snapshot or unmapped route."""
+    if not intel:
+        return '<td class="num"></td>' * 2
+    slug = rundata.aa_slug(route)
+    entry = (intel.get("models") or {}).get(slug) if slug else None
+    iq = entry.get("iq") if entry else None
+    if iq is None:
+        return '<td class="num">&#8212;</td>' * 2
+    iq_per_dollar = f"{iq / eff:,.0f}" if eff else "&#8212;"
+    return f'<td class="num">{iq:.1f}</td><td class="num">{iq_per_dollar}</td>'
+
+
 def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     """The #pricing section, or '' when there is no usable pricing data."""
     rows = rundata.pricing_rows(payload)
@@ -376,6 +389,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     cost_bounds = rundata.peer_bounds(float(r.get("cost_usdc") or 0) for r in rows)
     dated = rundata.load_dated_pricing(ROOT)
     prior = rundata.prior_pricing(dated, payload)
+    intel = rundata.load_intelligence(ROOT)
     body_rows = []
     for row in rows:
         logged = row.get("source") == "usage-logs"
@@ -400,6 +414,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
                 data_label="effective $/M",
                 data_tip="Billed cost per M tokens over all traffic in the window, cache discounts included.",
             )
+            + _iq_cells(str(row["route"]), eff_raw, intel)
             + _viz_cell(
                 rundata.cache_label(row.get("cache_pct")) or "n/a",
                 rundata.cache_bar_pct(row.get("cache_pct")),
@@ -431,6 +446,8 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         "cache bars are linear, green &#8805; 70%. Traffic and cost bars are relative "
         "to the busiest route in the window. "
         "* = floor ask &#8212; catalog minimum, shown when the route has no billed traffic in the window. "
+        "IQ = Artificial Analysis Intelligence Index (composite of 9 public evals, "
+        "artificialanalysis.ai, effort level max), refreshed every sweep; IQ per $ divides it by the route&#8217;s effective $/M &#8212; higher is smarter per dollar. "
         "&#916; ask compares the billed rates with the previous daily snapshot: "
         "&#8595; green = cheaper, &#8593; red = pricier, &#8212; = no earlier snapshot "
         "to compare yet. Sparkline bars are log-scaled $0.001&#8211;$10 per day. "
@@ -447,6 +464,8 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         '<th scope="col">Route</th>'
         '<th scope="col" class="num">&#916; ask in / out</th>'
         '<th scope="col" class="num">effective $/M</th>'
+        '<th scope="col" class="num">IQ</th>'
+        '<th scope="col" class="num">IQ per $</th>'
         '<th scope="col" class="num">cache hit</th>'
         f'<th scope="col" class="num">{html.escape(span)} traffic</th>'
         f'<th scope="col" class="num">{html.escape(span)} cost</th>'

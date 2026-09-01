@@ -32,6 +32,8 @@ enforced by `tests/test_ontology.py`.
 | **Multiplier** | Official ÷ here, cache-adjusted — the "20×" style verdict numbers | official-comparison table rows |
 | **Projection** | The forward-looking cost line: the window's real token volume rerun at **today's** asks, inferhub vs official. Past volume × present prices — deliberately not "what I spent" (that mixes price eras and goes stale) | official-comparison projection `<p>` |
 | **Floor ask** | The `*`-marked ask: catalog minimum, shown only when the route has no billed traffic in the window | `ask-mark` span; legend |
+| **Intelligence (IQ)** | Artificial Analysis Intelligence Index for a route's model — composite of 9 public evals, fetched fresh from artificialanalysis.ai every sweep into `data/intelligence.json`; effort level pinned to (max). Never hardcoded | `probe/intelligence.py`, models.toml `[aa]` slug map |
+| **IQ per $** | Intelligence ÷ the route's effective $/M — the smarter-per-dollar verdict column. Higher is better | board `IQ per $` column |
 
 ## Failures
 

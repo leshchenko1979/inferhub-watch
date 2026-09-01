@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import math
+import tomllib
 from pathlib import Path
 
 from probe import market
+from probe.registry import repo_root
 
 
 def load_runs(root: Path) -> list[dict]:
@@ -243,6 +245,23 @@ def load_catalog(root: Path) -> dict | None:
     if not isinstance(payload, dict) or not isinstance(payload.get("models"), dict):
         return None
     return payload
+
+
+def load_intelligence(root: Path) -> dict | None:
+    """data/intelligence.json as written by probe.intelligence, or None."""
+    try:
+        payload = json.loads((root / "data" / "intelligence.json").read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get("models"), dict):
+        return None
+    return payload
+
+
+def aa_slug(route: str) -> str | None:
+    """Route -> Artificial Analysis slug from models.toml [aa], or None."""
+    data = tomllib.loads((repo_root() / "models.toml").read_text())
+    return (data.get("aa") or {}).get(route)
 
 
 def ask_series(dated: list[tuple[str, dict]], route: str, current: dict | None = None) -> list[tuple[str, float, float]]:
