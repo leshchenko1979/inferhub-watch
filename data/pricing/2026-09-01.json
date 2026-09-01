@@ -1,46 +1,46 @@
 {
-  "generated_at": "2026-09-01T10:27:28+00:00",
+  "generated_at": "2026-09-01T11:26:54+00:00",
   "range": "30d",
   "requests_scanned": 12000,
   "days": [
     {
       "date": "2026-08-28",
-      "cost_usdc": "0.701955",
-      "requests": 1622
+      "cost_usdc": "0.638440",
+      "requests": 1443
     },
     {
       "date": "2026-08-29",
-      "cost_usdc": "13.084938",
-      "requests": 4213
+      "cost_usdc": "13.080377",
+      "requests": 4210
     },
     {
       "date": "2026-08-30",
-      "cost_usdc": "4.236485",
-      "requests": 1434
+      "cost_usdc": "4.237848",
+      "requests": 1437
     },
     {
       "date": "2026-08-31",
-      "cost_usdc": "3.823255",
-      "requests": 3717
+      "cost_usdc": "3.822705",
+      "requests": 3716
     },
     {
       "date": "2026-09-01",
-      "cost_usdc": "1.798653",
-      "requests": 1014
+      "cost_usdc": "2.372168",
+      "requests": 1194
     }
   ],
   "errors": {
     "total": 12000,
-    "failed": 878,
-    "rate_pct": 7.32,
+    "failed": 897,
+    "rate_pct": 7.47,
     "codes": {
-      "502": 869,
+      "502": 888,
       "400": 6,
       "429": 3
     },
     "by_model": {
       "ali/qwen3.8-max": {
-        "reqs": 7441,
+        "reqs": 7361,
         "failed": 777,
         "codes": {
           "502": 771,
@@ -48,10 +48,10 @@
         }
       },
       "zai/glm-5.3-flash": {
-        "reqs": 4331,
-        "failed": 98,
+        "reqs": 4408,
+        "failed": 117,
         "codes": {
-          "502": 95,
+          "502": 114,
           "429": 3
         }
       },
@@ -62,8 +62,13 @@
           "502": 3
         }
       },
+      "cx/gpt-5.6-terra": {
+        "reqs": 2,
+        "failed": 0,
+        "codes": {}
+      },
       "ali/deepseek-v4-pro-0813": {
-        "reqs": 28,
+        "reqs": 29,
         "failed": 0,
         "codes": {}
       },
@@ -163,39 +168,39 @@
     "ali/deepseek-v4-flash-0731": {
       "ask_in": 0.02816,
       "ask_out": 0.08448,
-      "eff_per_mtok": 0.0178,
-      "cache_pct": 9.1,
+      "eff_per_mtok": 0.019,
+      "cache_pct": 9.6,
       "reqs": 25,
-      "tok_in": 98928,
+      "tok_in": 93090,
       "tok_out": 1151,
-      "cost_usdc": "0.001786",
-      "last_ts": "2026-09-01T10:19:23.354Z",
+      "cost_usdc": "0.001790",
+      "last_ts": "2026-09-01T11:11:38.500Z",
       "hit_ask_ratio": 1.3244,
       "source": "usage-logs"
     },
     "ali/deepseek-v4-pro-0813": {
       "ask_in": 0.0858,
       "ask_out": 0.2574,
-      "eff_per_mtok": 0.0732,
-      "cache_pct": 7.7,
-      "reqs": 28,
-      "tok_in": 93310,
-      "tok_out": 1149,
-      "cost_usdc": "0.006915",
-      "last_ts": "2026-09-01T10:19:28.709Z",
+      "eff_per_mtok": 0.0739,
+      "cache_pct": 7.3,
+      "reqs": 29,
+      "tok_in": 97970,
+      "tok_out": 1176,
+      "cost_usdc": "0.007322",
+      "last_ts": "2026-09-01T11:12:16.733Z",
       "hit_ask_ratio": 0.1004,
       "source": "usage-logs"
     },
     "ali/qwen3.8-max": {
       "ask_in": 0.16,
       "ask_out": 0.48,
-      "eff_per_mtok": 0.0381,
-      "cache_pct": 77.1,
-      "reqs": 7441,
-      "tok_in": 526617462,
-      "tok_out": 8174820,
-      "cost_usdc": "20.369186",
-      "last_ts": "2026-09-01T10:22:18.232Z",
+      "eff_per_mtok": 0.0395,
+      "cache_pct": 76.8,
+      "reqs": 7361,
+      "tok_in": 519315417,
+      "tok_out": 8090962,
+      "cost_usdc": "20.837810",
+      "last_ts": "2026-09-01T11:22:43.718Z",
       "hit_ask_ratio": 0.1,
       "source": "usage-logs"
     },
@@ -213,30 +218,30 @@
       "source": "none"
     },
     "zai/glm-5.3-flash": {
-      "ask_in": 0.0672,
-      "ask_out": 0.224,
+      "ask_in": 0.015,
+      "ask_out": 0.05,
       "eff_per_mtok": 0.0113,
       "cache_pct": 88.9,
-      "reqs": 4331,
-      "tok_in": 283029723,
-      "tok_out": 2292252,
-      "cost_usdc": "3.235704",
-      "last_ts": "2026-09-01T10:21:49.505Z",
+      "reqs": 4408,
+      "tok_in": 286470141,
+      "tok_out": 2309826,
+      "cost_usdc": "3.272877",
+      "last_ts": "2026-09-01T11:17:33.112Z",
       "hit_ask_ratio": 0.1,
       "source": "usage-logs"
     },
     "cx/gpt-5.6-terra": {
-      "ask_in": null,
-      "ask_out": null,
-      "eff_per_mtok": null,
-      "cache_pct": null,
-      "reqs": 0,
-      "tok_in": 0,
-      "tok_out": 0,
-      "cost_usdc": null,
-      "last_ts": null,
+      "ask_in": 0.014,
+      "ask_out": 0.084,
+      "eff_per_mtok": 0.0163,
+      "cache_pct": 0.0,
+      "reqs": 2,
+      "tok_in": 2606,
+      "tok_out": 91,
+      "cost_usdc": "0.000044",
+      "last_ts": "2026-09-01T11:19:44.941Z",
       "hit_ask_ratio": null,
-      "source": "none"
+      "source": "usage-logs"
     },
     "cx/gpt-5.6-sol": {
       "ask_in": null,

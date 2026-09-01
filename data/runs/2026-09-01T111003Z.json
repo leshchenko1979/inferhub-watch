@@ -1,0 +1,305 @@
+{
+  "started_at": "2026-09-01T11:10:03.848486+00:00",
+  "finished_at": "2026-09-01T11:22:49.778192+00:00",
+  "origin": "github-actions",
+  "api": "https://api.inferhub.dev/v1/chat/completions",
+  "aliases": [
+    "ali/deepseek-v4-flash-0731",
+    "ali/deepseek-v4-pro-0813",
+    "ali/qwen3.8-max",
+    "ali/kimi-k3",
+    "zai/glm-5.3-flash",
+    "cx/gpt-5.6-terra",
+    "cx/gpt-5.6-sol",
+    "cx/gpt-5.6-luna"
+  ],
+  "candidates": [],
+  "checks": [
+    "core",
+    "cache"
+  ],
+  "cells": [
+    {
+      "check_id": "core",
+      "alias": "ali/deepseek-v4-flash-0731",
+      "resolved_model": "",
+      "status": "error",
+      "summary": "The read operation timed out",
+      "http_status": null,
+      "latency_ms": null,
+      "evidence": {},
+      "model": "deepseek-v4-flash"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ali/deepseek-v4-flash-0731",
+      "resolved_model": "",
+      "status": "skipped",
+      "summary": "not run \u2014 earlier check failed",
+      "http_status": null,
+      "latency_ms": null,
+      "evidence": {},
+      "model": "deepseek-v4-flash"
+    },
+    {
+      "check_id": "core",
+      "alias": "ali/deepseek-v4-pro-0813",
+      "resolved_model": "ali/deepseek-v4-pro-0813",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 54 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 46556.1,
+      "evidence": {
+        "chunk_count": 14,
+        "empty_name_chunks": 12,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {},
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "deepseek-v4-pro"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ali/deepseek-v4-pro-0813",
+      "resolved_model": "",
+      "status": "error",
+      "summary": "The read operation timed out",
+      "http_status": null,
+      "latency_ms": null,
+      "evidence": {},
+      "model": "deepseek-v4-pro"
+    },
+    {
+      "check_id": "core",
+      "alias": "ali/qwen3.8-max",
+      "resolved_model": "",
+      "status": "error",
+      "summary": "The read operation timed out",
+      "http_status": null,
+      "latency_ms": null,
+      "evidence": {},
+      "model": "qwen3.8-max"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ali/qwen3.8-max",
+      "resolved_model": "",
+      "status": "skipped",
+      "summary": "not run \u2014 earlier check failed",
+      "http_status": null,
+      "latency_ms": null,
+      "evidence": {},
+      "model": "qwen3.8-max"
+    },
+    {
+      "check_id": "core",
+      "alias": "ali/kimi-k3",
+      "resolved_model": "",
+      "status": "error",
+      "summary": "HTTP 503: {\"error\":{\"message\":\"unable to verify api key \u2014 try again shortly\",\"type\":\"auth_unavailable\"}} ",
+      "http_status": 503,
+      "latency_ms": 4116.2,
+      "evidence": {},
+      "model": "kimi-k3"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ali/kimi-k3",
+      "resolved_model": "",
+      "status": "skipped",
+      "summary": "not run \u2014 earlier check failed",
+      "http_status": null,
+      "latency_ms": null,
+      "evidence": {},
+      "model": "kimi-k3"
+    },
+    {
+      "check_id": "core",
+      "alias": "zai/glm-5.3-flash",
+      "resolved_model": "zai/glm-5.3-flash",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 108 chars, 84 Cyrillic, as text content.",
+      "http_status": 200,
+      "latency_ms": 73078.5,
+      "evidence": {
+        "chunk_count": 20,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "prompt_tokens": 1393,
+          "completion_tokens": 47,
+          "cached_tokens": 0
+        },
+        "chars": 108,
+        "cyrillic_chars": 84,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 54,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443.\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "glm-5.3-flash",
+      "cost_usdc": "0.000023",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "zai/glm-5.3-flash",
+      "resolved_model": "zai/glm-5.3-flash",
+      "status": "pass",
+      "summary": "Prompt cache hit on the identical repeat: 1344 of 1393 input tokens reused (96%).",
+      "http_status": 200,
+      "latency_ms": 79284.1,
+      "evidence": {
+        "cached_tokens": 1344,
+        "prompt_tokens": 1393,
+        "chunk_count": 15,
+        "usage": {
+          "prompt_tokens": 1393,
+          "completion_tokens": 42,
+          "cached_tokens": 1344
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.964824120603015
+      },
+      "model": "glm-5.3-flash",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "cx/gpt-5.6-terra",
+      "resolved_model": "cx/gpt-5.6-terra",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 54 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 53042.2,
+      "evidence": {
+        "chunk_count": 25,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "prompt_tokens": 1303,
+          "completion_tokens": 36
+        },
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "gpt-5.6-terra",
+      "cost_usdc": "0.000021",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "cx/gpt-5.6-terra",
+      "resolved_model": "cx/gpt-5.6-terra",
+      "status": "fail",
+      "summary": "First identical repeat showed no prompt-cache hit (1303 input tokens): usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 59289.6,
+      "evidence": {
+        "cached_tokens": 0,
+        "prompt_tokens": 1303,
+        "chunk_count": 25,
+        "usage": {
+          "prompt_tokens": 1303,
+          "completion_tokens": 55
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.0
+      },
+      "model": "gpt-5.6-terra",
+      "cost_usdc": "0.000023",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "cx/gpt-5.6-sol",
+      "resolved_model": "",
+      "status": "error",
+      "summary": "The read operation timed out",
+      "http_status": null,
+      "latency_ms": null,
+      "evidence": {},
+      "model": "gpt-5.6-sol"
+    },
+    {
+      "check_id": "cache",
+      "alias": "cx/gpt-5.6-sol",
+      "resolved_model": "",
+      "status": "skipped",
+      "summary": "not run \u2014 earlier check failed",
+      "http_status": null,
+      "latency_ms": null,
+      "evidence": {},
+      "model": "gpt-5.6-sol"
+    },
+    {
+      "check_id": "core",
+      "alias": "cx/gpt-5.6-luna",
+      "resolved_model": "",
+      "status": "error",
+      "summary": "The read operation timed out",
+      "http_status": null,
+      "latency_ms": null,
+      "evidence": {},
+      "model": "gpt-5.6-luna"
+    },
+    {
+      "check_id": "cache",
+      "alias": "cx/gpt-5.6-luna",
+      "resolved_model": "",
+      "status": "skipped",
+      "summary": "not run \u2014 earlier check failed",
+      "http_status": null,
+      "latency_ms": null,
+      "evidence": {},
+      "model": "gpt-5.6-luna"
+    }
+  ],
+  "runner_errors": [
+    "ali/deepseek-v4-flash-0731/core: The read operation timed out",
+    "ali/deepseek-v4-pro-0813/cache: The read operation timed out",
+    "ali/qwen3.8-max/core: The read operation timed out",
+    "cx/gpt-5.6-sol/core: The read operation timed out",
+    "cx/gpt-5.6-luna/core: The read operation timed out"
+  ],
+  "cost": {
+    "matched": 4,
+    "cells": 16,
+    "total_usdc": "0.000077",
+    "source": "usage-logs"
+  }
+}
