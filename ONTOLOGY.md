@@ -12,7 +12,7 @@ enforced by `tests/test_ontology.py`.
 | **Publisher** | The prefix before `/` in a route (`ali`, `cx`, `cbcn`, `zai`) | `probe/market.py::family` conventions; `publishers` section |
 | **Probe** | One *billed* measurement request against a route — costs real money. Dispatched by the sweep or on explicit owner OK only | `probe/` package; `probe/payloads.py` |
 | **Sweep** | The scheduled full run (06:00Z): probe every route, pull the usage-log window, regenerate all data files | `.github/workflows/watch.yml` |
-| **Board** | The main pricing table — one row per traffic-carrying route | `site/generate.py::pricing_section`, `#pricing` |
+| **Board** | The main pricing table — one row per traffic-carrying route; rows sort by **IQ per $** descending (best intelligence-per-dollar first), unmapped routes last | `site/generate.py::pricing_section`, `#pricing` |
 | **Window** | The 30-day usage-log pull that feeds all aggregates (tokens, billed asks, hit rates, failures) | `window` / `span` labels; `aggregate_rows` input |
 | **Snapshot** | Dated `data/pricing/YYYY-MM-DD.json` — one history point per day | `probe/pricing.py::snapshot`, `site/rundata.py` |
 | **Catalog snapshot** | `data/catalog.json` — the fetched `/api/catalog` model list with official prices and price points | `probe/catalog.py`, `site/rundata.py::load_catalog` |

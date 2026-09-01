@@ -390,6 +390,19 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     dated = rundata.load_dated_pricing(ROOT)
     prior = rundata.prior_pricing(dated, payload)
     intel = rundata.load_intelligence(ROOT)
+    # Board order: IQ per $ descending (ontology: the smarter-per-dollar verdict
+    # is the point of the board). Routes without an IQ mapping or eff sink last.
+    def _iq_per_dollar(row: dict) -> float:
+        slug = rundata.aa_slug(str(row["route"]))
+        entry = (intel.get("models") or {}).get(slug) if slug else None
+        iq = entry.get("iq") if entry else None
+        eff = row.get("eff_per_mtok")
+        try:
+            return iq / eff if iq is not None and eff else float("-inf")
+        except ZeroDivisionError:
+            return float("-inf")
+
+    rows.sort(key=_iq_per_dollar, reverse=True)
     body_rows = []
     for row in rows:
         logged = row.get("source") == "usage-logs"

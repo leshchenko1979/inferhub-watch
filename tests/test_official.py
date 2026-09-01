@@ -1,6 +1,7 @@
 """Tests for probe/official_compare.py - official-price comparison math."""
 
 import unittest
+from unittest import mock
 
 from probe.official_compare import (
     blended_eff,
@@ -204,3 +205,54 @@ class OfficialTableRenderTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BoardIqSortTest(unittest.TestCase):
+    """Board rows sort by IQ per $ descending; unmapped routes sink last."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        import sys as _sys
+
+        from probe.registry import repo_root
+
+        _sys.path.insert(0, str(repo_root() / "site"))
+        import rundata  # noqa: E402
+
+        cls.rundata = rundata
+        path = repo_root() / "site" / "generate.py"
+        spec = importlib.util.spec_from_file_location("watch_generate_sort", path)
+        assert spec and spec.loader
+        cls.mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.mod)
+
+    def _section(self, routes_order: list[str]) -> str:
+        rows = {
+            "ali/kimi-k3": {"ask_in": 0.195, "ask_out": 0.975, "eff_per_mtok": 0.28,
+                            "reqs": 10, "source": "usage-logs"},
+            "zai/glm-5.3-flash": {"ask_in": 0.015, "ask_out": 0.05, "eff_per_mtok": 0.0113,
+                                  "reqs": 10, "source": "usage-logs"},
+            "ocg/unmapped": {"ask_in": 0.01, "ask_out": 0.02, "eff_per_mtok": 0.015,
+                             "reqs": 10, "source": "usage-logs"},
+        }
+        payload = {"range": "30d", "requests_scanned": 100,
+                   "routes": {r: rows[r] for r in routes_order}}
+        intel = {"models": {"glm-5-3-flash": {"iq": 57.5},
+                            "kimi-k3": {"iq": 59.7}}}
+        rd, mod = self.rundata, self.mod
+        input_rows = [{"route": r, **payload["routes"][r]} for r in routes_order]
+        with mock.patch.object(rd, "pricing_rows", return_value=input_rows), \
+            mock.patch.object(rd, "load_dated_pricing", return_value=[]), \
+            mock.patch.object(rd, "load_intelligence", return_value=intel), \
+            mock.patch.object(rd, "ask_series", return_value=[]), \
+            mock.patch.object(rd, "load_catalog", return_value={"models": {}}):
+            return mod.pricing_section(payload, [])
+
+    def test_sorted_desc_by_iq_per_dollar_unmapped_last(self):
+        # input order deliberately scrambled: kimi first, glm middle, unmapped last
+        out = self._section(["ali/kimi-k3", "ocg/unmapped", "zai/glm-5.3-flash"])
+        g, k, u = (out.index(f"<code>{r}</code>")
+                   for r in ("zai/glm-5.3-flash", "ali/kimi-k3", "ocg/unmapped"))
+        self.assertLess(g, k, "glm (5088 IQ/$) must precede kimi (213 IQ/$)")
+        self.assertLess(k, u, "unmapped route must sort last")
