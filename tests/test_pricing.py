@@ -29,7 +29,7 @@ def _row(ts="2026-08-27T10:00:00Z", model="cp/xai/grok-4.6", **kw):
 
 
 class AggregateTests(unittest.TestCase):
-    def test_totals_and_latest_ask_win(self) -> None:
+    def test_totals_and_median_ask(self) -> None:
         rows = [
             _row(ts="2026-08-27T10:00:00Z", ask_input_per_mtok="2", cost_consumer_usdc="0.001"),
             _row(ts="2026-08-27T09:00:00Z", ask_input_per_mtok="9", cost_consumer_usdc="0.002"),
@@ -39,8 +39,37 @@ class AggregateTests(unittest.TestCase):
         self.assertEqual(agg["tok_in"], 2000)
         self.assertEqual(agg["tok_out"], 200)
         self.assertEqual(agg["cost"], 0.003)
-        self.assertEqual(agg["ask_in"], 2.0)  # latest row, not first-seen
+        self.assertEqual(agg["ask_in"], 5.5)  # median of the two recent asks
         self.assertEqual(agg["last_ts"], "2026-08-27T10:00:00Z")
+
+    def test_median_ask_ignores_single_outlier(self) -> None:
+        rows = [
+            _row(ts="2026-09-01T10:00:00Z", ask_input_per_mtok="2", ask_output_per_mtok="4"),
+            _row(ts="2026-09-02T10:00:00Z", ask_input_per_mtok="2", ask_output_per_mtok="4"),
+            _row(ts="2026-09-03T10:00:00Z", ask_input_per_mtok="3", ask_output_per_mtok="6"),
+            _row(ts="2026-09-03T11:00:00Z", ask_input_per_mtok="30", ask_output_per_mtok="60"),
+        ]
+        agg = pricing.aggregate_rows(rows)["cp/xai/grok-4.6"]
+        self.assertEqual(agg["ask_in"], 2.5)   # median of (2, 2, 3, 30)
+        self.assertEqual(agg["ask_out"], 5.0)  # median of (4, 4, 6, 60)
+
+    def test_median_ask_excludes_stale_rows(self) -> None:
+        rows = [
+            _row(ts="2026-08-01T10:00:00Z", ask_input_per_mtok="2", ask_output_per_mtok="4"),
+            _row(ts="2026-08-20T10:00:00Z", ask_input_per_mtok="4", ask_output_per_mtok="8"),
+        ]
+        agg = pricing.aggregate_rows(rows)["cp/xai/grok-4.6"]
+        self.assertEqual(agg["ask_in"], 4.0)  # quiet route: median of the final burst
+        self.assertEqual(agg["ask_out"], 8.0)
+
+    def test_median_ask_falls_back_without_parseable_ts(self) -> None:
+        rows = [
+            _row(ts="not-a-date", ask_input_per_mtok="2", ask_output_per_mtok="4"),
+            _row(ts="also-bad", ask_input_per_mtok="4", ask_output_per_mtok="8"),
+        ]
+        agg = pricing.aggregate_rows(rows)["cp/xai/grok-4.6"]
+        self.assertEqual(agg["ask_in"], 3.0)  # no cutoff possible - whole-window median
+        self.assertEqual(agg["ask_out"], 6.0)
 
     def test_cached_tokens_sum(self) -> None:
         agg = pricing.aggregate_rows([_row(cached_tokens=500), _row(cached_tokens=250)])

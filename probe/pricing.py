@@ -5,7 +5,8 @@ Two sources, both real billing rather than estimates:
 - /usage/logs rows carry ask_input_per_mtok / ask_output_per_mtok — the
   per-M rates actually billed on each request — plus token counts and
   cost_consumer_usdc. Aggregated over 30d per model (the route string) they
-  give the ask rates in use, the effective $/M over all tokens (cache
+  give the ask rates in use (median over the recent window — robust to
+  single-row outliers), the effective $/M over all tokens (cache
   discounts included) and the cache-hit share.
 - /catalog carries each publisher's asks per model; used as the fallback
   for routes with no log rows yet.
@@ -23,7 +24,8 @@ import os
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from statistics import median
 from pathlib import Path
 
 from probe.costs import MANAGEMENT, USER_AGENT, fetch_log_rows
@@ -31,6 +33,9 @@ from probe.registry import load_aliases, repo_root
 
 CATALOG_TIMEOUT = 30
 RANGE = "30d"
+# The forward view's ask is the median over this many days of billed rows,
+# not the last row: a single outlier request must not move the projection.
+ASK_MEDIAN_DAYS = 7
 # 30d is ~5.7k rows; fetch_log_rows caps pages at 40 by default.
 MAX_PAGES = 120
 
@@ -79,8 +84,9 @@ def _float(raw: object) -> float | None:
 
 
 def aggregate_rows(rows: list[dict]) -> dict[str, dict]:
-    """Per model string: traffic totals and the latest billed ask rates."""
+    """Per model string: traffic totals and the median billed ask rates."""
     stats: dict[str, dict] = {}
+    asks: dict[str, list[tuple[str, float, float]]] = {}
     for row in sorted(rows, key=lambda r: r.get("ts") or ""):
         model = row.get("model") or ""
         if not model:
@@ -108,9 +114,52 @@ def aggregate_rows(rows: list[dict]) -> dict[str, dict]:
         ask_in = _float(row.get("ask_input_per_mtok"))
         ask_out = _float(row.get("ask_output_per_mtok"))
         if ask_in is not None and ask_out is not None:
-            agg["ask_in"], agg["ask_out"] = ask_in, ask_out
+            asks.setdefault(model, []).append((row.get("ts") or "", ask_in, ask_out))
         agg["last_ts"] = row.get("ts") or agg["last_ts"]
+    for model, pairs in asks.items():
+        stats[model]["ask_in"], stats[model]["ask_out"] = _median_ask(pairs)
     return stats
+
+
+def _parse_ts(raw: object) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _median_ask(
+    pairs: list[tuple[str, float, float]],
+) -> tuple[float | None, float | None]:
+    """Median billed (ask_in, ask_out) over the recent sub-window of rows.
+
+    The last row's ask is a sample of one — a single outlier request used
+    to move the whole forward view between adjacent days (backtest
+    2026-09-01: ds-flash projected 0.0070 -> 0.0280 on one request). The
+    median over the newest ASK_MEDIAN_DAYS of billed rows is robust to
+    that; a route with no asks inside the sub-window (quiet route) falls
+    back to the median of its whole 30d window, so the number only moves
+    when real asks move.
+    """
+    if not pairs:
+        return None, None
+    pool = [(a_in, a_out) for _, a_in, a_out in pairs]
+    newest = _parse_ts(pairs[-1][0])  # rows arrive ts-sorted, so last is newest
+    if newest is not None:
+        cutoff = newest - timedelta(days=ASK_MEDIAN_DAYS)
+        recent = [
+            (a_in, a_out)
+            for ts, a_in, a_out in pairs
+            if (parsed := _parse_ts(ts)) is not None and parsed >= cutoff
+        ]
+        if recent:
+            pool = recent
+    ins = sorted(a_in for a_in, _ in pool)
+    outs = sorted(a_out for _, a_out in pool)
+    return (
+        float(median(ins)) if ins else None,
+        float(median(outs)) if outs else None,
+    )
 
 
 def daily_series(rows: list[dict]) -> list[dict]:
