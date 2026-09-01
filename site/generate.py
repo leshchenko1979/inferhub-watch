@@ -28,7 +28,7 @@ CLONE = (
 )
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500"
-    "&family=Newsreader:ital,opsz,wght@0,8..72,400;0,8..72,600;1,8..72,400&display=swap"
+    "&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
 )
 SECTIONS = (
     ("results", "Probe results"),

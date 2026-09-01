@@ -1,16 +1,20 @@
 :root {
-  --bg: oklch(0.08 0 0);
-  --surface: oklch(0.145 0 0);
-  --ink: oklch(0.94 0.012 258);
-  --muted: oklch(0.72 0.03 258);
-  --primary: oklch(0.68 0.132 258);
-  --accent: oklch(0.84 0.14 85);
-  --fail: oklch(0.64 0.19 28);
-  --mid: oklch(0.78 0.12 70);
-  --ok: oklch(0.78 0.12 155);
-  --ok-dim: oklch(0.78 0.12 155 / 0.1);
-  --line: oklch(0.28 0.02 258);
-  --serif: "Newsreader", "Iowan Old Style", Georgia, serif;
+  /* Operator's console: deep navy ink, ice surfaces. Amber = price up,
+     teal = price down/healthy, red = failures only — never decoration. */
+  --bg: oklch(0.17 0.028 255);
+  --surface: oklch(0.21 0.032 255);
+  --ink: oklch(0.94 0.015 240);
+  --muted: oklch(0.72 0.03 240);
+  --amber: oklch(0.8 0.14 75);
+  --teal: oklch(0.74 0.11 172);
+  --primary: var(--teal);
+  --accent: var(--amber);
+  --fail: oklch(0.63 0.19 25);
+  --mid: var(--amber);
+  --ok: var(--teal);
+  --ok-dim: oklch(0.74 0.11 172 / 0.1);
+  --line: oklch(0.3 0.03 255);
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --text-caption: 0.75rem;
@@ -268,7 +272,7 @@ h2 {
 }
 
 .explanations p {
-  font-family: var(--serif);
+  font-family: var(--sans);
   color: var(--muted);
   text-wrap: pretty;
   margin: 0 0 var(--space-5);
@@ -285,7 +289,7 @@ h2 {
 }
 
 .readout li {
-  font-family: var(--serif);
+  font-family: var(--sans);
   color: var(--muted);
   font-size: 0.98rem;
   line-height: 1.5;
@@ -333,7 +337,7 @@ h2 {
 
 .check-brief p,
 .check-brief li {
-  font-family: var(--serif);
+  font-family: var(--sans);
   font-size: 0.95rem;
   color: var(--muted);
   text-wrap: pretty;
@@ -627,11 +631,11 @@ td {
 }
 
 .delta-down {
-  color: var(--ok);
+  color: var(--teal);
 }
 
 .delta-up {
-  color: var(--fail);
+  color: var(--amber);
 }
 
 .delta-flat {
@@ -816,13 +820,13 @@ td {
 }
 
 .explainer h1 {
-  font-family: var(--serif);
+  font-family: var(--sans);
   font-size: 2rem;
   font-weight: 400;
 }
 
 .explainer p {
-  font-family: var(--serif);
+  font-family: var(--sans);
   text-wrap: pretty;
 }
 
