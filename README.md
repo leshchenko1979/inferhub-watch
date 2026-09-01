@@ -71,3 +71,4 @@ INFERHUB_RADAR_SESSION=… python3 -m probe.radar
 python3 -m probe.routes cb/gpt-5.6-luna cmc/deepseek/deepseek-v4-pro   # sweep arbitrary routes
 PAGES_BASE= python3 site/generate.py
 ```
+
