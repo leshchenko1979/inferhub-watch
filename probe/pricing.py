@@ -135,7 +135,7 @@ def daily_series(rows: list[dict]) -> list[dict]:
     ]
 
 
-def error_stats(rows: list[dict]) -> dict:
+def failure_stats(rows: list[dict]) -> dict:
     """Failure counts and http-code breakdown over the fetched rows.
 
     Usage-log rows carry `status` ("ok" / "failed") and `http_status`.
@@ -232,7 +232,7 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
         "range": range_,
         "requests_scanned": len(rows),
         "days": daily_series(rows),
-        "errors": error_stats(rows),
+        "failures": failure_stats(rows),
         "routes": {alias: _entry(alias) for alias in aliases},
     }
 

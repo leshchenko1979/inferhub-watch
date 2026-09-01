@@ -170,6 +170,21 @@ def resolved_for_alias(run: dict, alias: str, registry: list[dict]) -> str:
     return resolved
 
 
+def resolved_for_alias_in_window(
+    window: list[dict], alias: str, registry: list[dict]
+) -> str:
+    """Newest resolved_model for the alias across the window, newest run first.
+
+    A fully failed run can come home with no resolved id at all — the
+    publisher label is identity, so fall back to the last run that carried it.
+    """
+    for run in reversed(window):
+        resolved = resolved_for_alias(run, alias, registry)
+        if resolved:
+            return resolved
+    return ""
+
+
 def cost_label(raw: object) -> str:
     """'0.000712' -> '$0.0007' (six decimals when too small). '' when absent."""
     try:

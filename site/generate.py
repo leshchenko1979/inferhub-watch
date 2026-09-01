@@ -379,7 +379,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     body_rows = []
     for row in rows:
         logged = row.get("source") == "usage-logs"
-        mark = "" if logged else '<span class="ask-mark" title="no traffic in window; catalog list price">*</span>'
+        mark = "" if logged else '<span class="ask-mark" title="floor ask &#8212; catalog minimum, no billed traffic yet">*</span>'
         ask_in = rundata.rate_label(row.get("ask_in")) or "n/a"
         ask_out = rundata.rate_label(row.get("ask_out")) or "n/a"
         eff_raw = row.get("eff_per_mtok")
@@ -430,7 +430,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         "$0.001&#8211;$10 per M and colored green &#8804; $0.02, amber &#8804; $0.20, red above; "
         "cache bars are linear, green &#8805; 70%. Traffic and cost bars are relative "
         "to the busiest route in the window. "
-        "* = no traffic in the window, rates fall back to catalog list price. "
+        "* = floor ask &#8212; catalog minimum, shown when the route has no billed traffic in the window. "
         "&#916; ask compares the billed rates with the previous daily snapshot: "
         "&#8595; green = cheaper, &#8593; red = pricier, &#8212; = no earlier snapshot "
         "to compare yet. Sparkline bars are log-scaled $0.001&#8211;$10 per day. "
@@ -454,7 +454,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         f"<tbody>{''.join(body_rows)}</tbody>"
         "</table></div>"
         + official_table(payload, rundata.load_catalog(ROOT))
-        + errors_table(payload)
+        + failures_table(payload)
         + "</section>"
     )
 
@@ -544,32 +544,32 @@ def official_table(payload: dict | None, catalog: dict | None) -> str:
     )
 
 
-def errors_table(payload: dict | None) -> str:
+def failures_table(payload: dict | None) -> str:
     """Reliability sub-table inside #pricing, or ''.
 
     Counts failed rows straight from the same usage-log window the price
     board uses: status="failed" rows carry no tokens and zero cost, so
     they never touch the price math — this table is where they surface.
-    Renders only when the payload carries an errors block.
+    Renders only when the payload carries a failures block.
     """
     if not payload:
         return ""
-    errors = payload.get("errors") or {}
-    total = int(errors.get("total") or 0)
-    failed = int(errors.get("failed") or 0)
+    failures = payload.get("failures") or {}
+    total = int(failures.get("total") or 0)
+    failed = int(failures.get("failed") or 0)
     if not total:
         return ""
     span = html.escape(str(payload.get("range") or "30d"))
-    codes = errors.get("codes") or {}
+    codes = failures.get("codes") or {}
     code_line = ", ".join(f"{html.escape(c)}&#215;{n}" for c, n in codes.items()) or "&#8212;"
-    rate = errors.get("rate_pct")
+    rate = failures.get("rate_pct")
     headline = (
         f'<p class="section-note"><span class="chip {"bad" if failed else "ok"}">'
         f"{failed}&#8202;/&#8202;{total} failed</span> ({rate:g}% of requests) "
         f"over the {span} window &#8212; codes: {code_line}. Failed rows carry "
         "no tokens and no cost; the traffic column on the board counts attempts.</p>"
     )
-    by_model = errors.get("by_model") or {}
+    by_model = failures.get("by_model") or {}
     body: list[str] = []
     for model, m in by_model.items():
         m_failed = int(m.get("failed") or 0)
@@ -592,7 +592,7 @@ def errors_table(payload: dict | None) -> str:
         )
     caption = (
         "Reliability over the same window: requests the gateway accepted but "
-        "the upstream dropped, by route. 502 = upstream gateway error, 429 = "
+        "the upstream dropped, by route. 502 = upstream gateway failure, 429 = "
         "rate limited, 400 = rejected request."
     )
     return (
@@ -928,7 +928,7 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
                 f'<td class="{cls}" data-tip="{html.escape(title)}"'
                 ' tabindex="0"></td>'
             )
-        resolved = rundata.resolved_for_alias(window[-1], alias, registry)
+        resolved = rundata.resolved_for_alias_in_window(window, alias, registry)
         grid_rows.append(f"<tr>{alias_heading(alias, resolved)}{''.join(cells)}</tr>")
 
     explainers = []
