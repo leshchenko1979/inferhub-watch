@@ -374,8 +374,8 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         note += f" · {scanned} billed requests"
     req_bounds = rundata.peer_bounds(int(r.get("reqs") or 0) for r in rows)
     cost_bounds = rundata.peer_bounds(float(r.get("cost_usdc") or 0) for r in rows)
-    prior = rundata.prior_pricing(rundata.load_dated_pricing(ROOT), payload)
     dated = rundata.load_dated_pricing(ROOT)
+    prior = rundata.prior_pricing(dated, payload)
     body_rows = []
     for row in rows:
         logged = row.get("source") == "usage-logs"
