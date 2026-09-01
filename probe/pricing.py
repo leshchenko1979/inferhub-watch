@@ -258,12 +258,64 @@ def route_entry(stats: dict | None, catalog: dict, alias: str, *, candidate: boo
     return entry
 
 
+def prior_snapshot_cutoff(root: Path | None = None) -> str | None:
+    """generated_at of the latest dated snapshot strictly before today.
+
+    The marginal-realized comparator counts usage rows newer than this
+    cutoff; None (no earlier snapshot, unreadable file) means everything
+    in the window is marginal.
+    """
+    root = root or repo_root()
+    today = datetime.now(timezone.utc).date().isoformat()
+    best: Path | None = None
+    for path in sorted((root / "data" / "pricing").glob("*.json")):
+        if path.stem < today:
+            best = path  # sorted, so the last pre-today file wins
+    if best is None:
+        return None
+    try:
+        payload = json.loads(best.read_text())
+    except (OSError, ValueError):
+        return None
+    ts = payload.get("generated_at")
+    return str(ts) if ts else None
+
+
+def marginal_stats(rows: list[dict], cutoff: str | None) -> dict[str, dict]:
+    """Per model: traffic + cost over usage rows strictly after the cutoff.
+
+    The marginal realized $/M over this slice is the fair forward
+    comparator for the projection gate - realized-over-30d smears price
+    changes across the whole window, this one does not.
+    """
+    out: dict[str, dict] = {}
+    for row in rows:
+        ts = str(row.get("ts") or "")
+        if cutoff and ts <= cutoff:
+            continue
+        model = row.get("model") or ""
+        if not model:
+            continue
+        m = out.setdefault(
+            model, {"reqs": 0, "tok_in": 0, "tok_out": 0, "cost": 0.0}
+        )
+        m["reqs"] += 1
+        m["tok_in"] += int(row.get("prompt_tokens") or 0)
+        m["tok_out"] += int(row.get("completion_tokens") or 0)
+        cost = _float(row.get("cost_consumer_usdc"))
+        if cost is not None:
+            m["cost"] += cost
+    return out
+
+
 def snapshot(key: str, aliases: list[str], range_: str = RANGE,
              candidates: list[str] | None = None) -> dict:
     """Build the full pricing payload; candidate routes are flagged as such."""
     rows = fetch_log_rows(key, range_=range_, max_pages=MAX_PAGES, pace_s=0.25)
     stats = aggregate_rows(rows)
     catalog = fetch_catalog(key)
+    cutoff = prior_snapshot_cutoff()
+    marginal = marginal_stats(rows, cutoff)
     cand = set(candidates or [])
 
     from probe.official_compare import cache_rule_stats
@@ -274,7 +326,16 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
         if st:
             entry_stats = dict(st)
             entry_stats["hit_ask_ratio"] = cache_rule_stats(rows, alias)
-        return route_entry(entry_stats, catalog, alias, candidate=alias in cand)
+        entry = route_entry(entry_stats, catalog, alias, candidate=alias in cand)
+        # no prior snapshot -> no cutoff -> the whole window would count as
+        # "marginal", which is just realized again: leave the keys off
+        m = marginal.get(alias) if cutoff else None
+        if m and (m["tok_in"] + m["tok_out"]):
+            toks = m["tok_in"] + m["tok_out"]
+            entry["marginal_per_mtok"] = round(m["cost"] / toks * 1e6, 4)
+            entry["marginal_reqs"] = m["reqs"]
+            entry["marginal_since"] = cutoff
+        return entry
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),

@@ -302,5 +302,79 @@ class WriteOutputsTests(unittest.TestCase):
             self.assertEqual(len(copies), 1)
 
 
+class MarginalStatsTests(unittest.TestCase):
+    def test_counts_only_rows_after_cutoff(self) -> None:
+        rows = [
+            _row(ts="2026-09-01T06:00:00Z", cost_consumer_usdc="0.002",
+                 prompt_tokens=1000, completion_tokens=100),
+            _row(ts="2026-09-01T12:00:00Z", cost_consumer_usdc="0.003",
+                 prompt_tokens=2000, completion_tokens=200),
+        ]
+        m = pricing.marginal_stats(rows, "2026-09-01T06:00:00Z")["cp/xai/grok-4.6"]
+        # strict > cutoff: the 06:00 row (== cutoff) stays out
+        self.assertEqual(m["reqs"], 1)
+        self.assertEqual(m["tok_in"], 2000)
+        self.assertEqual(m["tok_out"], 200)
+        self.assertEqual(m["cost"], 0.003)
+
+    def test_per_mtok_baked_into_snapshot_entry(self) -> None:
+        # marginal: 3000 tok total for 0.006 usdc -> 2.0 $/M
+        rows = [
+            _row(ts="2026-09-01T12:00:00Z", cost_consumer_usdc="0.006",
+                 prompt_tokens=2700, completion_tokens=300),
+            _row(ts="2026-08-20T12:00:00Z", cost_consumer_usdc="0.900",
+                 prompt_tokens=90_000, completion_tokens=10_000),
+        ]
+        # cutoff selection is covered by PriorSnapshotCutoffTests; here the
+        # cutoff is pinned so the test never depends on repo snapshot state
+        with mock.patch.object(pricing, "fetch_log_rows", return_value=rows), \
+                mock.patch.object(pricing, "fetch_catalog", return_value={}), \
+                mock.patch.object(pricing, "prior_snapshot_cutoff",
+                                  return_value="2026-08-31T06:00:00+00:00"):
+            payload = pricing.snapshot("k", ["cp/xai/grok-4.6"])
+        entry = payload["routes"]["cp/xai/grok-4.6"]
+        self.assertEqual(entry["marginal_per_mtok"], 2.0)
+        self.assertEqual(entry["marginal_reqs"], 1)
+        self.assertEqual(entry["marginal_since"], "2026-08-31T06:00:00+00:00")
+
+    def test_no_prior_snapshot_omits_marginal_keys(self) -> None:
+        rows = [_row(ts="2026-09-01T12:00:00Z")]
+        with mock.patch.object(pricing, "fetch_log_rows", return_value=rows), \
+                mock.patch.object(pricing, "fetch_catalog", return_value={}), \
+                mock.patch.object(pricing, "prior_snapshot_cutoff", return_value=None):
+            payload = pricing.snapshot("k", ["cp/xai/grok-4.6"])
+        self.assertNotIn("marginal_per_mtok", payload["routes"]["cp/xai/grok-4.6"])
+
+
+class PriorSnapshotCutoffTests(unittest.TestCase):
+    def test_latest_pre_today_snapshot_wins(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            d = root / "data" / "pricing"
+            d.mkdir(parents=True)
+            (d / "2026-08-30.json").write_text('{"generated_at": "older"}')
+            (d / "2026-08-31.json").write_text('{"generated_at": "newer"}')
+            (d / "2099-01-01.json").write_text('{"generated_at": "today-or-later"}')
+            self.assertEqual(pricing.prior_snapshot_cutoff(root), "newer")
+
+    def test_missing_dir_or_bad_json_returns_none(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsNone(pricing.prior_snapshot_cutoff(Path(tmp)))
+            d = Path(tmp) / "data" / "pricing"
+            d.mkdir(parents=True)
+            (d / "2026-08-30.json").write_text("not json")
+            self.assertIsNone(pricing.prior_snapshot_cutoff(Path(tmp)))
+
+    def test_loader_tolerates_snapshots_without_marginal_keys(self) -> None:
+        # old dated snapshots predate the marginal keys — every consumer
+        # reading routes must not require them
+        old = {"generated_at": "2026-08-30T06:00:00+00:00", "routes": {
+            "cp/xai/grok-4.6": {"ask_in": 1.0, "ask_out": 3.0,
+                                "eff_per_mtok": 0.9, "reqs": 10}}}
+        entry = (old["routes"]["cp/xai/grok-4.6"])
+        self.assertIsNone(entry.get("marginal_per_mtok"))
+        self.assertEqual(entry["eff_per_mtok"], 0.9)
+
+
 if __name__ == "__main__":
     unittest.main()
