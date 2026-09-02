@@ -446,22 +446,11 @@ td {
 
 /* ── Verdict ticket: the dispatch-card signature ── */
 
-.eyebrow {
-  margin: 0 0 var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--text-caption);
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
 .ticket {
   margin: 0 0 var(--space-7);
   padding: var(--space-5) var(--space-6);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-left: 3px solid var(--teal);
 }
 
 .ticket-main {

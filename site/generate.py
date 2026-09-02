@@ -489,7 +489,6 @@ def verdict_section(payload: dict | None) -> str:
     spark = _ask_spark(series)
     return (
         '<section class="ticket" id="verdict">'
-        '<p class="eyebrow">Verdict</p>'
         '<div class="ticket-main">'
         '<div class="ticket-facts">'
         '<p class="ticket-line">Route bulk here</p>'
@@ -701,7 +700,6 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     )
     return (
         '<section class="pricing-block" id="pricing">'
-        '<p class="eyebrow">Board</p>'
         f"<h2>{html.escape(section_title('pricing'))}</h2>"
         f'<p class="section-note">{html.escape(note)}.</p>'
         '<div class="scroll"><table class="pricing">'
@@ -745,7 +743,7 @@ def evidence_block(payload: dict | None, catalog: dict | None,
             "<summary>Reliability &#8212; failed requests</summary>"
             f"<div>{failures}</div></details>"
         )
-    return f'<div class="evidence"><p class="eyebrow">Evidence</p>{items}</div>'
+    return f'<div class="evidence">{items}</div>'
 
 
 def official_table(payload: dict | None, catalog: dict | None,
