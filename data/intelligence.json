@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-01T20:15:08Z",
+ "generated_at": "2026-09-02T10:48:36Z",
  "source": "artificialanalysis.ai",
  "endpoint": "https://artificialanalysis.ai/api/v2/data/llms/models",
  "models": {
@@ -506,6 +506,41 @@
    "coding": null,
    "aa_in": 2,
    "aa_out": 10
+  },
+  "claude-fable-5-1-high": {
+   "name": "Claude Fable 5.1 (Adaptive Reasoning, High Effort, Default Fallback)",
+   "iq": 62.5,
+   "coding": 79.1,
+   "aa_in": 10,
+   "aa_out": 50
+  },
+  "claude-fable-5-1-low": {
+   "name": "Claude Fable 5.1 (Adaptive Reasoning, Low Effort, Default Fallback)",
+   "iq": 58.1,
+   "coding": 75.2,
+   "aa_in": 10,
+   "aa_out": 50
+  },
+  "claude-fable-5-1": {
+   "name": "Claude Fable 5.1 (Adaptive Reasoning, Max Effort, Default Fallback)",
+   "iq": 65.7,
+   "coding": 81.6,
+   "aa_in": 10,
+   "aa_out": 50
+  },
+  "claude-fable-5-1-medium": {
+   "name": "Claude Fable 5.1 (Adaptive Reasoning, Medium Effort, Default Fallback)",
+   "iq": 60.5,
+   "coding": 77.1,
+   "aa_in": 10,
+   "aa_out": 50
+  },
+  "claude-fable-5-1-xhigh": {
+   "name": "Claude Fable 5.1 (Adaptive Reasoning, Xhigh Effort, Default Fallback)",
+   "iq": 64.8,
+   "coding": 80.7,
+   "aa_in": 10,
+   "aa_out": 50
   },
   "claude-sonnet-5-low": {
    "name": "Claude Sonnet 5 (Adaptive Reasoning, Low Effort)",
