@@ -31,8 +31,8 @@ FONTS = (
     "&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
 )
 SECTIONS = (
-    ("results", "Probe results"),
     ("pricing", "Cost per M tokens"),
+    ("results", "Probe results"),
     ("earlier", "Past runs"),
     ("method", "How we test"),
 )

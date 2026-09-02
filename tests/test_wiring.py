@@ -121,7 +121,8 @@ class WiringTests(unittest.TestCase):
         # board, z.ai carries the check now
         self.assertIn("z.ai · zai/glm-5.3-flash", html)
         self.assertIn("2/2: core + cache", html)
-        self.assertLess(html.find('id="results"'), html.find('id="pricing"'))
+        # the decision surface (board) leads; probe depth and history follow
+        self.assertLess(html.find('id="pricing"'), html.find('id="results"'))
         self.assertLess(html.find('id="pricing"'), html.find('id="earlier"'))
         self.assertLess(html.find('id="earlier"'), html.find('id="method"'))
         results = rest[rest.find('id="results"') : rest.find('id="earlier"')]
@@ -344,7 +345,8 @@ class PricingSectionTests(unittest.TestCase):
             nav = gen.board_nav()
         self.assertIn('id="pricing"', page)
         self.assertIn('href="#pricing"', nav)
-        self.assertLess(page.find('id="results"'), page.find('id="pricing"'))
+        # the board now leads the probe-results depth section
+        self.assertLess(page.find('id="pricing"'), page.find('id="results"'))
         self.assertLess(page.find('id="pricing"'), page.find('id="earlier"'))
         self.assertIn("ali/qwen3.8-max", page)
         self.assertIn("$0.014", page)
@@ -752,7 +754,9 @@ class ProbeResultsSectionTests(unittest.TestCase):
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
         page, _ = self._page(gen, run)
-        seg = page[page.find('id="pricing"'):page.find('id="earlier"')]
+        # probe results now follow the board, so slice the pricing block
+        # between its own anchors
+        seg = page[page.find('id="pricing"'):page.find('id="results"')]
         self.assertIn("ali/qwen3.8-max", seg)          # incumbent has rate data
         self.assertNotIn("cp/cline-pass/qwen3.8-max", seg)
         self.assertNotIn("cx/qwen3.8-max", seg)
@@ -820,4 +824,3 @@ class ProbeResultsSectionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
