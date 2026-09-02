@@ -270,7 +270,11 @@ def spend_sparkline(payload: dict) -> str:
 
 
 def spend_block(payload: dict, runs: list[dict]) -> str:
-    """MTD + today + probe-share stats with the 30-day sparkline, or ''."""
+    """Collapsed spend fold: MTD + today + probe share + 30-day spark.
+
+    Rides below the board table in the evidence tier — the money trail
+    is supporting detail, not the glance layer. Returns '' without data.
+    """
     days = rundata.spend_days(payload)
     today = _snapshot_day(payload)
     if not days or not today:
@@ -280,8 +284,9 @@ def spend_block(payload: dict, runs: list[dict]) -> str:
     first_day = rundata.day_key(runs[0]) if runs else ""
     since = rundata.month_day_label(first_day)
     probe_cap = "probe runs" + (f" · since {since}" if since else "")
+    mtd_label = rundata.cost_label(f"{mtd:.6f}") or "$0.00"
     stats = (
-        (rundata.cost_label(f"{mtd:.6f}") or "$0.00", "month to date"),
+        (mtd_label, "month to date"),
         (rundata.cost_label(f"{today_cost:.6f}") or "$0.00", "today so far"),
         (rundata.cost_label(f"{rundata.probe_spend(runs):.6f}") or "$0.00", probe_cap),
     )
@@ -291,8 +296,10 @@ def spend_block(payload: dict, runs: list[dict]) -> str:
         for val, cap in stats
     )
     return (
-        f'<div class="spend-block"><div class="spend-stats">{bits}</div>'
-        f"{spend_sparkline(payload)}</div>"
+        '<details class="evidence-item spend-item" id="spend">'
+        f"<summary>Spend &#8212; {mtd_label} month to date</summary>"
+        f'<div><div class="spend-block"><div class="spend-stats">{bits}</div>'
+        f"{spend_sparkline(payload)}</div></div></details>"
     )
 
 
@@ -697,7 +704,6 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         '<p class="eyebrow">Board</p>'
         f"<h2>{html.escape(section_title('pricing'))}</h2>"
         f'<p class="section-note">{html.escape(note)}.</p>'
-        + spend_block(payload, runs) +
         '<div class="scroll"><table class="pricing">'
         f"<caption>{caption}</caption>"
         "<thead><tr>"
@@ -707,6 +713,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         "</tr></thead>"
         f"<tbody>{''.join(body_rows)}</tbody>"
         "</table></div>"
+        + spend_block(payload, runs)
         + evidence_block(payload, rundata.load_catalog(ROOT), dated)
         + "</section>"
     )

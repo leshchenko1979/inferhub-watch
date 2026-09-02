@@ -1215,6 +1215,12 @@ td.tip-open {
   padding: 0 0 var(--space-5);
 }
 
+/* Spend fold rides in the evidence tier: the inner block loses its
+   own bottom margin (the fold already pads it). */
+.spend-item .spend-block {
+  margin: 0;
+}
+
 .board-footer {
   padding: var(--space-7) 0 3.5rem;
   border-top: 1px solid var(--line);
