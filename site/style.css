@@ -662,15 +662,27 @@ dl.plumb dd {
   display: block;
 }
 
-/* Rate cell pair: bold figure = the basis the board ranks on (30d
-   realized, or the projection once the backtest gate passes); the
-   alternate basis rides along dimmed. */
+/* Rate cell pair: the two eras, stacked. Bold figure = the basis the
+   board ranks on (30d realized, or the projection once the backtest
+   gate passes); the tag names the era, and the alternate era rides
+   below it, dimmed. */
+.viz-val .pair-main {
+  display: block;
+}
+
 .viz-val .pair-alt {
-  margin-left: 0.4em;
+  display: block;
   font-size: var(--text-caption);
   font-weight: 400;
   color: var(--muted);
   white-space: nowrap;
+}
+
+.viz-val .pair-tag {
+  margin-left: 0.35em;
+  font-size: var(--text-caption);
+  font-weight: 400;
+  color: var(--muted);
 }
 
 .viz-bar {

@@ -305,22 +305,24 @@ def _delta_span(delta: float) -> str:
     return f'<span class="delta-up" title="ask rose">&#8593;{mag}</span>'
 
 
-def ask_delta_cell(payload: dict | None, prior: dict | None, route: str) -> str:
-    """One Δ ask cell: in/out movement vs the prior snapshot, '—' without one."""
-    tip = (
-        ' data-tip="&#916; ask vs the previous daily snapshot: &#8595; teal cheaper, '
-        '&#8593; amber pricier, &#8212; no earlier snapshot."'
-    )
+DELTA_TIP = (
+    "&#916; ask vs the previous daily snapshot: &#8595; teal cheaper, "
+    "&#8593; amber pricier, &#8212; no earlier snapshot."
+)
+
+
+def ask_delta_bits(payload: dict | None, prior: dict | None, route: str) -> str:
+    """Δ ask in / out spans: movement vs the prior snapshot, '—' without one."""
     deltas = rundata.ask_deltas(payload, prior, route)
     if deltas is None:
-        return f'<td class="num ask-delta" data-label="&#916; ask in / out"{tip}>' \
-            '<span class="delta-flat" title="no earlier snapshot for this route">&#8212;</span></td>'
+        return (
+            '<span class="delta-flat" '
+            'title="no earlier snapshot for this route">&#8212;</span>'
+        )
     return (
-        f'<td class="num ask-delta" data-label="&#916; ask in / out"{tip}>'
-        + _delta_span(deltas["in"])
+        _delta_span(deltas["in"])
         + '<span class="delta-sep"> / </span>'
         + _delta_span(deltas["out"])
-        + "</td>"
     )
 
 
@@ -362,17 +364,28 @@ def _ask_spark(points: list[tuple[str, float, float]]) -> str:
     )
 
 
-def _iq_cells(route: str, eff: float | None, intel: dict | None) -> str:
-    """IQ and IQ-per-$ cells; em-dashes when no snapshot or unmapped route."""
+def _iq_value(route: str, eff: float | None, intel: dict | None) -> tuple[str, str] | None:
+    """(IQ label, IQ-per-$ label), or None without an intelligence snapshot.
+
+    Em-dashes mark an unmapped route or a missing basis."""
     if not intel:
-        return '<td class="num"></td>' * 2
+        return None
     slug = rundata.aa_slug(route)
     entry = (intel.get("models") or {}).get(slug) if slug else None
     iq = entry.get("iq") if entry else None
     if iq is None:
-        return '<td class="num">&#8212;</td>' * 2
+        return ("&#8212;", "&#8212;")
     iq_per_dollar = f"{iq / eff:,.0f}" if eff else "&#8212;"
-    return f'<td class="num">{iq:.1f}</td><td class="num">{iq_per_dollar}</td>'
+    return (f"{iq:.1f}", iq_per_dollar)
+
+
+def _iq_cells(route: str, eff: float | None, intel: dict | None) -> str:
+    """IQ and IQ-per-$ cells; em-dashes when no snapshot or unmapped route."""
+    values = _iq_value(route, eff, intel)
+    if values is None:
+        return '<td class="num"></td>' * 2
+    iq, iq_per_dollar = values
+    return f'<td class="num">{iq}</td><td class="num">{iq_per_dollar}</td>'
 
 
 def _proj_eff(dated: list, payload: dict, route: str) -> float | None:
@@ -485,13 +498,13 @@ def verdict_section(payload: dict | None) -> str:
     )
 
 
-def _plumb_row(span: str, cells: list[tuple[str, str]]) -> str:
-    """One collapsed plumbing row under a board route: <details><dl>."""
-    pairs = "".join(
-        f"<div><dt>{html.escape(k)}</dt><dd>{v}</dd></div>" for k, v in cells
-    )
+def _plumb_row(cells: list[tuple[str, str]], colspan: int = 3) -> str:
+    """One collapsed plumbing row under a board route: <details><dl>.
+
+    Keys arrive pre-rendered (callers escape any data-derived text)."""
+    pairs = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in cells)
     return (
-        '<tr class="plumb-row"><td colspan="5"><details>'
+        f'<tr class="plumb-row"><td colspan="{colspan}"><details>'
         "<summary>Show plumbing</summary>"
         f'<dl class="plumb">{pairs}</dl></details></td></tr>'
     )
@@ -581,45 +594,49 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         mark = "" if logged else '<span class="ask-mark" title="floor ask &#8212; catalog minimum, no billed traffic yet">*</span>'
         ask_in = rundata.rate_label(row.get("ask_in")) or "n/a"
         ask_out = rundata.rate_label(row.get("ask_out")) or "n/a"
-        eff_raw = row.get("eff_per_mtok")
         reqs = int(row.get("reqs") or 0)
         toks = rundata.token_label(
             int(row.get("tok_in") or 0) + int(row.get("tok_out") or 0)
         )
-        # Decision row: the columns that answer "where do I route?" —
-        # plumbing (cache, traffic, cost, failures, source) folds below.
-        # The rate cell pairs the 30d effective with "now" (the forward
-        # projection); the basis the board ranks on is the bold figure.
-        eff_raw = row.get("eff_per_mtok")
+        # Decision row: two figures a scanner reads — the rate pair and
+        # IQ per $. Everything else (ask movement, history, cache,
+        # traffic, cost, failures, source) folds into the plumbing row.
+        # The pair tags both eras: bold = the basis the board ranks on.
         proj = _proj_eff(dated, payload, str(row["route"]))
         basis = _basis(row)
-        eff_label = rundata.rate_label(eff_raw) or "n/a"
+        eff_label = rundata.rate_label(row.get("eff_per_mtok")) or "n/a"
         proj_label = rundata.rate_label(proj) if proj is not None else None
         if use_proj and proj_label is not None:
-            pair = f'<span class="pair-main">{proj_label}</span>'
-            alt = f"30d {eff_label}"
+            main_val, main_tag, alt_val, alt_tag = proj_label, "now", eff_label, "30d"
             data_label = "projected $/M"
             data_tip = (
                 "Forward cost per M tokens at current billed asks (median ask, "
                 "smoothed hit rate); 30d is the realized window average."
             )
         else:
-            pair = f'<span class="pair-main">{eff_label}</span>'
-            alt = f"now {proj_label}" if proj_label is not None else ""
+            main_val, main_tag = eff_label, "30d"
+            alt_val, alt_tag = proj_label, "now"
             data_label = "effective $/M"
             data_tip = (
                 "Billed cost per M tokens over all traffic in the window, cache "
                 'discounts included. The "now" figure is the forward '
                 "projection at current billed asks (median ask, smoothed hit rate)."
             )
-        if alt:
-            pair += f'<span class="pair-alt">{html.escape(alt)}</span>'
+        pair = (
+            f'<span class="pair-main">{main_val}'
+            f'<span class="pair-tag">{main_tag}</span></span>'
+        )
+        if alt_val:
+            pair += (
+                f'<span class="pair-alt">{alt_val}'
+                f'<span class="pair-tag">{alt_tag}</span></span>'
+            )
+        iq = _iq_value(str(row["route"]), basis, intel)
+        series = rundata.ask_series(dated, str(row["route"]), payload)
         body_rows.append(
             "<tr>"
             f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>'
-            f'<span class="route-ask">ask {ask_in} / {ask_out} per M{mark}</span>'
-            f"{_ask_spark(rundata.ask_series(dated, str(row['route']), payload))}</th>"
-            + ask_delta_cell(payload, prior, str(row["route"]))
+            f'<span class="route-ask">ask {ask_in} / {ask_out} per M{mark}</span></th>'
             + _viz_cell(
                 pair,
                 rundata.log_bar_pct(basis, 0.001, 10.0),
@@ -627,36 +644,52 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
                 data_label=data_label,
                 data_tip=data_tip,
             )
-            + _iq_cells(str(row["route"]), basis, intel)
+            + '<td class="num" data-label="IQ per $" '
+            'data-tip="Intelligence (Artificial Analysis index) divided by the '
+            'route&#8217;s ranking $/M &#8212; higher is smarter per dollar.">'
+            f"{iq[1] if iq else '&#8212;'}</td>"
             + "</tr>"
         )
-        body_rows.append(_plumb_row(span, [
+        plumb_cells = [
+            ("&#916; ask in / out",
+             f'<span title="{DELTA_TIP}">'
+             f'{ask_delta_bits(payload, prior, str(row["route"]))}</span>'),
+            ("ask source", "billed ask" if logged else "floor ask"),
             ("cache hit", rundata.cache_label(row.get("cache_pct")) or "n/a"),
+            ("failures", _route_failures(payload, str(row["route"]), reqs)),
             (f"{span} traffic", f"{reqs} req · {toks} tok"),
             (f"{span} cost", rundata.cost_label(row.get("cost_usdc")) or "n/a"),
-            ("failures", _route_failures(payload, str(row["route"]), reqs)),
-            ("ask source", "billed ask" if logged else "floor ask"),
-        ] + ([("retries", retries)] if (retries := _route_retries(runs, str(row["route"]))) else [])))
+        ]
+        spark = _ask_spark(series)
+        if spark:
+            plumb_cells.append(("ask history", spark))
+        if iq:
+            plumb_cells.append(("IQ", iq[0]))
+        if retries := _route_retries(runs, str(row["route"])):
+            plumb_cells.append(("retries", retries))
+        body_rows.append(_plumb_row(plumb_cells))
     caption = (
         "&#8220;ask&#8221; under each route is the per-M rate billed on fresh "
         "(uncached) input / output; &#8220;effective&#8221; is billed cost over all "
-        "tokens, cache discounts included. Each rate cell pairs that 30d figure "
-        "with &#8220;now&#8221;, the forward projection at current billed asks "
-        "(median ask, smoothed hit rate) &#8212; the bold figure is the basis IQ "
+        "tokens, cache discounts included. Each rate cell pairs the two eras and "
+        "tags each: &#8220;now&#8221; is the forward projection at current billed "
+        "asks (median ask, smoothed hit rate) and &#8220;30d&#8221; the realized "
+        "window figure &#8212; the bold one is the basis IQ "
         f"per $ ranks on ({'projection' if use_proj else 'realized'} basis, "
         f"backtest gate {'passed' if use_proj else 'not passed'}: "
         f"{gate.get('within')}/{gate.get('n')} transitions within "
         f"{int((gate.get('tol') or 0.2) * 100)}%). "
         "Effective bars are log-scaled over "
         "$0.001&#8211;$10 per M and colored teal &#8804; $0.02, amber &#8804; $0.20, red above. "
-        "Show plumbing folds each route&#8217;s cache hit, traffic, window cost, "
-        "failures, ask source, and retries (when a sweep replayed a route)."
+        "Show plumbing folds each route&#8217;s ask movement (&#916; ask in / out vs "
+        "the previous daily snapshot: &#8595; teal cheaper, &#8593; amber pricier, "
+        "&#8212; no earlier snapshot to compare yet), ask source, ask history, "
+        "cache hit, failures, window traffic and cost, IQ, and retries (when a "
+        "sweep replayed a route). "
         "* = floor ask &#8212; catalog minimum, shown when the route has no billed traffic in the window. "
         "IQ = Artificial Analysis Intelligence Index (composite of 9 public evals, "
         "artificialanalysis.ai, effort level max), refreshed every sweep; IQ per $ divides it by the route&#8217;s effective $/M &#8212; higher is smarter per dollar. "
-        "&#916; ask compares the billed rates with the previous daily snapshot: "
-        "&#8595; teal = cheaper, &#8593; amber = pricier, &#8212; = no earlier snapshot "
-        "to compare yet. Sparkline bars are log-scaled $0.001&#8211;$10 per day. "
+        "Sparkline bars are log-scaled $0.001&#8211;$10 per day. "
         "Rates for this board&#8217;s routes only; other traffic is not listed."
     )
     return (
@@ -669,9 +702,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         f"<caption>{caption}</caption>"
         "<thead><tr>"
         '<th scope="col">Route</th>'
-        '<th scope="col" class="num">&#916; ask in / out</th>'
         '<th scope="col" class="num">effective $/M</th>'
-        '<th scope="col" class="num">IQ</th>'
         '<th scope="col" class="num">IQ per $</th>'
         "</tr></thead>"
         f"<tbody>{''.join(body_rows)}</tbody>"
