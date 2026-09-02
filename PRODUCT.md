@@ -35,11 +35,11 @@ This is not an OpenCrabs changelog or parser bug tracker.
 Probe results, cost per M tokens, past runs, then how we test — four containers, nothing else on the board.
 Fail is a contract miss on the wire, never a status-page outage.
 The alias is the request; the publisher sits under it, not in a second column.
-Probe results is the front page: one collapsible group per model, the in-use board route first and audition routes ranked under it. Summary chips plus a colored tests column read the verdict at a glance; the section disappears when there is nothing to rank.
+The verdict ticket is the front page: winning route with its live numbers and the stamped alternate, then the board's three decision columns — route and ask, effective $/M, IQ per $. Everything else (probe results by model, plumbing, spend, official compare) is collapsible evidence below; a section disappears when there is nothing to rank.
 Price is info; it never ranks and must not share pass/fail pill chrome.
 Cell notes say what happened for the caller, then the wire field.
 Prompt cache is scored on a byte-for-byte repeat of the core payload: pass requires cached_tokens > 0 on the first repeat.
-A passing challenger that bills 15%+ under the in-use route turns the model's price chip red — the verdict is visible, not buried.
+Red is reserved for failures — never decoration. A passing challenger that bills under the in-use route surfaces as evidence (plumbing notes, alternate stamp), not as a red chip.
 Write for InferHub API callers; OpenCrabs is not on the site.
 
 ## Accessibility & Inclusion
