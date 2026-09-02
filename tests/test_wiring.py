@@ -782,7 +782,10 @@ class ProbeResultsSectionTests(unittest.TestCase):
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
         page, _ = self._page(gen, run)
         seg = page[page.find('id="results"'):page.find('id="earlier"')]
-        self.assertIn('<details class="model-group" open>', seg)
+        # Probe groups render collapsed: the board above is the glance
+        # layer, so eight open candidate tables no longer shout first.
+        self.assertIn('<details class="model-group">', seg)
+        self.assertNotIn('class="model-group" open', seg)
         for label in ("tests", "cache hit", "ask in / out", "window"):
             self.assertIn(f'data-label="{label}"', seg)
         for hint in (

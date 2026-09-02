@@ -1152,7 +1152,7 @@ def probe_results_section(
             if price_chip:
                 chips.append(price_chip)
         blocks.append(
-            '<details class="model-group" open>'
+            '<details class="model-group">'
             f'<summary><span class="model-name">{html.escape(group["model"])}</span>'
             f"{''.join(chips)}</summary>"
             '<div class="scroll"><table class="pricing candidates">'
