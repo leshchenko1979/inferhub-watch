@@ -254,15 +254,15 @@ class PriceChipTests(unittest.TestCase):
             {"routes": routes if routes is not None else PRICING_ROUTES},
         )
 
-    def test_cheaper_passing_challenger_shows_bad_chip(self) -> None:
+    def test_cheaper_passing_challenger_shows_warning_chip(self) -> None:
         section = self._section(RUN_PASS)
-        self.assertIn("chip price bad", section)
+        self.assertIn("chip price mid", section)
         self.assertIn("&#8722;80%", section)
 
     def test_no_challenger_shows_ok_chip(self) -> None:
         section = self._section(RUN_FAIL)
         self.assertIn("chip price ok", section)
-        self.assertNotIn("chip price bad", section)
+        self.assertNotIn("chip price mid", section)
 
     def test_unbilled_incumbent_renders_without_price_chip(self) -> None:
         section = self._section(RUN_PASS, routes={})

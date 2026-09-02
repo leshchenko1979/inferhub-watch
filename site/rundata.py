@@ -364,29 +364,29 @@ def peer_bounds(values) -> tuple[float, float]:
 
 
 def rate_color_class(raw: object) -> str:
-    """Bar color for an effective $/M rate: cheap green, pricey red."""
+    """Bar color for an effective $/M rate: teal healthy, amber above.
+
+    Color law: red is reserved for failures — an expensive route is a
+    warning (amber), never a failure.
+    """
     try:
         v = float(str(raw))
     except (TypeError, ValueError):
         return ""
     if v <= 0.02:
         return "ok"
-    if v <= 0.2:
-        return "mid"
-    return "bad"
+    return "mid"
 
 
 def cache_color_class(raw: object) -> str:
-    """Bar color for a cache-hit percentage: high green, low red."""
+    """Bar color for a cache-hit percentage: teal healthy, amber below."""
     try:
         v = float(str(raw))
     except (TypeError, ValueError):
         return ""
     if v >= 70:
         return "ok"
-    if v >= 40:
-        return "mid"
-    return "bad"
+    return "mid"
 
 
 def cache_bar_pct(raw: object) -> float:

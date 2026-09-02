@@ -687,7 +687,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         f"{gate.get('within')}/{gate.get('n')} transitions within "
         f"{int((gate.get('tol') or 0.2) * 100)}%). "
         "Effective bars are log-scaled over "
-        "$0.001&#8211;$10 per M and colored teal &#8804; $0.02, amber &#8804; $0.20, red above. "
+        "$0.001&#8211;$10 per M and colored teal &#8804; $0.02, amber above. "
         "Show plumbing folds each route&#8217;s ask movement (&#916; ask in / out vs "
         "the previous daily snapshot: &#8595; teal cheaper, &#8593; amber pricier, "
         "&#8212; no earlier snapshot to compare yet), ask source, ask history, "
@@ -1045,7 +1045,7 @@ def _price_chip_html(verdict: dict | None) -> str:
     """Best-price chip: in-use $/M vs the cheapest passing challenger.
 
     Tone — ok: no challenger undercuts the incumbent; mid: challenger
-    undercuts by <15%; bad: by >=15%. Empty string without verdict data.
+    undercuts (warning, any margin). Empty string without verdict data.
     A `*` after the in-use rate marks a probe-only billing sample.
     """
     if not verdict or verdict.get("incumbent_usd_m") is None:
@@ -1061,7 +1061,7 @@ def _price_chip_html(verdict: dict | None) -> str:
         )
     best = rundata.rate_label(verdict["challenger_usd_m"])
     margin = verdict["margin_pct"]
-    tone = "bad" if margin >= radar.MARGIN_ALERT_PCT else "mid"
+    tone = "mid"
     cache_pct = verdict.get("challenger_cache_pct")
     cache_src = verdict.get("challenger_cache_source")
     if cache_pct is not None:

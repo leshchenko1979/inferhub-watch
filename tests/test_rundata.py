@@ -159,7 +159,7 @@ class PricingDataTests(unittest.TestCase):
         self.assertEqual(rundata.rate_color_class(0.02), "ok")
         self.assertEqual(rundata.rate_color_class(0.0596), "mid")
         self.assertEqual(rundata.rate_color_class(0.2), "mid")
-        self.assertEqual(rundata.rate_color_class(1.3), "bad")
+        self.assertEqual(rundata.rate_color_class(1.3), "mid")
         self.assertEqual(rundata.rate_color_class(None), "")
 
     def test_cache_visuals(self) -> None:
@@ -167,7 +167,7 @@ class PricingDataTests(unittest.TestCase):
         self.assertEqual(rundata.cache_color_class(70), "ok")
         self.assertEqual(rundata.cache_color_class(53.1), "mid")
         self.assertEqual(rundata.cache_color_class(40), "mid")
-        self.assertEqual(rundata.cache_color_class(0.0), "bad")
+        self.assertEqual(rundata.cache_color_class(0.0), "mid")
         self.assertEqual(rundata.cache_color_class(None), "")
         self.assertEqual(rundata.cache_bar_pct(61.4), 61.4)
         self.assertEqual(rundata.cache_bar_pct(150.0), 100.0)
