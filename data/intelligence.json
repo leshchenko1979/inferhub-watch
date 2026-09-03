@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-02T10:48:36Z",
+ "generated_at": "2026-09-03T10:50:44Z",
  "source": "artificialanalysis.ai",
  "endpoint": "https://artificialanalysis.ai/api/v2/data/llms/models",
  "models": {
@@ -9,6 +9,27 @@
    "coding": 71.5,
    "aa_in": 0.15,
    "aa_out": 0.5
+  },
+  "gemini-3-8-flash": {
+   "name": "Gemini 3.8 Flash (high)",
+   "iq": 58.7,
+   "coding": 76.3,
+   "aa_in": 0.75,
+   "aa_out": 3.75
+  },
+  "gemini-3-8-flash-low": {
+   "name": "Gemini 3.8 Flash (low)",
+   "iq": 51.7,
+   "coding": 73.5,
+   "aa_in": 0.75,
+   "aa_out": 3.75
+  },
+  "gemini-3-8-flash-medium": {
+   "name": "Gemini 3.8 Flash (medium)",
+   "iq": 56.6,
+   "coding": 74.1,
+   "aa_in": 0.75,
+   "aa_out": 3.75
   },
   "qwen3-8-flash-next": {
    "name": "Qwen3.8-Flash-Next",
