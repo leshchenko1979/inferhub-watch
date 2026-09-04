@@ -431,8 +431,12 @@ class DryRunTests(unittest.TestCase):
     def test_dry_run_proven_marker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = self._root_with_pricing(tmp)
+            # last_probe must be relative to the real clock: the TTL check
+            # inside market.main() uses datetime.now(), not this module's
+            # frozen NOW — a fixture stamped with NOW expired on 09-04.
+            fresh = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
             (root / "data" / "proven.json").write_text(json.dumps(
-                {"cb/qwen3.8-max": {"last_probe": NOW.isoformat()}}))
+                {"cb/qwen3.8-max": {"last_probe": fresh}}))
             buf = io.StringIO()
             with mock.patch.object(market, "fetch_catalog", return_value=CATALOG), \
                     mock.patch.object(market, "load_aliases", return_value=ALIASES), \
