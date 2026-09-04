@@ -165,6 +165,17 @@ class FetchCatalogTests(unittest.TestCase):
         # asksOut histogram empty -> no usable pair -> skipped
         self.assertNotIn("cp/halfpriced", asks)
 
+    def test_empty_catalog_warns_loudly(self) -> None:
+        """A2 (review 2026-09-04): the 09-04 schema change silently emptied
+        the catalog and blinded the radar. Empty output must scream."""
+        err = io.StringIO()
+        with mock.patch.object(pricing, "_get", return_value=[]), \
+                mock.patch.sys_stderr(err):
+            asks = pricing.fetch_catalog("k")
+        self.assertEqual(asks, {})
+        self.assertIn("candidate radar is blind", err.getvalue())
+        self.assertIn("0 routes with live asks", err.getvalue())
+
 
 class SnapshotTests(unittest.TestCase):
     def test_snapshot_merges_logs_and_catalog(self) -> None:

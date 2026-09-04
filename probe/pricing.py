@@ -96,7 +96,12 @@ def _model_asks(model: dict) -> tuple[float, float] | None:
 
 
 def fetch_catalog(key: str) -> dict[str, tuple[float, float]]:
-    """Map 'prefix/upstreamModelId' -> (cheapest askIn, cheapest askOut)."""
+    """Map 'prefix/upstreamModelId' -> (cheapest askIn, cheapest askOut).
+
+    An EMPTY result is never normal — the live catalog carries 150+ models.
+    It means the API schema changed again (as on 2026-09-04, when asksIn/
+    asksOut were replaced by pricePoints histograms and the candidate radar
+    went blind silently). Warn loudly so blindness is visible immediately."""
     body = _get(f"{MANAGEMENT}/catalog", key)
     entries = body if isinstance(body, list) else body.get("rows") or []
     asks: dict[str, tuple[float, float]] = {}
@@ -111,6 +116,13 @@ def fetch_catalog(key: str) -> dict[str, tuple[float, float]]:
             pair = _model_asks(model)
             if name and pair and all(v >= 0 for v in pair):
                 asks[f"{prefix}/{name}"] = pair
+    if not asks:
+        print(
+            "WARNING: fetch_catalog returned 0 routes with live asks — "
+            "catalog API schema likely changed; candidate radar is blind. "
+            f"Raw entries seen: {len(entries)}",
+            file=sys.stderr,
+        )
     return asks
 
 
