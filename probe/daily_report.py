@@ -104,14 +104,26 @@ def price_movements(root: Path | None = None) -> list[dict]:
             was_v = (prev or {}).get(field)
             if now_v is None or was_v is None or abs(now_v - was_v) <= 1e-9:
                 continue
-            rel = (now_v - was_v) / was_v * 100 if was_v else 0.0
-            if abs(rel) < MOVE_PCT:
-                continue
+            if was_v:  # normal reprice
+                rel = (now_v - was_v) / was_v * 100
+                if abs(rel) < MOVE_PCT:
+                    continue
+            else:
+                # was 0 -> now priced (or priced -> 0): a real move at any
+                # size (review A3; rel would be 0.0 and the old gate hid it
+                # forever). pct=None renders as (new price).
+                rel = None
             moves.append(
                 {"alias": alias, "field": field,
                  "was": float(was_v), "now": float(now_v), "pct": rel}
             )
     return moves
+
+
+def _fmt_pct(pct):
+    if pct is None:
+        return "(new price)"
+    return f"({pct:+.1f}%)"
 
 
 def _ask(v: float | None) -> str:
@@ -186,7 +198,7 @@ def movements_section(moves: list[dict], root: Path) -> list[str]:
     for alias, items in grouped.items():
         parts = [
             f"{'in' if m['field'] == 'ask_in' else 'out'} "
-            f"{_ask(m['was'])} → {_ask(m['now'])} ({m['pct']:+.1f}%)"
+            f"{_ask(m['was'])} → {_ask(m['now'])} {_fmt_pct(m['pct'])}"
             for m in items
         ]
         lines.append(f"- `{alias}`: " + " · ".join(parts))

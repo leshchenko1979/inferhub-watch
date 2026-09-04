@@ -95,6 +95,30 @@ class PriceMovementsTest(unittest.TestCase):
         _snap(self.root, "2026-09-04", {"ali/kimi-k3": _entry(7.0, 21.0)})
         self.assertEqual(daily_report.price_movements(self.root), [])
 
+    def test_zero_to_priced_is_a_move(self):
+        """A3 (review 2026-09-04): was_v=0 made rel=0.0 and the gate hid a
+        genuine 0 -> price introduction forever."""
+        _snap(self.root, "2026-09-03", {
+            "ali/kimi-k3": _entry(0.0, 21.0),      # unpriced in, now priced
+            "ali/qwen3.8-max": _entry(2.0, 0.0),   # priced in, unpriced out
+        })
+        _snap(self.root, "2026-09-04", {
+            "ali/kimi-k3": _entry(0.03, 21.0),
+            "ali/qwen3.8-max": _entry(2.0, 0.48),
+        })
+        moves = daily_report.price_movements(self.root)
+        self.assertEqual(
+            [(m["alias"], m["field"], m["was"], m["now"], m["pct"]) for m in moves],
+            [
+                ("ali/kimi-k3", "ask_in", 0.0, 0.03, None),
+                ("ali/qwen3.8-max", "ask_out", 0.0, 0.48, None),
+            ],
+        )
+        # rendering marks it as a new price, never "+0.0%"
+        lines = daily_report.movements_section(moves, self.root)
+        self.assertIn("(new price)", "\n".join(lines))
+        self.assertNotIn("+0.0%", "\n".join(lines))
+
 
 class BuildReportTest(unittest.TestCase):
     def setUp(self):
