@@ -29,7 +29,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from probe.pricing import fetch_catalog
+from probe.pricing import fetch_catalog, parse_ts
 from probe.registry import load_aliases, repo_root
 
 PROVEN_TTL = timedelta(days=7)
@@ -95,21 +95,9 @@ def load_proven(root: Path | None = None) -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def _parse_ts(raw: object) -> datetime | None:
-    if not isinstance(raw, str):
-        return None
-    try:
-        stamp = datetime.fromisoformat(raw)
-    except ValueError:
-        return None
-    if stamp.tzinfo is None:
-        stamp = stamp.replace(tzinfo=timezone.utc)
-    return stamp
-
-
 def proven_recent(proven: dict, route: str, now: datetime | None = None) -> bool:
     """True when the route was probed within the TTL window."""
-    last = _parse_ts((proven.get(route) or {}).get("last_probe"))
+    last = parse_ts((proven.get(route) or {}).get("last_probe"))
     if last is None:
         return False
     now = now or datetime.now(timezone.utc)

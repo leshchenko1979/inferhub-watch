@@ -172,11 +172,20 @@ def aggregate_rows(rows: list[dict]) -> dict[str, dict]:
     return stats
 
 
-def _parse_ts(raw: object) -> datetime | None:
+def parse_ts(raw: object) -> datetime | None:
+    """Canonical ISO timestamp parser (review C1): accepts Z or offset
+    suffixes; a naive stamp is assumed UTC (market.py's old semantics)."""
     try:
-        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
-    except ValueError:
+        stamp = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
         return None
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=timezone.utc)
+    return stamp
+
+
+# Back-compat alias; prefer parse_ts in new code.
+_parse_ts = parse_ts
 
 
 def _median_ask(

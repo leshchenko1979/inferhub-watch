@@ -520,15 +520,15 @@ def _probe_only(row: dict, runs: list[dict]) -> bool:
         return False
     windows = []
     for run in runs:
-        start = pricing._parse_ts(run.get("started_at"))
-        end = pricing._parse_ts(run.get("finished_at"))
+        start = pricing.parse_ts(run.get("started_at"))
+        end = pricing.parse_ts(run.get("finished_at"))
         if start and end:
             windows.append((start, end, set(run.get("aliases") or [])))
     if not windows:
         return False
     route = str(row.get("route") or "")
     for ts in ts_list:
-        parsed = pricing._parse_ts(ts)
+        parsed = pricing.parse_ts(ts)
         if parsed is None or not any(
             route in al and s <= parsed <= e for s, e, al in windows
         ):
