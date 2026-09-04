@@ -19,7 +19,7 @@ import tmpl  # noqa: E402
 from probe.publishers import publisher_label  # noqa: E402
 from probe.registry import load_aliases, load_registry  # noqa: E402
 
-from probe import market, radar, official_compare  # noqa: E402
+from probe import market, radar, official_compare, pricing  # noqa: E402
 
 GITHUB = "https://github.com/leshchenko1979/inferhub-watch"
 CLONE = (
@@ -509,24 +509,31 @@ def _probe_only(row: dict, runs: list[dict]) -> bool:
     window that probed it — the route's only fresh traffic is probes, so
     the marginal $/M is real money but an unrepresentative (cache-cold,
     tiny-prompt) workload. Needs the full ts list: a truncated list (or a
-    single ts outside every window) means working traffic exists."""
+    single ts outside every window) means working traffic exists.
+
+    Timestamps are compared as datetimes, never as strings: usage-log
+    stamps end in Z while run-window stamps end in +00:00, and lexical
+    order between the two formats is wrong (Z sorts above '+')."""
     reqs = int(row.get("marginal_reqs") or 0)
     ts_list = row.get("marginal_ts") or []
     if not reqs or row.get("marginal_ts_truncated") or len(ts_list) < reqs:
         return False
     windows = []
     for run in runs:
-        start = str(run.get("started_at") or "")
-        end = str(run.get("finished_at") or "")
+        start = pricing._parse_ts(run.get("started_at"))
+        end = pricing._parse_ts(run.get("finished_at"))
         if start and end:
             windows.append((start, end, set(run.get("aliases") or [])))
     if not windows:
         return False
     route = str(row.get("route") or "")
-    return all(
-        any(route in al and s <= ts <= e for s, e, al in windows)
-        for ts in ts_list
-    )
+    for ts in ts_list:
+        parsed = pricing._parse_ts(ts)
+        if parsed is None or not any(
+            route in al and s <= parsed <= e for s, e, al in windows
+        ):
+            return False
+    return True
 
 
 def _plumb_row(cells: list[tuple[str, str]], colspan: int = 3) -> str:

@@ -466,6 +466,26 @@ class ProbeOnlyMarginalTests(unittest.TestCase):
         runs_other = [dict(self.RUNS[0], aliases=["zai/glm-5.3-flash"])]
         self.assertFalse(gen._probe_only(row, runs_other))
 
+    def test_probe_only_compares_datetimes_not_strings(self) -> None:
+        """A1 (review 2026-09-04): usage-log stamps end in Z, run-window
+        stamps end in +00:00. Lexically Z sorts above '+', so string
+        comparison misjudged a request inside a window as outside."""
+        gen = _load_generate()
+        row = {
+            "route": "ali/qwen3.8-max",
+            "marginal_reqs": 1,
+            "marginal_ts": ["2026-09-03T10:45:30Z"],  # Z-style usage stamp
+        }
+        runs = [  # +00:00-style run-window stamps, same moment
+            {"started_at": "2026-09-03T10:45:00+00:00",
+             "finished_at": "2026-09-03T10:46:00+00:00",
+             "aliases": ["ali/qwen3.8-max"]},
+        ]
+        self.assertTrue(gen._probe_only(row, runs))
+        # one second outside the window must stay organic
+        row_late = dict(row, marginal_ts=["2026-09-03T10:46:01Z"])
+        self.assertFalse(gen._probe_only(row_late, runs))
+
 
 def _load_run():
     import probe.run as run_mod
