@@ -136,6 +136,35 @@ class FetchCatalogTests(unittest.TestCase):
         self.assertEqual(asks["cp/xai/grok-4.6"], (0.5, 1.5))
         self.assertNotIn("cp/dead", asks)
 
+    def test_parses_price_points_schema(self) -> None:
+        body = [
+            {
+                "prefix": "cp",
+                "enabled": True,
+                "models": [
+                    {
+                        "upstreamModelId": "xai/grok-4.6",
+                        "enabled": True,
+                        "officialIn": "0.9",
+                        "officialOut": "2.7",
+                        "pricePointsIn": [[0.5, 3], [0.9, 12]],
+                        "pricePointsOut": [[1.5, 2], [2.7, 13]],
+                    },
+                    {
+                        "upstreamModelId": "halfpriced",
+                        "enabled": True,
+                        "pricePointsIn": [[0.4, 1]],
+                        "pricePointsOut": [],
+                    },
+                ],
+            }
+        ]
+        with mock.patch.object(pricing, "_get", return_value=body):
+            asks = pricing.fetch_catalog("k")
+        self.assertEqual(asks["cp/xai/grok-4.6"], (0.5, 1.5))
+        # asksOut histogram empty -> no usable pair -> skipped
+        self.assertNotIn("cp/halfpriced", asks)
+
 
 class SnapshotTests(unittest.TestCase):
     def test_snapshot_merges_logs_and_catalog(self) -> None:

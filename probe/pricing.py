@@ -53,6 +53,48 @@ def _get(url: str, key: str) -> dict:
         return json.loads(resp.read().decode("utf-8", "replace"))
 
 
+def _cheapest_point(points: object) -> float | None:
+    """Cheapest price in a pricePoints histogram ([[price, count], ...]).
+
+    count>0 means at least one upstream provider offers the model at that
+    price; the minimum such price is the cheapest ask. Non-numeric or
+    empty entries are ignored.
+    """
+    if not isinstance(points, list):
+        return None
+    prices: list[float] = []
+    for point in points:
+        if not isinstance(point, (list, tuple)) or len(point) < 2:
+            continue
+        price, count = point[0], point[1]
+        if isinstance(price, (int, float)) and price >= 0 and count:
+            prices.append(float(price))
+    return min(prices) if prices else None
+
+
+def _model_asks(model: dict) -> tuple[float, float] | None:
+    """(cheapest askIn, cheapest askOut) under either catalog schema.
+
+    Legacy: asksIn/asksOut per-provider ask arrays. Current (observed
+    2026-09-04): officialIn/Out plus pricePointsIn/Out histograms of
+    [price, provider_count] — the cheapest ask is the lowest priced
+    point. Returns None when either side has no usable price.
+    """
+    legacy_in = model.get("asksIn") or []
+    legacy_out = model.get("asksOut") or []
+    try:
+        pair = (min(legacy_in), min(legacy_out))
+    except (TypeError, ValueError):
+        pair = None
+    if pair is not None and all(isinstance(v, (int, float)) for v in pair):
+        return pair
+    cheap_in = _cheapest_point(model.get("pricePointsIn"))
+    cheap_out = _cheapest_point(model.get("pricePointsOut"))
+    if cheap_in is None or cheap_out is None:
+        return None
+    return cheap_in, cheap_out
+
+
 def fetch_catalog(key: str) -> dict[str, tuple[float, float]]:
     """Map 'prefix/upstreamModelId' -> (cheapest askIn, cheapest askOut)."""
     body = _get(f"{MANAGEMENT}/catalog", key)
@@ -66,11 +108,8 @@ def fetch_catalog(key: str) -> dict[str, tuple[float, float]]:
             if not model.get("enabled") or model.get("modelDisabled"):
                 continue
             name = model.get("upstreamModelId") or ""
-            try:
-                pair = (min(model.get("asksIn") or []), min(model.get("asksOut") or []))
-            except (TypeError, ValueError):
-                continue
-            if name and all(v >= 0 for v in pair) and any(model.get("asksIn") or []):
+            pair = _model_asks(model)
+            if name and pair and all(v >= 0 for v in pair):
                 asks[f"{prefix}/{name}"] = pair
     return asks
 
