@@ -504,6 +504,31 @@ def verdict_section(payload: dict | None) -> str:
     )
 
 
+def _probe_only(row: dict, runs: list[dict]) -> bool:
+    """True when every marginal request for this route falls inside a sweep
+    window that probed it — the route's only fresh traffic is probes, so
+    the marginal $/M is real money but an unrepresentative (cache-cold,
+    tiny-prompt) workload. Needs the full ts list: a truncated list (or a
+    single ts outside every window) means working traffic exists."""
+    reqs = int(row.get("marginal_reqs") or 0)
+    ts_list = row.get("marginal_ts") or []
+    if not reqs or row.get("marginal_ts_truncated") or len(ts_list) < reqs:
+        return False
+    windows = []
+    for run in runs:
+        start = str(run.get("started_at") or "")
+        end = str(run.get("finished_at") or "")
+        if start and end:
+            windows.append((start, end, set(run.get("aliases") or [])))
+    if not windows:
+        return False
+    route = str(row.get("route") or "")
+    return all(
+        any(route in al and s <= ts <= e for s, e, al in windows)
+        for ts in ts_list
+    )
+
+
 def _plumb_row(cells: list[tuple[str, str]], colspan: int = 3) -> str:
     """One collapsed plumbing row under a board route: <details><dl>.
 
@@ -673,6 +698,22 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             plumb_cells.append(("IQ", iq[0]))
         if retries := _route_retries(runs, str(row["route"])):
             plumb_cells.append(("retries", retries))
+        if row.get("marginal_per_mtok") is not None:
+            marg_label = rundata.rate_label(row.get("marginal_per_mtok")) or "n/a"
+            since_day = str(row.get("marginal_since") or "")[:10]
+            marg_tip = (
+                "Billed cost per M over requests since the previous daily "
+                f"snapshot ({html.escape(since_day)}) &#8212; the fair "
+                "comparator when a price has just moved."
+            )
+            if _probe_only(row, runs):
+                marg_label = f'<span class="dim">{marg_label}</span>'
+                marg_tip += (
+                    " Dimmed: probe-only traffic &#8212; every request in the "
+                    "window is a sweep probe, so the workload (cache-cold, "
+                    "tiny prompts) is unrepresentative."
+                )
+            plumb_cells.append((f"marginal $/M <span title=\"{marg_tip}\">&#9432;</span>", marg_label))
         body_rows.append(_plumb_row(plumb_cells))
     caption = (
         "&#8220;ask&#8221; under each route is the per-M rate billed on fresh "
@@ -692,6 +733,9 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         "&#8212; no earlier snapshot to compare yet), ask source, ask history, "
         "cache hit, failures, window traffic and cost, IQ, and retries (when a "
         "sweep replayed a route). "
+        "Marginal $/M is billed cost over requests since the previous daily "
+        "snapshot, dimmed when the route&#8217;s only fresh traffic is sweep "
+        "probes (real money, unrepresentative workload). "
         "* = floor ask &#8212; catalog minimum, shown when the route has no billed traffic in the window. "
         "IQ = Artificial Analysis Intelligence Index (composite of 9 public evals, "
         "artificialanalysis.ai, effort level max), refreshed every sweep; IQ per $ divides it by the route&#8217;s effective $/M &#8212; higher is smarter per dollar. "

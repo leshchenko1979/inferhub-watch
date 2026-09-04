@@ -281,12 +281,19 @@ def prior_snapshot_cutoff(root: Path | None = None) -> str | None:
     return str(ts) if ts else None
 
 
+MARGINAL_TS_CAP = 400  # per-route ts list cap; beyond this the route is
+# traffic-heavy by definition and never probe-only
+
+
 def marginal_stats(rows: list[dict], cutoff: str | None) -> dict[str, dict]:
     """Per model: traffic + cost over usage rows strictly after the cutoff.
 
     The marginal realized $/M over this slice is the fair forward
     comparator for the projection gate - realized-over-30d smears price
-    changes across the whole window, this one does not.
+    changes across the whole window, this one does not. Also keeps the
+    request timestamps (capped at MARGINAL_TS_CAP) so the board can tell
+    probe-only traffic (every request inside a sweep window) from real
+    working traffic.
     """
     out: dict[str, dict] = {}
     for row in rows:
@@ -297,9 +304,12 @@ def marginal_stats(rows: list[dict], cutoff: str | None) -> dict[str, dict]:
         if not model:
             continue
         m = out.setdefault(
-            model, {"reqs": 0, "tok_in": 0, "tok_out": 0, "cost": 0.0}
+            model,
+            {"reqs": 0, "tok_in": 0, "tok_out": 0, "cost": 0.0, "ts": []},
         )
         m["reqs"] += 1
+        if len(m["ts"]) < MARGINAL_TS_CAP:
+            m["ts"].append(ts)
         m["tok_in"] += int(row.get("prompt_tokens") or 0)
         m["tok_out"] += int(row.get("completion_tokens") or 0)
         cost = _float(row.get("cost_consumer_usdc"))
@@ -335,6 +345,8 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
             entry["marginal_per_mtok"] = round(m["cost"] / toks * 1e6, 4)
             entry["marginal_reqs"] = m["reqs"]
             entry["marginal_since"] = cutoff
+            entry["marginal_ts"] = m["ts"]
+            entry["marginal_ts_truncated"] = m["reqs"] > len(m["ts"])
         return entry
 
     return {

@@ -572,6 +572,10 @@ dl.plumb dd {
   white-space: nowrap;
 }
 
+dl.plumb dd .dim {
+  opacity: 0.55;
+}
+
 /* ── Cost per M tokens ── */
 
 .pricing {

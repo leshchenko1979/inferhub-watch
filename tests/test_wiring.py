@@ -406,6 +406,67 @@ class PricingSectionTests(unittest.TestCase):
         self.assertNotIn(".timeline tbody,", mobile)
 
 
+class ProbeOnlyMarginalTests(unittest.TestCase):
+    """Marginal $/M dims to probe-only when every fresh request for the
+    route falls inside a sweep window that probed it — real money,
+    unrepresentative workload."""
+
+    MARGINAL = {
+        "marginal_per_mtok": 0.006,
+        "marginal_reqs": 2,
+        "marginal_since": "2026-09-03T10:50:43+00:00",
+        "marginal_ts": ["2026-09-03T10:45:50Z", "2026-09-04T10:41:00Z"],
+        "marginal_ts_truncated": False,
+    }
+    RUNS = [
+        {"started_at": "2026-09-03T10:45:00Z", "finished_at": "2026-09-03T10:46:00Z",
+         "aliases": ["ali/qwen3.8-max"]},
+        {"started_at": "2026-09-04T10:40:54Z", "finished_at": "2026-09-04T10:41:30Z",
+         "aliases": ["ali/qwen3.8-max"]},
+    ]
+
+    def _payload(self, marginal: dict) -> dict:
+        entry = dict(PricingSectionTests.PAYLOAD["routes"]["ali/qwen3.8-max"])
+        entry.update(marginal)
+        payload = json.loads(json.dumps(PricingSectionTests.PAYLOAD))
+        payload["routes"]["ali/qwen3.8-max"] = entry
+        return payload
+
+    def _page(self, payload: dict, runs: list) -> str:
+        gen = _load_generate()
+        with mock.patch.object(gen.rundata, "load_pricing", return_value=payload):
+            return gen.index_html(runs, gen.load_aliases(), gen.load_registry())
+
+    def test_probe_only_traffic_dims_marginal_cell(self) -> None:
+        page = self._page(self._payload(self.MARGINAL), self.RUNS)
+        self.assertIn("<dt>marginal $/M", page)
+        self.assertIn('class="dim"', page)
+        self.assertIn("probe-only traffic", page)
+
+    def test_organic_traffic_keeps_marginal_undimmed(self) -> None:
+        marginal = dict(self.MARGINAL)
+        marginal["marginal_ts"] = [
+            "2026-09-03T10:45:50Z", "2026-09-04T18:00:00Z",  # 2nd outside windows
+        ]
+        page = self._page(self._payload(marginal), self.RUNS)
+        self.assertIn("<dt>marginal $/M", page)
+        self.assertNotIn('class="dim"', page)
+        self.assertNotIn("probe-only traffic", page)
+
+    def test_probe_only_helper_guards(self) -> None:
+        gen = _load_generate()
+        row = {"route": "ali/qwen3.8-max", **self.MARGINAL}
+        self.assertTrue(gen._probe_only(row, self.RUNS))
+        # truncated ts list: cannot prove probe-only
+        trunc = dict(row, marginal_ts_truncated=True)
+        self.assertFalse(gen._probe_only(trunc, self.RUNS))
+        # a run window missing -> nothing provable
+        self.assertFalse(gen._probe_only(row, []))
+        # window that did not probe this route
+        runs_other = [dict(self.RUNS[0], aliases=["zai/glm-5.3-flash"])]
+        self.assertFalse(gen._probe_only(row, runs_other))
+
+
 def _load_run():
     import probe.run as run_mod
 

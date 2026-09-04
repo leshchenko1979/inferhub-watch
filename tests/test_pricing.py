@@ -336,6 +336,19 @@ class MarginalStatsTests(unittest.TestCase):
         self.assertEqual(entry["marginal_per_mtok"], 2.0)
         self.assertEqual(entry["marginal_reqs"], 1)
         self.assertEqual(entry["marginal_since"], "2026-08-31T06:00:00+00:00")
+        self.assertEqual(entry["marginal_ts"], ["2026-09-01T12:00:00Z"])
+        self.assertFalse(entry["marginal_ts_truncated"])
+
+    def test_marginal_ts_capped_and_flagged(self) -> None:
+        # > MARGINAL_TS_CAP rows: ts list caps, truncated flag goes up —
+        # a capped route is traffic-heavy by definition, never probe-only
+        n = pricing.MARGINAL_TS_CAP + 10
+        rows = [
+            _row(ts=f"2026-09-01T12:{i // 60:02d}:{i % 60:02d}Z") for i in range(n)
+        ]
+        m = pricing.marginal_stats(rows, "2026-08-31T06:00:00Z")["cp/xai/grok-4.6"]
+        self.assertEqual(m["reqs"], n)
+        self.assertEqual(len(m["ts"]), pricing.MARGINAL_TS_CAP)
 
     def test_no_prior_snapshot_omits_marginal_keys(self) -> None:
         rows = [_row(ts="2026-09-01T12:00:00Z")]
