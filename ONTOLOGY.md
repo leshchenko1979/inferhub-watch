@@ -21,6 +21,7 @@ enforced by `tests/test_ontology.py`.
 | **Catalog snapshot** | `data/catalog.json` — the fetched `/api/catalog` model list with official prices and price points | `probe/catalog.py`, `site/rundata.py::load_catalog` |
 | **Sparkline** | The inline-SVG ask-history graph under each board route's ask | `site/generate.py::_ask_spark`, `.ask-spark` |
 | **Ghost route** | A zero-traffic route — hidden from the board until its first billed traffic | `ghost/route` in tests; `comparison_rows` skip logic |
+| **Candidate** | A catalog route predicted cheaper than its family's incumbent bar — shortlisted by the radar for the next sweep's probe. Parking law: the 7-day proven freeze is earned only by a conclusively **passing** probe; a failed probe re-enters the shortlist when its worst-case (zero-cache) prediction still beats the bar — a cache problem must not bury a genuinely cheaper ask | `probe/market.py::shortlist`, `_pick`, `worst_case_predicted` |
 
 ## Prices
 

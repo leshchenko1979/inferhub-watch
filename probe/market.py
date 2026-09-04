@@ -14,6 +14,11 @@ cheapest incumbent's entry in data/pricing.json (fallback w_in 0.75,
 cache_rate 0 when unknown). The incumbent bar is the cheapest BILLED
 effective $/M among the family's board aliases, so raw-ask traps (a high
 ask that bills cheap thanks to caching) cannot fire.
+
+Parking law (owner rule 2026-09-04): the 7-day freeze is earned only by
+a conclusively PASSING probe. A parked FAIL re-enters the shortlist on
+the next sweep whenever its worst-case (zero-cache) predicted $/M still
+beats the bar — a cache problem must not bury a genuinely cheaper ask.
 """
 
 from __future__ import annotations
@@ -198,6 +203,16 @@ def predicted_usd_m(
     return ask_in * (1.0 - cache_rate) * w_in + ask_out * w_out
 
 
+def worst_case_predicted(row: dict, w_in: float, w_out: float) -> float:
+    """Predicted $/M at ZERO cache — the most a route could possibly bill.
+
+    Owner rule 2026-09-04: a parked route that would beat the incumbent
+    bar even with no caching at all must not stay buried — its ask alone
+    makes it cheaper than anything caching could rescue.
+    """
+    return predicted_usd_m(row["ask_in"], row["ask_out"], 0.0, w_in, w_out)
+
+
 def family_context(pricing_routes: dict, aliases: list[str],
                    catalog: dict | None = None) -> dict[str, dict]:
     """Per family of the board: incumbent bar, cache rate, token weights.
@@ -256,19 +271,30 @@ def rank_family(catalog: dict, fam: str, ctx: dict, exclude: set[str]) -> list[d
 
 
 def _pick(rows: list[dict], bar: float | None, proven: dict,
+          w_in: float = 0.75, w_out: float | None = None,
           now: datetime | None = None) -> list[str]:
     """Top-N routes cheaper than the bar and outside the proven window.
 
     Rows arrive pre-filtered by `rank_family` (dated-only gate included).
+    A route parked inside the TTL stays parked only when its probe was
+    conclusively GOOD (every check "pass") — a parked FAIL does not bury
+    a route whose worst-case (zero-cache) ask would still beat the bar
+    (owner rule 2026-09-04): such a route re-enters the next sweep.
     """
     if bar is None:
         return []
+    w_out = (1.0 - w_in) if w_out is None else w_out
     chosen: list[str] = []
     for row in rows:
         if row["predicted"] >= bar:
             break  # sorted ascending — nothing after this is cheaper
         if proven_recent(proven, row["route"], now):
-            continue
+            statuses = ((proven.get(row["route"]) or {}).get("statuses") or {})
+            marks = list(statuses.values())
+            if marks and all(s == "pass" for s in marks):
+                continue  # conclusively good — nothing new to learn
+            if worst_case_predicted(row, w_in, w_out) >= bar:
+                continue  # failed AND not cheap even at zero cache
         chosen.append(row["route"])
         if len(chosen) >= TOP_N:
             break
@@ -293,7 +319,10 @@ def shortlist(key: str, pricing: dict | None, root: Path | None = None,
     groups = []
     for fam in sorted(ctx):
         rows = rank_family(catalog, fam, ctx[fam], board)
-        chosen = _pick(rows, ctx[fam]["bar"], proven, now)
+        chosen = _pick(
+            rows, ctx[fam]["bar"], proven,
+            ctx[fam]["w_in"], ctx[fam]["w_out"], now,
+        )
         if chosen:
             groups.append({"model": fam, "routes": chosen})
     return groups
@@ -334,14 +363,22 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         if not rows:
             print("  (no catalog routes)")
             continue
-        chosen = _pick(rows, bar, proven)
+        chosen = _pick(rows, bar, proven, info["w_in"], info["w_out"])
         for row in rows:
             if row["route"] in chosen:
-                mark = "SHORTLIST"
+                # Mirror _pick's why: parked-only-if-conclusively-good law.
+                mark = ("SHORTLIST (worst-case re-probe — failed probe, "
+                        "cheap even at 0% cache)"
+                        if proven_recent(proven, row["route"], None) else "SHORTLIST")
             elif bar is None:
                 mark = "skip — no incumbent bar"
             elif row["predicted"] >= bar:
                 mark = "skip — not cheaper"
+            elif proven_recent(proven, row["route"], None):
+                marks = list(((proven.get(row["route"]) or {}).get("statuses") or {}).values())
+                mark = ("skip — proven <7d"
+                        if marks and all(s == "pass" for s in marks)
+                        else "skip — proven <7d (failed, not cheap even at 0% cache)")
             else:
                 mark = "skip — proven <7d"
             print(

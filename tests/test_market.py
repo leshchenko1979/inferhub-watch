@@ -221,7 +221,10 @@ class ShortlistTests(unittest.TestCase):
         self.assertEqual(groups[0]["routes"], ["cb/qwen3.8-max", "cd/qwen3.8-max"])
 
     def test_proven_within_ttl_is_skipped(self) -> None:
-        proven = {"cb/qwen3.8-max": {"last_probe": (NOW - timedelta(days=3)).isoformat()}}
+        proven = {"cb/qwen3.8-max": {
+            "last_probe": (NOW - timedelta(days=3)).isoformat(),
+            "statuses": {"core": "pass", "cache": "pass"},
+        }}
         groups = self._shortlist(proven=proven)
         self.assertEqual(groups[0]["routes"], ["cx/qwen3.8-max"])
 
@@ -232,11 +235,47 @@ class ShortlistTests(unittest.TestCase):
 
     def test_repricing_does_not_lift_ttl(self) -> None:
         # absolute TTL: same proven entry, cheaper asks in the catalog
-        proven = {"cb/qwen3.8-max": {"last_probe": (NOW - timedelta(days=1)).isoformat()}}
+        proven = {"cb/qwen3.8-max": {
+            "last_probe": (NOW - timedelta(days=1)).isoformat(),
+            "statuses": {"core": "pass", "cache": "pass"},
+        }}
         catalog = dict(CATALOG)
         catalog["cb/qwen3.8-max"] = (0.0001, 0.0001)  # dramatic price drop
         groups = self._shortlist(catalog=catalog, proven=proven)
         self.assertNotIn("cb/qwen3.8-max", groups[0]["routes"])
+
+    def test_failed_probe_reprobes_when_cheap_even_at_zero_cache(self) -> None:
+        # owner rule 2026-09-04: a cache/core failure must not bury a
+        # route whose WORST-case ask (zero cache) still beats the bar —
+        # worst case 0.001*0.75 + 0.003*0.25 = 0.0015 < bar 0.005
+        proven = {"cb/qwen3.8-max": {
+            "last_probe": (NOW - timedelta(days=1)).isoformat(),
+            "statuses": {"core": "fail", "cache": "skipped"},
+        }}
+        groups = self._shortlist(proven=proven)
+        self.assertEqual(groups[0]["routes"], ["cb/qwen3.8-max", "cx/qwen3.8-max"])
+
+    def test_failed_probe_stays_parked_when_zero_cache_still_dear(self) -> None:
+        # failure parked, and even at ZERO cache it cannot beat the bar:
+        # predicted 0.002125 < 0.005 but worst case 0.0055 >= 0.005
+        proven = {"cb/qwen3.8-max": {
+            "last_probe": (NOW - timedelta(days=1)).isoformat(),
+            "statuses": {"core": "pass", "cache": "fail"},
+        }}
+        catalog = dict(CATALOG)
+        catalog["cb/qwen3.8-max"] = (0.006, 0.004)
+        groups = self._shortlist(catalog=catalog, proven=proven)
+        self.assertEqual(groups[0]["routes"], ["cx/qwen3.8-max"])
+
+    def test_passed_probe_stays_parked_even_when_worst_case_cheap(self) -> None:
+        # conclusively GOOD probe earns the full freeze — no re-probe
+        # spam, even though its worst-case ask would beat the bar
+        proven = {"cb/qwen3.8-max": {
+            "last_probe": (NOW - timedelta(days=1)).isoformat(),
+            "statuses": {"core": "pass", "cache": "pass"},
+        }}
+        groups = self._shortlist(proven=proven)
+        self.assertEqual(groups[0]["routes"], ["cx/qwen3.8-max"])
 
     def test_flash_variant_stays_out_of_plain_family(self) -> None:
         # glm-5.3 board; the flash sibling is its OWN family and does not
@@ -436,7 +475,10 @@ class DryRunTests(unittest.TestCase):
             # frozen NOW — a fixture stamped with NOW expired on 09-04.
             fresh = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
             (root / "data" / "proven.json").write_text(json.dumps(
-                {"cb/qwen3.8-max": {"last_probe": fresh}}))
+                {"cb/qwen3.8-max": {
+                    "last_probe": fresh,
+                    "statuses": {"core": "pass", "cache": "pass"},
+                }}))
             buf = io.StringIO()
             with mock.patch.object(market, "fetch_catalog", return_value=CATALOG), \
                     mock.patch.object(market, "load_aliases", return_value=ALIASES), \
