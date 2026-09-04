@@ -1,8 +1,50 @@
 {
- "generated_at": "2026-09-03T10:50:44Z",
+ "generated_at": "2026-09-04T10:44:59Z",
  "source": "artificialanalysis.ai",
  "endpoint": "https://artificialanalysis.ai/api/v2/data/llms/models",
  "models": {
+  "gpt-6-astra-non-reasoning": {
+   "name": "GPT-6 Astra (Non-reasoning)",
+   "iq": 55.3,
+   "coding": 76.2,
+   "aa_in": 10,
+   "aa_out": 50
+  },
+  "gpt-6-astra-high": {
+   "name": "GPT-6 Astra (high)",
+   "iq": 60.3,
+   "coding": 77.1,
+   "aa_in": 10,
+   "aa_out": 50
+  },
+  "gpt-6-astra-low": {
+   "name": "GPT-6 Astra (low)",
+   "iq": 56.7,
+   "coding": 75.7,
+   "aa_in": 10,
+   "aa_out": 50
+  },
+  "gpt-6-astra": {
+   "name": "GPT-6 Astra (max)",
+   "iq": 61.2,
+   "coding": 76.9,
+   "aa_in": 10,
+   "aa_out": 50
+  },
+  "gpt-6-astra-medium": {
+   "name": "GPT-6 Astra (medium)",
+   "iq": 59.2,
+   "coding": 76.7,
+   "aa_in": 10,
+   "aa_out": 50
+  },
+  "gpt-6-astra-xhigh": {
+   "name": "GPT-6 Astra (xhigh)",
+   "iq": 61,
+   "coding": 75.9,
+   "aa_in": 10,
+   "aa_out": 50
+  },
   "glm-5-3-flash": {
    "name": "GLM-5.3-Flash",
    "iq": 57.5,
@@ -38,8 +80,15 @@
    "aa_in": 0.15,
    "aa_out": 0.47
   },
+  "k2-horizon-375b-a23b": {
+   "name": "K2 Horizon 375B A23B",
+   "iq": 47.3,
+   "coding": 61.5,
+   "aa_in": 0,
+   "aa_out": 0
+  },
   "quasar-438b": {
-   "name": "Quasar 438B",
+   "name": "Quasar 438B (max, based on GLM-5.2)",
    "iq": 43,
    "coding": 61.2,
    "aa_in": 0.6,
@@ -289,6 +338,20 @@
    "coding": 49,
    "aa_in": 0.325,
    "aa_out": 1.35
+  },
+  "muse-spark-1-3": {
+   "name": "Muse Spark 1.3 (max)",
+   "iq": 62.1,
+   "coding": 76.3,
+   "aa_in": 0,
+   "aa_out": 0
+  },
+  "muse-spark-1-3-xhigh": {
+   "name": "Muse Spark 1.3 (xhigh)",
+   "iq": 60.8,
+   "coding": 76.5,
+   "aa_in": 1.25,
+   "aa_out": 4.25
   },
   "gemma-4-26b-a4b": {
    "name": "Gemma 4 26B A4B (Reasoning)",
@@ -1460,7 +1523,7 @@
    "aa_out": 0.11
   },
   "hypernova-60b": {
-   "name": "HyperNova 60B 2605",
+   "name": "HyperNova 60B 2605 (high, based on gpt-oss-120b)",
    "iq": 18.3,
    "coding": 23.2,
    "aa_in": 0.04,
