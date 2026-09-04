@@ -270,34 +270,51 @@ def rank_family(catalog: dict, fam: str, ctx: dict, exclude: set[str]) -> list[d
     return rows
 
 
-def _pick(rows: list[dict], bar: float | None, proven: dict,
-          w_in: float = 0.75, w_out: float | None = None,
-          now: datetime | None = None) -> list[str]:
-    """Top-N routes cheaper than the bar and outside the proven window.
+def _classify(row: dict, bar: float | None, proven: dict,
+              w_in: float = 0.75, w_out: float | None = None,
+              now: datetime | None = None) -> tuple[bool, str]:
+    """(picked, why) for one catalog row — the ONLY copy of the parking law.
 
-    Rows arrive pre-filtered by `rank_family` (dated-only gate included).
+    _pick consumes the boolean; main's display prints the why. Keeping one
+    classifier means the printout can never contradict the shortlist
+    (review A5/C4: main used to carry its own divergent copy).
+
     A route parked inside the TTL stays parked only when its probe was
     conclusively GOOD (every check "pass") — a parked FAIL does not bury
     a route whose worst-case (zero-cache) ask would still beat the bar
     (owner rule 2026-09-04): such a route re-enters the next sweep.
     """
     if bar is None:
+        return False, "skip — no incumbent bar"
+    if row["predicted"] >= bar:
+        return False, "skip — not cheaper"
+    if proven_recent(proven, row["route"], now):
+        marks = list(((proven.get(row["route"]) or {}).get("statuses") or {}).values())
+        if marks and all(s == "pass" for s in marks):
+            return False, "skip — proven <7d"
+        if worst_case_predicted(row, w_in, w_out) >= bar:
+            return False, "skip — proven <7d (failed, not cheap even at 0% cache)"
+        return True, "SHORTLIST (worst-case re-probe — failed probe, cheap even at 0% cache)"
+    return True, "SHORTLIST"
+
+
+def _pick(rows: list[dict], bar: float | None, proven: dict,
+          w_in: float = 0.75, w_out: float | None = None,
+          now: datetime | None = None) -> list[str]:
+    """Top-N routes cheaper than the bar and outside the proven window.
+
+    Rows arrive pre-filtered by `rank_family` (dated-only gate included).
+    """
+    if bar is None:
         return []
     w_out = (1.0 - w_in) if w_out is None else w_out
     chosen: list[str] = []
     for row in rows:
-        if row["predicted"] >= bar:
-            break  # sorted ascending — nothing after this is cheaper
-        if proven_recent(proven, row["route"], now):
-            statuses = ((proven.get(row["route"]) or {}).get("statuses") or {})
-            marks = list(statuses.values())
-            if marks and all(s == "pass" for s in marks):
-                continue  # conclusively good — nothing new to learn
-            if worst_case_predicted(row, w_in, w_out) >= bar:
-                continue  # failed AND not cheap even at zero cache
-        chosen.append(row["route"])
-        if len(chosen) >= TOP_N:
-            break
+        picked, _why = _classify(row, bar, proven, w_in, w_out, now)
+        if picked:
+            chosen.append(row["route"])
+            if len(chosen) >= TOP_N:
+                break
     return chosen
 
 
@@ -364,23 +381,13 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
             print("  (no catalog routes)")
             continue
         chosen = _pick(rows, bar, proven, info["w_in"], info["w_out"])
+        w_out = 1.0 - info["w_in"]
         for row in rows:
-            if row["route"] in chosen:
-                # Mirror _pick's why: parked-only-if-conclusively-good law.
-                mark = ("SHORTLIST (worst-case re-probe — failed probe, "
-                        "cheap even at 0% cache)"
-                        if proven_recent(proven, row["route"], None) else "SHORTLIST")
-            elif bar is None:
-                mark = "skip — no incumbent bar"
-            elif row["predicted"] >= bar:
-                mark = "skip — not cheaper"
-            elif proven_recent(proven, row["route"], None):
-                marks = list(((proven.get(row["route"]) or {}).get("statuses") or {}).values())
-                mark = ("skip — proven <7d"
-                        if marks and all(s == "pass" for s in marks)
-                        else "skip — proven <7d (failed, not cheap even at 0% cache)")
-            else:
-                mark = "skip — proven <7d"
+            picked, mark = _classify(
+                row, bar, proven, info["w_in"], w_out
+            )
+            if picked != (row["route"] in chosen):  # TOP_N cutoff below
+                mark = "skip — beyond top-N"
             print(
                 f"  {row['route']:<40} predicted ${row['predicted']:.4f}/M "
                 f"(ask {row['ask_in']:.4f}/{row['ask_out']:.4f}) {mark}"
