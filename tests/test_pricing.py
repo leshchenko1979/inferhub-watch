@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import io
 import json
 import tempfile
@@ -170,7 +171,7 @@ class FetchCatalogTests(unittest.TestCase):
         the catalog and blinded the radar. Empty output must scream."""
         err = io.StringIO()
         with mock.patch.object(pricing, "_get", return_value=[]), \
-                mock.patch.sys_stderr(err):
+                contextlib.redirect_stderr(err):
             asks = pricing.fetch_catalog("k")
         self.assertEqual(asks, {})
         self.assertIn("candidate radar is blind", err.getvalue())
