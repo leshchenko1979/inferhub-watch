@@ -541,5 +541,98 @@ class CandidateSweepTests(unittest.TestCase):
                 probe_run.run_candidate_sweep(object(), [("a/x", "m1")], [])
 
 
+class ClassifyLawTest(unittest.TestCase):
+    """Direct coverage of _classify — the ONE copy of the parking law.
+
+    _pick and main's display both consume it; these tests pin each branch
+    so the printout can never drift from the shortlist (review A5/C4).
+    """
+
+    ROUTE = "cb/glm-5.3-flash"
+    NOW = datetime(2026, 9, 5, tzinfo=timezone.utc)
+
+    @staticmethod
+    def _row(ask_in: float, ask_out: float, predicted: float) -> dict:
+        return {"route": ClassifyLawTest.ROUTE, "ask_in": ask_in,
+                "ask_out": ask_out, "predicted": predicted}
+
+    def _proven(self, statuses: dict) -> dict:
+        fresh = (self.NOW - timedelta(days=1)).isoformat()
+        return {self.ROUTE: {"last_probe": fresh, "statuses": statuses}}
+
+    def test_no_bar_skips(self) -> None:
+        picked, why = market._classify(self._row(0.004, 0.004, 0.0035),
+                                       None, {}, now=self.NOW)
+        self.assertFalse(picked)
+        self.assertEqual(why, "skip — no incumbent bar")
+
+    def test_not_cheaper_skips(self) -> None:
+        picked, why = market._classify(self._row(0.02, 0.02, 0.02),
+                                       0.005, {}, now=self.NOW)
+        self.assertFalse(picked)
+        self.assertEqual(why, "skip — not cheaper")
+
+    def test_parked_pass_stays_parked(self) -> None:
+        picked, why = market._classify(
+            self._row(0.004, 0.004, 0.0035), 0.005,
+            self._proven({"core": "pass", "cache": "pass"}), now=self.NOW)
+        self.assertFalse(picked)
+        self.assertEqual(why, "skip — proven <7d")
+
+    def test_parked_fail_not_cheap_even_at_zero_cache_stays_parked(self) -> None:
+        # ask 0.006/0.006: predicted 0.00375 < bar 0.005, but the zero-cache
+        # worst case is 0.006 — the advantage needs caching to survive.
+        row = self._row(0.006, 0.006, 0.00375)
+        picked, why = market._classify(row, 0.005,
+                                       self._proven({"core": "fail"}),
+                                       w_in=0.75, w_out=0.25, now=self.NOW)
+        self.assertFalse(picked)
+        self.assertEqual(why, "skip — proven <7d (failed, not cheap even at 0% cache)")
+
+    def test_parked_fail_cheap_even_at_zero_cache_reenters(self) -> None:
+        # ask 0.004/0.004: worst case 0.004 < bar 0.005 — no cache problem
+        # could explain the gap away, so the parked fail must re-probe.
+        row = self._row(0.004, 0.004, 0.0035)
+        picked, why = market._classify(row, 0.005,
+                                       self._proven({"core": "fail"}),
+                                       w_in=0.75, w_out=0.25, now=self.NOW)
+        self.assertTrue(picked)
+        self.assertEqual(why, "SHORTLIST (worst-case re-probe — failed probe, cheap even at 0% cache)")
+
+    def test_unproven_route_is_a_plain_shortlist(self) -> None:
+        picked, why = market._classify(self._row(0.004, 0.004, 0.0035),
+                                       0.005, {}, now=self.NOW)
+        self.assertTrue(picked)
+        self.assertEqual(why, "SHORTLIST")
+
+
+class DryRunTopNTest(unittest.TestCase):
+    """Routes ranked past TOP_N must print the cutoff marker, not a law one."""
+
+    OVERFLOW_CATALOG = {
+        "cb/qwen3.8-max": (0.001, 0.003),     # predicted 0.00094
+        "cx/qwen3.8-max": (0.002, 0.004),     # predicted 0.00138
+        "cz2/qwen3.8-max": (0.0025, 0.005),   # predicted 0.00219 — third
+        "ali/qwen3.8-max": (0.0001, 0.0001),  # board alias -> excluded
+    }
+
+    def test_third_route_prints_top_n_cutoff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "data").mkdir()
+            (root / "data" / "pricing.json").write_text(json.dumps(PRICING))
+            buf = io.StringIO()
+            with mock.patch.object(market, "fetch_catalog",
+                                   return_value=self.OVERFLOW_CATALOG), \
+                    mock.patch.object(market, "load_aliases", return_value=ALIASES), \
+                    mock.patch.dict(os.environ, {"INFERHUB_API_KEY": "k"}), \
+                    redirect_stdout(buf):
+                code = market.main(["--dry-run"], root=root)
+        self.assertEqual(code, 0)
+        out = buf.getvalue()
+        self.assertEqual(out.count("SHORTLIST"), 2)  # TOP_N
+        self.assertIn("skip — beyond top-N", out)
+
+
 if __name__ == "__main__":
     unittest.main()

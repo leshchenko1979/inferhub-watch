@@ -169,5 +169,60 @@ class LoadKeyTest(unittest.TestCase):
             self.assertEqual(daily_report.load_key(), "")
 
 
+class SpendByDaySectionTest(unittest.TestCase):
+    """spend_by_day_section — B2 gap: the spend table was never covered."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+
+    def test_no_snapshots_renders_nothing(self) -> None:
+        self.assertEqual(daily_report.spend_by_day_section(self.root), [])
+
+    def test_renders_days_with_zero_cost_as_dash(self) -> None:
+        self.root.joinpath("data").mkdir()
+        _snap(self.root, "2026-09-04", {})
+        snap = json.loads(
+            (self.root / "data" / "pricing" / "2026-09-04.json").read_text())
+        snap["days"] = [
+            {"date": "2026-09-02", "cost_usdc": "1.61", "requests": 2264},
+            {"date": "2026-09-03", "cost_usdc": "0.0", "requests": 10},
+            {"date": "2026-09-04", "cost_usdc": None, "requests": 3},
+        ]
+        (self.root / "data" / "pricing" / "2026-09-04.json").write_text(
+            json.dumps(snap))
+        lines = daily_report.spend_by_day_section(self.root)
+        text = "\n".join(lines)
+        self.assertIn("| 2026-09-02 | 2,264 | 1.61 |", text)
+        self.assertIn("| 2026-09-03 | 10 | — |", text)
+        self.assertIn("| 2026-09-04 | 3 | — |", text)
+
+    def test_snapshot_without_days_renders_nothing(self) -> None:
+        self.root.joinpath("data").mkdir()
+        _snap(self.root, "2026-09-04", {})
+        snap = json.loads(
+            (self.root / "data" / "pricing" / "2026-09-04.json").read_text())
+        snap["days"] = []
+        (self.root / "data" / "pricing" / "2026-09-04.json").write_text(
+            json.dumps(snap))
+        self.assertEqual(daily_report.spend_by_day_section(self.root), [])
+
+
+class FormatterTest(unittest.TestCase):
+    """B5 gap: _fmt_pct and _ask's bare-prefix edges were untested."""
+
+    def test_fmt_pct_branches(self) -> None:
+        self.assertEqual(daily_report._fmt_pct(None), "(new price)")
+        self.assertEqual(daily_report._fmt_pct(12.34), "(+12.3%)")
+        self.assertEqual(daily_report._fmt_pct(-0.5), "(-0.5%)")
+
+    def test_ask_bare_prefix_and_zero(self) -> None:
+        self.assertEqual(daily_report._ask(2.49), "2.49")
+        self.assertEqual(daily_report._ask(0.0114), "0.0114")
+        self.assertEqual(daily_report._ask(0.0), "—")
+        self.assertEqual(daily_report._ask(None), "—")
+
+
 if __name__ == "__main__":
     unittest.main()

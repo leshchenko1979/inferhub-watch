@@ -906,5 +906,35 @@ class ProbeResultsSectionTests(unittest.TestCase):
         self.assertIn("failed:", section)
 
 
+class PairCellTest(unittest.TestCase):
+    """B4 gap: _pair_cell's two eras — the projection branch had no direct
+    test (the gate never passes on current fixtures, so render tests only
+    exercise the realized side)."""
+
+    def setUp(self):
+        self.gen = _load_generate()
+
+    def test_projection_basis_pair(self) -> None:
+        pair, label, _tip = self.gen._pair_cell("0.0114", "0.0005", True)
+        self.assertEqual(label, "projected $/M")
+        self.assertIn('<span class="pair-main">0.0005', pair)
+        self.assertIn("<span class=\"pair-tag\">now</span>", pair)
+        self.assertIn('<span class="pair-alt">0.0114', pair)
+        self.assertIn("<span class=\"pair-tag\">30d</span>", pair)
+
+    def test_realized_basis_pair(self) -> None:
+        pair, label, _tip = self.gen._pair_cell("0.0114", "0.0005", False)
+        self.assertEqual(label, "effective $/M")
+        self.assertIn('<span class="pair-main">0.0114', pair)
+        self.assertIn("<span class=\"pair-tag\">30d</span>", pair)
+        self.assertIn('<span class="pair-alt">0.0005', pair)
+        self.assertIn("<span class=\"pair-tag\">now</span>", pair)
+
+    def test_no_projection_drops_the_alt_cell(self) -> None:
+        pair, label, _tip = self.gen._pair_cell("0.0114", None, True)
+        self.assertEqual(label, "effective $/M")
+        self.assertNotIn("pair-alt", pair)
+
+
 if __name__ == "__main__":
     unittest.main()
