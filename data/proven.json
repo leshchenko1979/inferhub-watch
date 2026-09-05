@@ -6,6 +6,34 @@
       "core": "fail"
     }
   },
+  "cb/gpt-5.6-luna": {
+    "last_probe": "2026-09-05T10:00:43.572960+00:00",
+    "statuses": {
+      "cache": "skipped",
+      "core": "fail"
+    }
+  },
+  "cb/gpt-5.6-sol": {
+    "last_probe": "2026-09-05T10:00:43.572960+00:00",
+    "statuses": {
+      "cache": "skipped",
+      "core": "fail"
+    }
+  },
+  "cb/gpt-5.6-terra": {
+    "last_probe": "2026-09-05T10:00:43.572960+00:00",
+    "statuses": {
+      "cache": "skipped",
+      "core": "fail"
+    }
+  },
+  "cb/kimi-k3": {
+    "last_probe": "2026-09-05T10:00:43.572960+00:00",
+    "statuses": {
+      "cache": "skipped",
+      "core": "fail"
+    }
+  },
   "cbcn/deepseek-v4-flash": {
     "last_probe": "2026-08-28T19:50:09.435030+00:00",
     "statuses": {
@@ -28,7 +56,7 @@
     }
   },
   "cbcn/glm-5.3-flash": {
-    "last_probe": "2026-08-28T21:20:29.934579+00:00",
+    "last_probe": "2026-09-05T10:00:43.572960+00:00",
     "statuses": {
       "cache": "skipped",
       "core": "fail"
