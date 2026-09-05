@@ -587,6 +587,118 @@ def _route_retries(runs: list[dict], route: str) -> str:
     return "; ".join(parts)
 
 
+def _board_basis(row: dict, dated: list | None, payload: dict,
+                 use_proj: bool) -> float | None:
+    """The $/M the board ranks a route on: realized 30d effective, or the
+    projection once the backtest gate says the forward view predicts the
+    next snapshot within tolerance (projection_gate - recomputed per render)."""
+    if use_proj:
+        proj = _proj_eff(dated, payload, str(row["route"]))
+        if proj is not None:
+            return proj
+    return row.get("eff_per_mtok")
+
+
+def _iq_sort_key(intel: dict, dated: list | None, payload: dict,
+                 use_proj: bool):
+    """Board order: IQ per $ descending (ontology: the smarter-per-dollar
+    verdict is the point of the board). Routes without an IQ mapping or
+    eff sink last."""
+    def key(row: dict) -> float:
+        slug = rundata.aa_slug(str(row["route"]))
+        entry = (intel.get("models") or {}).get(slug) if slug else None
+        iq = entry.get("iq") if entry else None
+        eff = _board_basis(row, dated, payload, use_proj)
+        try:
+            return iq / eff if iq is not None and eff else float("-inf")
+        except ZeroDivisionError:
+            return float("-inf")
+    return key
+
+
+def _pair_cell(eff_label: str, proj_label: str | None,
+               use_proj: bool) -> tuple[str, str, str]:
+    """The rate cell pairing the two eras; bold = the basis IQ per $ ranks on."""
+    if use_proj and proj_label is not None:
+        main_val, main_tag, alt_val, alt_tag = proj_label, "now", eff_label, "30d"
+        data_label = "projected $/M"
+        data_tip = (
+            "Forward cost per M tokens at current billed asks (median ask, "
+            "smoothed hit rate); 30d is the realized window average."
+        )
+    else:
+        main_val, main_tag = eff_label, "30d"
+        alt_val, alt_tag = proj_label, "now"
+        data_label = "effective $/M"
+        data_tip = (
+            "Billed cost per M tokens over all traffic in the window, cache "
+            'discounts included. The "now" figure is the forward '
+            "projection at current billed asks (median ask, smoothed hit rate)."
+        )
+    pair = (
+        f'<span class="pair-main">{main_val}'
+        f'<span class="pair-tag">{main_tag}</span></span>'
+    )
+    if alt_val:
+        pair += (
+            f'<span class="pair-alt">{alt_val}'
+            f'<span class="pair-tag">{alt_tag}</span></span>'
+        )
+    return pair, data_label, data_tip
+
+
+def _marginal_cell(row: dict, runs: list[dict]) -> tuple[str, str] | None:
+    """The marginal $/M plumbing cell; dimmed when traffic is probe-only."""
+    if row.get("marginal_per_mtok") is None:
+        return None
+    marg_label = rundata.rate_label(row.get("marginal_per_mtok")) or "n/a"
+    since_day = str(row.get("marginal_since") or "")[:10]
+    marg_tip = (
+        "Billed cost per M over requests since the previous daily "
+        f"snapshot ({html.escape(since_day)}) &#8212; the fair "
+        "comparator when a price has just moved."
+    )
+    if _probe_only(row, runs):
+        marg_label = f'<span class="dim">{marg_label}</span>'
+        marg_tip += (
+            " Dimmed: probe-only traffic &#8212; every request in the "
+            "window is a sweep probe, so the workload (cache-cold, "
+            "tiny prompts) is unrepresentative."
+        )
+    return (f"marginal $/M <span title=\"{marg_tip}\">&#9432;</span>", marg_label)
+
+
+def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
+    """The board caption: reading guide + live gate state."""
+    return (
+        "&#8220;ask&#8221; under each route is the per-M rate billed on fresh "
+        "(uncached) input / output; &#8220;effective&#8221; is billed cost over all "
+        "tokens, cache discounts included. Each rate cell pairs the two eras and "
+        "tags each: &#8220;now&#8221; is the forward projection at current billed "
+        "asks (median ask, smoothed hit rate) and &#8220;30d&#8221; the realized "
+        "window figure &#8212; the bold one is the basis IQ "
+        f"per $ ranks on ({'projection' if use_proj else 'realized'} basis, "
+        f"backtest gate {'passed' if use_proj else 'not passed'}: "
+        f"{gate.get('within')}/{gate.get('n')} transitions within "
+        f"{int((gate.get('tol') or 0.2) * 100)}%). "
+        "Effective bars are log-scaled over "
+        "$0.001&#8211;$10 per M and colored teal &#8804; $0.02, amber above. "
+        "Show plumbing folds each route&#8217;s ask movement (&#916; ask in / out vs "
+        "the previous daily snapshot: &#8595; teal cheaper, &#8593; amber pricier, "
+        "&#8212; no earlier snapshot to compare yet), ask source, ask history, "
+        "cache hit, failures, window traffic and cost, IQ, and retries (when a "
+        "sweep replayed a route). "
+        "Marginal $/M is billed cost over requests since the previous daily "
+        "snapshot, dimmed when the route&#8217;s only fresh traffic is sweep "
+        "probes (real money, unrepresentative workload). "
+        "* = floor ask &#8212; catalog minimum, shown when the route has no billed traffic in the window. "
+        "IQ = Artificial Analysis Intelligence Index (composite of 9 public evals, "
+        "artificialanalysis.ai, effort level max), refreshed every sweep; IQ per $ divides it by the route&#8217;s effective $/M &#8212; higher is smarter per dollar. "
+        "Sparkline bars are log-scaled $0.001&#8211;$10 per day. "
+        "Rates for this board&#8217;s routes only; other traffic is not listed."
+    )
+
+
 def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     """The #pricing section, or '' when there is no usable pricing data."""
     rows = rundata.pricing_rows(payload)
@@ -600,32 +712,9 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     dated = rundata.load_dated_pricing(ROOT)
     prior = rundata.prior_pricing(dated, payload)
     intel = rundata.load_intelligence(ROOT)
-    # The basis the board ranks on: realized 30d eff, or the projection
-    # once the backtest gate says the forward view predicts the next
-    # snapshot within tolerance (projection_gate - recomputed per render).
     gate = official_compare.projection_gate(dated)
     use_proj = bool(gate.get("pass"))
-
-    def _basis(row: dict) -> float | None:
-        if use_proj:
-            proj = _proj_eff(dated, payload, str(row["route"]))
-            if proj is not None:
-                return proj
-        return row.get("eff_per_mtok")
-
-    # Board order: IQ per $ descending (ontology: the smarter-per-dollar verdict
-    # is the point of the board). Routes without an IQ mapping or eff sink last.
-    def _iq_per_dollar(row: dict) -> float:
-        slug = rundata.aa_slug(str(row["route"]))
-        entry = (intel.get("models") or {}).get(slug) if slug else None
-        iq = entry.get("iq") if entry else None
-        eff = _basis(row)
-        try:
-            return iq / eff if iq is not None and eff else float("-inf")
-        except ZeroDivisionError:
-            return float("-inf")
-
-    rows.sort(key=_iq_per_dollar, reverse=True)
+    rows.sort(key=_iq_sort_key(intel, dated, payload, use_proj), reverse=True)
     body_rows = []
     for row in rows:
         logged = row.get("source") == "usage-logs"
@@ -639,36 +728,11 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         # Decision row: two figures a scanner reads — the rate pair and
         # IQ per $. Everything else (ask movement, history, cache,
         # traffic, cost, failures, source) folds into the plumbing row.
-        # The pair tags both eras: bold = the basis the board ranks on.
         proj = _proj_eff(dated, payload, str(row["route"]))
-        basis = _basis(row)
+        basis = _board_basis(row, dated, payload, use_proj)
         eff_label = rundata.rate_label(row.get("eff_per_mtok")) or "n/a"
         proj_label = rundata.rate_label(proj) if proj is not None else None
-        if use_proj and proj_label is not None:
-            main_val, main_tag, alt_val, alt_tag = proj_label, "now", eff_label, "30d"
-            data_label = "projected $/M"
-            data_tip = (
-                "Forward cost per M tokens at current billed asks (median ask, "
-                "smoothed hit rate); 30d is the realized window average."
-            )
-        else:
-            main_val, main_tag = eff_label, "30d"
-            alt_val, alt_tag = proj_label, "now"
-            data_label = "effective $/M"
-            data_tip = (
-                "Billed cost per M tokens over all traffic in the window, cache "
-                'discounts included. The "now" figure is the forward '
-                "projection at current billed asks (median ask, smoothed hit rate)."
-            )
-        pair = (
-            f'<span class="pair-main">{main_val}'
-            f'<span class="pair-tag">{main_tag}</span></span>'
-        )
-        if alt_val:
-            pair += (
-                f'<span class="pair-alt">{alt_val}'
-                f'<span class="pair-tag">{alt_tag}</span></span>'
-            )
+        pair, data_label, data_tip = _pair_cell(eff_label, proj_label, use_proj)
         iq = _iq_value(str(row["route"]), basis, intel)
         series = rundata.ask_series(dated, str(row["route"]), payload)
         body_rows.append(
@@ -705,50 +769,10 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             plumb_cells.append(("IQ", iq[0]))
         if retries := _route_retries(runs, str(row["route"])):
             plumb_cells.append(("retries", retries))
-        if row.get("marginal_per_mtok") is not None:
-            marg_label = rundata.rate_label(row.get("marginal_per_mtok")) or "n/a"
-            since_day = str(row.get("marginal_since") or "")[:10]
-            marg_tip = (
-                "Billed cost per M over requests since the previous daily "
-                f"snapshot ({html.escape(since_day)}) &#8212; the fair "
-                "comparator when a price has just moved."
-            )
-            if _probe_only(row, runs):
-                marg_label = f'<span class="dim">{marg_label}</span>'
-                marg_tip += (
-                    " Dimmed: probe-only traffic &#8212; every request in the "
-                    "window is a sweep probe, so the workload (cache-cold, "
-                    "tiny prompts) is unrepresentative."
-                )
-            plumb_cells.append((f"marginal $/M <span title=\"{marg_tip}\">&#9432;</span>", marg_label))
+        if (marg := _marginal_cell(row, runs)) is not None:
+            plumb_cells.append(marg)
         body_rows.append(_plumb_row(plumb_cells))
-    caption = (
-        "&#8220;ask&#8221; under each route is the per-M rate billed on fresh "
-        "(uncached) input / output; &#8220;effective&#8221; is billed cost over all "
-        "tokens, cache discounts included. Each rate cell pairs the two eras and "
-        "tags each: &#8220;now&#8221; is the forward projection at current billed "
-        "asks (median ask, smoothed hit rate) and &#8220;30d&#8221; the realized "
-        "window figure &#8212; the bold one is the basis IQ "
-        f"per $ ranks on ({'projection' if use_proj else 'realized'} basis, "
-        f"backtest gate {'passed' if use_proj else 'not passed'}: "
-        f"{gate.get('within')}/{gate.get('n')} transitions within "
-        f"{int((gate.get('tol') or 0.2) * 100)}%). "
-        "Effective bars are log-scaled over "
-        "$0.001&#8211;$10 per M and colored teal &#8804; $0.02, amber above. "
-        "Show plumbing folds each route&#8217;s ask movement (&#916; ask in / out vs "
-        "the previous daily snapshot: &#8595; teal cheaper, &#8593; amber pricier, "
-        "&#8212; no earlier snapshot to compare yet), ask source, ask history, "
-        "cache hit, failures, window traffic and cost, IQ, and retries (when a "
-        "sweep replayed a route). "
-        "Marginal $/M is billed cost over requests since the previous daily "
-        "snapshot, dimmed when the route&#8217;s only fresh traffic is sweep "
-        "probes (real money, unrepresentative workload). "
-        "* = floor ask &#8212; catalog minimum, shown when the route has no billed traffic in the window. "
-        "IQ = Artificial Analysis Intelligence Index (composite of 9 public evals, "
-        "artificialanalysis.ai, effort level max), refreshed every sweep; IQ per $ divides it by the route&#8217;s effective $/M &#8212; higher is smarter per dollar. "
-        "Sparkline bars are log-scaled $0.001&#8211;$10 per day. "
-        "Rates for this board&#8217;s routes only; other traffic is not listed."
-    )
+    caption = _pricing_caption(span, use_proj, gate)
     return (
         '<section class="pricing-block" id="pricing">'
         f"<h2>{html.escape(section_title('pricing'))}</h2>"
