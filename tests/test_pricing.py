@@ -29,6 +29,24 @@ def _row(ts="2026-08-27T10:00:00Z", model="cp/xai/grok-4.6", **kw):
     return row
 
 
+class BumpUsageTests(unittest.TestCase):
+    """The shared row-counter contract (review C2)."""
+
+    def test_bumps_all_present_keys(self) -> None:
+        agg = {"reqs": 1, "tok_in": 0, "tok_out": 0, "cached": 0, "cost": 0.0}
+        pricing.bump_usage(agg, _row(prompt_tokens="100", completion_tokens="20",
+                                     cached_tokens="80", cost_consumer_usdc="0.5"))
+        self.assertEqual(agg, {"reqs": 1, "tok_in": 100, "tok_out": 20,
+                               "cached": 80, "cost": 0.5})
+
+    def test_skips_absent_keys_and_bad_costs(self) -> None:
+        agg = {"tok_in": 0, "tok_out": 0, "cost": 0.0}  # no `cached` key
+        row = _row(prompt_tokens="5", completion_tokens="1", cached_tokens="9",
+                   cost_consumer_usdc="n/a")
+        pricing.bump_usage(agg, row)
+        self.assertEqual(agg, {"tok_in": 5, "tok_out": 1, "cost": 0.0})
+
+
 class AggregateTests(unittest.TestCase):
     def test_totals_and_median_ask(self) -> None:
         rows = [

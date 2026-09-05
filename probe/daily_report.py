@@ -24,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from probe.costs import fetch_log_rows
-from probe.pricing import _float, failure_stats
+from probe.pricing import _float, bump_usage, failure_stats
 from probe.registry import repo_root
 
 KEYS_FILE = Path.home() / ".opencrabs" / "profiles" / "ops" / "keys.toml"
@@ -69,12 +69,7 @@ def usage_24h(rows: list[dict]) -> dict[str, dict]:
         if row.get("status") != "ok":
             agg["failed"] += 1
             continue
-        agg["tok_in"] += int(row.get("prompt_tokens") or 0)
-        agg["tok_out"] += int(row.get("completion_tokens") or 0)
-        agg["cached"] += int(row.get("cached_tokens") or 0)
-        cost = _float(row.get("cost_consumer_usdc"))
-        if cost is not None:
-            agg["cost"] += cost
+        bump_usage(agg, row)
     return out
 
 

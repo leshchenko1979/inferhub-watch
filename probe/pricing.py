@@ -134,6 +134,26 @@ def _float(raw: object) -> float | None:
     return value
 
 
+def bump_usage(agg: dict, row: dict) -> None:
+    """Add one usage-log row's token/cache/cost counters into agg in place.
+
+    The row-field contract — prompt_tokens / completion_tokens /
+    cached_tokens / cost_consumer_usdc, all optional, failed rows carry
+    zeros — lives here and nowhere else. Keys already present in agg are
+    updated, so callers pick their own shape (marginal_stats has no
+    `cached`, for instance). Request counting stays with the caller:
+    failed-row semantics differ per report.
+    """
+    agg["tok_in"] += int(row.get("prompt_tokens") or 0)
+    agg["tok_out"] += int(row.get("completion_tokens") or 0)
+    if "cached" in agg:
+        agg["cached"] += int(row.get("cached_tokens") or 0)
+    if "cost" in agg:
+        cost = _float(row.get("cost_consumer_usdc"))
+        if cost is not None:
+            agg["cost"] += cost
+
+
 def aggregate_rows(rows: list[dict]) -> dict[str, dict]:
     """Per model string: traffic totals and the median billed ask rates."""
     stats: dict[str, dict] = {}
@@ -156,12 +176,7 @@ def aggregate_rows(rows: list[dict]) -> dict[str, dict]:
             },
         )
         agg["reqs"] += 1
-        agg["tok_in"] += int(row.get("prompt_tokens") or 0)
-        agg["tok_out"] += int(row.get("completion_tokens") or 0)
-        agg["cached"] += int(row.get("cached_tokens") or 0)
-        cost = _float(row.get("cost_consumer_usdc"))
-        if cost is not None:
-            agg["cost"] += cost
+        bump_usage(agg, row)
         ask_in = _float(row.get("ask_input_per_mtok"))
         ask_out = _float(row.get("ask_output_per_mtok"))
         if ask_in is not None and ask_out is not None:
@@ -370,11 +385,7 @@ def marginal_stats(rows: list[dict], cutoff: str | None) -> dict[str, dict]:
         m["reqs"] += 1
         if len(m["ts"]) < MARGINAL_TS_CAP:
             m["ts"].append(ts)
-        m["tok_in"] += int(row.get("prompt_tokens") or 0)
-        m["tok_out"] += int(row.get("completion_tokens") or 0)
-        cost = _float(row.get("cost_consumer_usdc"))
-        if cost is not None:
-            m["cost"] += cost
+        bump_usage(m, row)
     return out
 
 
