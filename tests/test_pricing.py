@@ -29,6 +29,20 @@ def _row(ts="2026-08-27T10:00:00Z", model="cp/xai/grok-4.6", **kw):
     return row
 
 
+class RateLabelTests(unittest.TestCase):
+    """The shared money formatter (review C3)."""
+
+    def test_small_and_tiny_values(self) -> None:
+        self.assertEqual(pricing.rate_label("0.0114"), "$0.0114")
+        self.assertEqual(pricing.rate_label(0.0000005), "$0.0000005")
+        self.assertEqual(pricing.rate_label(2.49), "$2.49")
+
+    def test_bare_prefix_and_bad_input(self) -> None:
+        self.assertEqual(pricing.rate_label("0.03", prefix=""), "0.03")
+        self.assertEqual(pricing.rate_label("n/a"), "")
+        self.assertEqual(pricing.rate_label(0), "")
+
+
 class BumpUsageTests(unittest.TestCase):
     """The shared row-counter contract (review C2)."""
 

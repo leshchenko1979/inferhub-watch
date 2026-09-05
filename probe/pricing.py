@@ -134,6 +134,26 @@ def _float(raw: object) -> float | None:
     return value
 
 
+def rate_label(raw: object, sig: int = 3, prefix: str = "$") -> str:
+    """Compact money label: '$0.014', '$2.49'; extra decimals when tiny.
+
+    The one money formatter (review C3) — the site (via rundata) and the
+    daily report both render money through this; prefix='' gives the
+    bare-number form the report tables use.
+    """
+    try:
+        value = float(str(raw))
+    except (TypeError, ValueError):
+        return ""
+    if value <= 0:
+        return ""
+    text = f"{prefix}{value:.{sig}g}"
+    if "e" in text or "E" in text:
+        # .6f would round 5e-07 to 0 — ten decimals keep sub-1e-6 asks real.
+        text = f"{prefix}{value:.10f}".rstrip("0").rstrip(".")
+    return text
+
+
 def bump_usage(agg: dict, row: dict) -> None:
     """Add one usage-log row's token/cache/cost counters into agg in place.
 

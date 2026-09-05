@@ -24,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from probe.costs import fetch_log_rows
-from probe.pricing import _float, bump_usage, failure_stats
+from probe.pricing import _float, bump_usage, failure_stats, rate_label
 from probe.registry import repo_root
 
 KEYS_FILE = Path.home() / ".opencrabs" / "profiles" / "ops" / "keys.toml"
@@ -122,9 +122,10 @@ def _fmt_pct(pct):
 
 
 def _ask(v: float | None) -> str:
+    """Money label without the $ prefix (report-table house style)."""
     if v is None:
         return "—"
-    return f"{v:,.2f}" if abs(v) >= 1 else f"{v:.4f}".rstrip("0").rstrip(".")
+    return rate_label(v, prefix="") or "—"
 
 
 def usage_section(stats: dict[str, dict], rows: list[dict]) -> list[str]:

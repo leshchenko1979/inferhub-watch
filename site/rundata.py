@@ -5,7 +5,7 @@ import math
 import tomllib
 from pathlib import Path
 
-from probe import market
+from probe import market, pricing
 from probe.registry import repo_root
 
 
@@ -305,17 +305,12 @@ def pricing_rows(payload: dict | None) -> list[dict]:
 
 
 def rate_label(raw: object, sig: int = 3) -> str:
-    """Compact $/M label: '$0.014', '$2.49'; extra decimals when tiny."""
-    try:
-        value = float(str(raw))
-    except (TypeError, ValueError):
-        return ""
-    if value <= 0:
-        return ""
-    text = f"${value:.{sig}g}"
-    if "e" in text or "E" in text:
-        text = f"${value:.6f}".rstrip("0").rstrip(".")
-    return text
+    """Compact $/M label: '$0.014', '$2.49'; extra decimals when tiny.
+
+    Thin delegate — the formatter lives in probe.pricing so the daily
+    report and the site share one money format (review C3).
+    """
+    return pricing.rate_label(raw, sig=sig)
 
 
 def token_label(count: int) -> str:
