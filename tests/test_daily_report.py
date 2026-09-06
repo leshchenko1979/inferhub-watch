@@ -209,6 +209,108 @@ class SpendByDaySectionTest(unittest.TestCase):
         self.assertEqual(daily_report.spend_by_day_section(self.root), [])
 
 
+class BoardingCandidatesTest(unittest.TestCase):
+    """Four-gate boarding flag — all gates must hold; missing data degrades.
+
+    Fixture family: incumbent ali/qwen3.8-max on the board, candidate
+    cb/qwen3.8-max cheaper, probed, billed, IQ-washed, fast enough.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    @staticmethod
+    def _routes(entry_eff=0.003, inc_eff=0.0069):
+        return {
+            "cb/qwen3.8-max": {"ask_in": 0.016, "ask_out": 0.048,
+                               "eff_per_mtok": entry_eff, "cache_pct": 70.0,
+                               "reqs": 50, "tok_in": 100000, "tok_out": 2000,
+                               "cost_usdc": "0.000300"},
+            "ali/qwen3.8-max": {"ask_in": 0.016, "ask_out": 0.048,
+                                "eff_per_mtok": inc_eff, "cache_pct": 69.6,
+                                "reqs": 1900, "tok_in": 140000000,
+                                "tok_out": 2700000, "cost_usdc": "1.000000"},
+        }
+
+    @staticmethod
+    def _run():
+        return {"cells": [{"alias": "cb/qwen3.8-max", "check_id": "core",
+                           "status": "pass"}]}
+
+    @staticmethod
+    def _perf():
+        return {"cb/qwen3.8-max": {"ttft_p50_ms": 2000.0},
+                "ali/qwen3.8-max": {"ttft_p50_ms": 2263.0}}
+
+    ALIASES = ["ali/qwen3.8-max"]
+
+    def test_all_four_gates_met_flags_candidate(self):
+        snaps = [self._routes() for _ in range(3)]
+        out = daily_report.boarding_candidates(
+            snaps, self._run(), self._perf(), self.ALIASES)
+        self.assertEqual([c["route"] for c in out], ["cb/qwen3.8-max"])
+        lines = daily_report.boarding_section(out)
+        text = "\n".join(lines)
+        self.assertIn("Boarding candidates", text)
+        self.assertIn("cb/qwen3.8-max", text)
+
+    def test_two_days_under_bar_is_not_enough(self):
+        snaps = [self._routes(), self._routes(), self._routes(entry_eff=0.008)]
+        out = daily_report.boarding_candidates(
+            snaps, self._run(), self._perf(), self.ALIASES)
+        self.assertEqual(out, [])
+
+    def test_no_core_pass_never_flags(self):
+        run = {"cells": [{"alias": "cb/qwen3.8-max", "check_id": "core",
+                          "status": "fail"}]}
+        out = daily_report.boarding_candidates(
+            [self._routes() for _ in range(3)], run, self._perf(), self.ALIASES)
+        self.assertEqual(out, [])
+        # no probe record at all: gate (a) fails closed
+        out = daily_report.boarding_candidates(
+            [self._routes() for _ in range(3)], None, self._perf(), self.ALIASES)
+        self.assertEqual(out, [])
+
+    def test_board_routes_are_never_candidates(self):
+        out = daily_report.boarding_candidates(
+            [self._routes() for _ in range(3)], self._run(), self._perf(),
+            self.ALIASES + ["cb/qwen3.8-max"])
+        self.assertEqual(out, [])
+
+    def test_never_billed_route_is_skipped(self):
+        routes = self._routes()
+        routes["cb/qwen3.8-max"]["reqs"] = 0
+        snaps = [routes for _ in range(3)]
+        out = daily_report.boarding_candidates(
+            snaps, self._run(), self._perf(), self.ALIASES)
+        self.assertEqual(out, [])
+
+    def test_build_report_renders_boarding_line(self):
+        for day in ("2026-09-04", "2026-09-05", "2026-09-06"):
+            _snap(self.root, day, self._routes())
+        (self.root / "data" / "runs").mkdir(parents=True, exist_ok=True)
+        (self.root / "data" / "runs" / "r.json").write_text(json.dumps(self._run()))
+        perf_payload = {"perf": {"models": self._perf()}}
+        (self.root / "data" / "pricing.json").write_text(json.dumps(perf_payload))
+        snap = ("2026-09-06", {"routes": self._routes(),
+                               "days": [{"date": "2026-09-06",
+                                         "cost_usdc": "0.5",
+                                         "requests": 7}]})
+        with mock.patch.object(daily_report, "fetch_log_rows", return_value=[]), \
+                mock.patch.object(daily_report, "_latest_snapshots",
+                                  return_value=[snap] * 3), \
+                mock.patch.object(daily_report, "price_movements",
+                                  return_value=[]), \
+                mock.patch("probe.market.load_aliases",
+                           return_value=self.ALIASES), \
+                mock.patch("probe.registry.load_aliases",
+                           return_value=self.ALIASES):
+            text = daily_report.build_report("SECRET-KEY", self.root)
+        self.assertIn("Boarding candidates", text)
+        self.assertIn("cb/qwen3.8-max", text)
+
 class FormatterTest(unittest.TestCase):
     """B5 gap: _fmt_pct and _ask's bare-prefix edges were untested."""
 

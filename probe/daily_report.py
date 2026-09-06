@@ -181,6 +181,93 @@ def spend_by_day_section(root: Path) -> list[str]:
     return lines
 
 
+# Boarding-candidate gate (owner review 2026-09-06): a non-board route
+# earns a flag for one-word owner approval when ALL FOUR hold.
+BOARD_SNAPSHOTS = 3      # consecutive daily snapshots under the bar
+BOARD_TTFT_MULTIPLE = 2.0
+
+def boarding_candidates(routes_by_day: list[dict], run: dict | None,
+                        perf: dict, aliases: list[str]) -> list[dict]:
+    """[{route, eff, bar, iq, why}] — non-board routes meeting all four gates.
+
+    (a) core pass on the newest run covering the route; (b) realized eff
+    $/M under the family incumbent bar in the last BOARD_SNAPSHOTS daily
+    snapshots; (c) IQ wash vs the family incumbent (auto-derived AA
+    slugs); (d) ttft p50 not more than BOARD_TTFT_MULTIPLE x the
+    incumbent's (perf = {route: {ttft_p50_ms}}). Gates with missing data
+    degrade: no probe record fails (a), no IQ or ttft data passes (c)/(d)
+    — a route must EARN the flag on what is known.
+    """
+    from probe.market import _route_iq, family, incumbent_bar
+
+    board = set(aliases)
+    fams: dict[str, list[str]] = {}
+    for alias in aliases:
+        fams.setdefault(family(alias), []).append(alias)
+
+    def _ttft(route: str) -> float | None:
+        ttft = (perf.get(route) or {}).get("ttft_p50_ms")
+        return float(ttft) if ttft is not None else None
+
+    out: list[dict] = []
+    routes = routes_by_day[-1] if routes_by_day else {}
+    for route, entry in sorted((routes or {}).items()):
+        if not isinstance(entry, dict) or route in board:
+            continue
+        eff = entry.get("eff_per_mtok")
+        if eff is None or not entry.get("reqs"):
+            continue  # never billed: nothing to board on
+        fam = family(route)
+        incumbents = fams.get(fam) or []
+        if not incumbents:
+            continue
+        # (a) core pass on the newest run covering the route
+        cells = [c for c in ((run or {}).get("cells") or [])
+                 if c.get("alias") == route]
+        core = [c for c in cells if c.get("check_id") == "core"]
+        if not core or core[-1].get("status") != "pass":
+            continue
+        # (b) eff under the incumbent bar in the last N snapshots
+        bars: list[float] = []
+        under_days = 0
+        for day_routes in routes_by_day[-BOARD_SNAPSHOTS:]:
+            day_eff = (day_routes.get(route) or {}).get("eff_per_mtok")
+            bar, _ = incumbent_bar(day_routes, incumbents)
+            if bar is not None:
+                bars.append(bar)
+            if day_eff is not None and bar is not None and day_eff < bar:
+                under_days += 1
+        if under_days < BOARD_SNAPSHOTS or not bars:
+            continue
+        bar = min(bars)
+        # (c) quality wash — unknown IQ passes
+        inc_iq = max((iq for r in incumbents if (iq := _route_iq(r)) is not None),
+                     default=None)
+        cand_iq = _route_iq(route)
+        if inc_iq is not None and cand_iq is not None and cand_iq < inc_iq * 0.9:
+            continue
+        # (d) speed — unknown ttft passes
+        inc_ttft = min((t for r in incumbents if (t := _ttft(r)) is not None),
+                       default=None)
+        cand_ttft = _ttft(route)
+        if (inc_ttft is not None and cand_ttft is not None
+                and cand_ttft > inc_ttft * BOARD_TTFT_MULTIPLE):
+            continue
+        out.append({"route": route, "eff": eff, "bar": bar,
+                    "iq": cand_iq, "inc_iq": inc_iq})
+    return out
+
+def boarding_section(candidates: list[dict]) -> list[str]:
+    if not candidates:
+        return []
+    lines = ["", "**Boarding candidates** — met all four gates; one word boards it:"]
+    for c in candidates:
+        iq = f", iq {c['iq']}" if c.get("iq") is not None else ""
+        lines.append(
+            f"- `{c['route']}`: eff {_ask(c['eff'])} vs bar {_ask(c['bar'])}{iq}"
+        )
+    return lines
+
 def movements_section(moves: list[dict], root: Path) -> list[str]:
     snaps = _latest_snapshots(root, n=2)
     span = f"{snaps[0][0]} → {snaps[1][0]}" if len(snaps) == 2 else ""
@@ -210,7 +297,22 @@ def build_report(key: str, root: Path | None = None) -> str:
     lines += usage_section(stats, rows)
     lines += spend_by_day_section(root)
     lines += movements_section(price_movements(root), root)
+    lines += boarding_section(boarding_data(root))
     return "\n".join(lines).strip() + "\n"
+
+def boarding_data(root: Path) -> list[dict]:
+    """Assemble the four-gate inputs from on-disk artifacts."""
+    from probe.market import _perf_block
+    from probe.radar import latest_run
+    from probe.registry import load_aliases
+
+    snaps = _latest_snapshots(root, n=BOARD_SNAPSHOTS)
+    return boarding_candidates(
+        [payload.get("routes") or {} for _, payload in snaps],
+        latest_run(root),
+        _perf_block(),
+        load_aliases(),
+    )
 
 
 def main() -> int:
