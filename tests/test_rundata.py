@@ -368,3 +368,34 @@ class CandidatesHelpersTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RegistryCacheInvalidationTest(unittest.TestCase):
+    """mtime-keyed _cached_read: same-process rewrite must be re-read."""
+
+    def test_intelligence_cache_invalidates_on_rewrite(self) -> None:
+        from probe import registry
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = root / "data"
+            data.mkdir()
+            path = data / "intelligence.json"
+            path.write_text(json.dumps({"models": {"glm-5-3-flash": {"iq": 46.2}}}))
+            self.assertEqual(
+                registry.intelligence_models(root), {"glm-5-3-flash": {"iq": 46.2}}
+            )
+            # rewrite in the SAME process — size change (mtime alone can
+            # stay within one clock tick on coarse-granularity filesystems)
+            # forces a fresh read: the cache key is (path, mtime_ns, size).
+            path.write_text(json.dumps({"models": {"glm-5-3-flash": {"iq": 146.2}}}))
+            self.assertEqual(
+                registry.intelligence_models(root), {"glm-5-3-flash": {"iq": 146.2}}
+            )
+
+    def test_missing_file_falls_back_and_stays_cached_safe(self) -> None:
+        from probe import registry
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(registry.intelligence_models(root), {})
