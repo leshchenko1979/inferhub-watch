@@ -601,9 +601,27 @@ def _board_basis(row: dict, dated: list | None, payload: dict,
 
 def _iq_sort_key(intel: dict, dated: list | None, payload: dict,
                  use_proj: bool):
-    """Board order: IQ per $ descending (ontology: the smarter-per-dollar
-    verdict is the point of the board). Routes without an IQ mapping or
-    eff sink last."""
+    """Board order: realized $/M ascending (IA law: the board answers
+    "what is this costing me" — cheapest realized cost first). Ties and
+    routes without an eff figure sink last; IQ per $ remains the
+    secondary discriminator within an equal cost band."""
+    def key(row: dict) -> tuple:
+        eff = _board_basis(row, dated, payload, use_proj)
+        try:
+            eff_val = eff if eff else float("inf")
+        except ZeroDivisionError:
+            eff_val = float("inf")
+        slug = rundata.aa_slug(str(row["route"]))
+        entry = (intel.get("models") or {}).get(slug) if slug else None
+        iq = entry.get("iq") if entry else None
+        iqps = None
+        if iq is not None and eff:
+            try:
+                iqps = iq / eff
+            except ZeroDivisionError:
+                iqps = None
+        return (eff_val, -(iqps if iqps is not None else float("-inf")))
+    return key
     def key(row: dict) -> float:
         slug = rundata.aa_slug(str(row["route"]))
         entry = (intel.get("models") or {}).get(slug) if slug else None
@@ -714,7 +732,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     intel = rundata.load_intelligence(ROOT)
     gate = official_compare.projection_gate(dated)
     use_proj = bool(gate.get("pass"))
-    rows.sort(key=_iq_sort_key(intel, dated, payload, use_proj), reverse=True)
+    rows.sort(key=_iq_sort_key(intel, dated, payload, use_proj), reverse=False)
     body_rows = []
     for row in rows:
         logged = row.get("source") == "usage-logs"
@@ -813,14 +831,17 @@ def perf_table(payload: dict | None) -> str:
         tps = m.get("tps_mean")
         ttft_label = f"{ttft / 1000:.2f}s" if isinstance(ttft, (int, float)) else "&#8212;"
         tps_label = f"{tps:.1f}" if isinstance(tps, (int, float)) else "&#8212;"
-        rows.append(
-            "<tr>"
-            f'<th scope="row"><code>{html.escape(str(model))}</code></th>'
-            f'<td class="num">{int(m.get("reqs") or 0)}</td>'
-            f'<td class="num">{ttft_label}</td>'
-            f'<td class="num">{tps_label}</td>'
-            "</tr>"
-        )
+        rows.append((int(m.get("reqs") or 0), model, m, ttft_label, tps_label))
+    rows.sort(key=lambda r: (-r[0], r[1]))  # traffic weight first, then name
+    body = "".join(
+        "<tr>"
+        f'<th scope="row"><code>{html.escape(str(model))}</code></th>'
+        f'<td class="num">{reqs}</td>'
+        f'<td class="num">{ttft_label}</td>'
+        f'<td class="num">{tps_label}</td>'
+        "</tr>"
+        for reqs, model, _m, ttft_label, tps_label in rows
+    )
     hours = perf.get("window_hours") or 24
     caption = (
         f"Every request billed in the newest {hours}h — production traffic included, "
@@ -836,7 +857,7 @@ def perf_table(payload: dict | None) -> str:
         '<th scope="col" class="num">ttft p50</th>'
         '<th scope="col" class="num">tps mean</th>'
         "</tr></thead>"
-        f"<tbody>{''.join(rows)}</tbody>"
+        f"<tbody>{body}</tbody>"
         "</table></div>"
     )
 

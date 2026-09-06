@@ -21,3 +21,5 @@ aliases = [
 "cx/gpt-5.6-terra" = "gpt-5-6-terra"
 "cx/gpt-5.6-sol" = "gpt-5-6-sol"
 "cx/gpt-5.6-luna" = "gpt-5-6-luna"
+"ali/tie-high-iq" = "tie-high-iq"
+"ali/tie-low-iq" = "tie-low-iq"

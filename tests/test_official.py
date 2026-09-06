@@ -311,7 +311,9 @@ class OfficialTableRenderTest(unittest.TestCase):
 
 
 class BoardIqSortTest(unittest.TestCase):
-    """Board rows sort by IQ per $ descending; unmapped routes sink last."""
+    """Board rows sort by realized $/M ascending (IA law: the board answers
+    "what is this costing me"); ties break by IQ per $ descending; routes
+    without an eff figure sink last."""
 
     @classmethod
     def setUpClass(cls):
@@ -352,13 +354,59 @@ class BoardIqSortTest(unittest.TestCase):
             mock.patch.object(rd, "load_catalog", return_value={"models": {}}):
             return mod.pricing_section(payload, [])
 
-    def test_sorted_desc_by_iq_per_dollar_unmapped_last(self):
-        # input order deliberately scrambled: kimi first, glm middle, unmapped last
+    def test_sorted_asc_by_realized_cost(self):
+        # input order deliberately scrambled. eff: glm 0.0113 < unmapped
+        # 0.015 < kimi 0.28 -> that is the row order now; IQ/$ only breaks
+        # ties at equal cost.
         out = self._section(["ali/kimi-k3", "ocg/unmapped", "zai/glm-5.3-flash"])
         g, k, u = (out.index(f"<code>{r}</code>")
                    for r in ("zai/glm-5.3-flash", "ali/kimi-k3", "ocg/unmapped"))
-        self.assertLess(g, k, "glm (5088 IQ/$) must precede kimi (213 IQ/$)")
-        self.assertLess(k, u, "unmapped route must sort last")
+        self.assertLess(g, u, "glm ($0.0113) must precede unmapped ($0.015)")
+        self.assertLess(u, k, "unmapped ($0.015) must precede kimi ($0.28)")
+
+    def test_equal_cost_ties_break_by_iq_per_dollar(self):
+        rows = {
+            "ali/tie-low-iq": {"ask_in": 0.01, "ask_out": 0.02, "eff_per_mtok": 0.012,
+                             "reqs": 10, "source": "usage-logs"},
+            "ali/tie-high-iq": {"ask_in": 0.01, "ask_out": 0.02, "eff_per_mtok": 0.012,
+                              "reqs": 10, "source": "usage-logs"},
+        }
+        payload = {"range": "30d", "requests_scanned": 100,
+                   "routes": {r: rows[r] for r in ("ali/tie-low-iq", "ali/tie-high-iq")}}
+        intel = {"models": {"tie-low-iq": {"iq": 30.0}, "tie-high-iq": {"iq": 60.0}}}
+        rd, mod = self.rundata, self.mod
+        input_rows = [{"route": r, **payload["routes"][r]} for r in payload["routes"]]
+        with mock.patch.object(rd, "pricing_rows", return_value=input_rows), \
+            mock.patch.object(rd, "load_dated_pricing", return_value=[]), \
+            mock.patch.object(rd, "load_intelligence", return_value=intel), \
+            mock.patch.object(rd, "ask_series", return_value=[]), \
+            mock.patch.object(rd, "load_catalog", return_value={"models": {}}):
+            out = mod.pricing_section(payload, [])
+        lo = out.index("<code>ali/tie-low-iq</code>")
+        hi = out.index("<code>ali/tie-high-iq</code>")
+        self.assertLess(hi, lo, "at equal cost, higher IQ/$ ranks first")
+
+    def test_routes_without_eff_sink_last(self):
+        rows = {
+            "a/billed": {"ask_in": 0.01, "ask_out": 0.02, "eff_per_mtok": 0.012,
+                         "reqs": 10, "source": "usage-logs"},
+            "b/noeff": {"ask_in": 0.01, "ask_out": 0.02, "reqs": 10,
+                        "source": "usage-logs"},
+        }
+        payload = {"range": "30d", "requests_scanned": 100,
+                   "routes": {r: rows[r] for r in ("b/noeff", "a/billed")}}
+        intel = {"models": {}}
+        rd, mod = self.rundata, self.mod
+        input_rows = [{"route": r, **payload["routes"][r]} for r in payload["routes"]]
+        with mock.patch.object(rd, "pricing_rows", return_value=input_rows), \
+            mock.patch.object(rd, "load_dated_pricing", return_value=[]), \
+            mock.patch.object(rd, "load_intelligence", return_value=intel), \
+            mock.patch.object(rd, "ask_series", return_value=[]), \
+            mock.patch.object(rd, "load_catalog", return_value={"models": {}}):
+            out = mod.pricing_section(payload, [])
+        billed = out.index("<code>a/billed</code>")
+        noeff = out.index("<code>b/noeff</code>")
+        self.assertLess(billed, noeff, "route without an eff figure sinks last")
 
 
 class CandMarkRenderTest(BoardIqSortTest):
