@@ -719,6 +719,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     for row in rows:
         logged = row.get("source") == "usage-logs"
         mark = "" if logged else '<span class="ask-mark" title="floor ask &#8212; catalog minimum, no billed traffic yet">*</span>'
+        cand = ' <span class="cand-mark" title="radar candidate &#8212; also billed here, see candidates section">&#9666; cand</span>' if row.get("candidate") else ""
         ask_in = rundata.rate_label(row.get("ask_in")) or "n/a"
         ask_out = rundata.rate_label(row.get("ask_out")) or "n/a"
         reqs = int(row.get("reqs") or 0)
@@ -737,7 +738,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         series = rundata.ask_series(dated, str(row["route"]), payload)
         body_rows.append(
             "<tr>"
-            f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>'
+            f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>{cand}'
             f'<span class="route-ask">ask {ask_in} / {ask_out} per M{mark}</span></th>'
             + _viz_cell(
                 pair,

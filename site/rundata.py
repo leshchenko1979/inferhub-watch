@@ -308,20 +308,28 @@ def ask_series(dated: list[tuple[str, dict]], route: str, current: dict | None =
 
 
 def pricing_rows(payload: dict | None) -> list[dict]:
-    """Board routes with any billed rate, in the order the probe wrote them.
+    """All routes with any billed rate, in the order the probe wrote them.
 
-    Candidate-flagged entries stay out — they render in the candidates
-    section, not the cost table.
+    Candidate-flagged entries WITH billed traffic stay in — the money view
+    has no blind spot (a candidate can be actively billing); each carries
+    candidate=True so the renderer can mark it.
     """
     if not payload:
         return []
     rows = []
     for route, entry in (payload.get("routes") or {}).items():
-        if not isinstance(entry, dict) or entry.get("candidate"):
+        if not isinstance(entry, dict):
             continue
         if entry.get("ask_in") is None and entry.get("eff_per_mtok") is None:
             continue
-        rows.append({"route": route, **entry})
+        if entry.get("candidate"):
+            billed = entry.get("reqs") or 0
+            if not billed or (entry.get("eff_per_mtok") is None
+                              and entry.get("cost_usdc") is None):
+                continue  # candidate with no real billing: candidates section only
+            rows.append({"route": route, "candidate": True, **entry})
+        else:
+            rows.append({"route": route, **entry})
     return rows
 
 

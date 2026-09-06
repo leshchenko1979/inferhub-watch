@@ -281,6 +281,21 @@ class CandidatesHelpersTests(unittest.TestCase):
         }}
         self.assertEqual([r["route"] for r in rundata.pricing_rows(payload)], ["a/board"])
 
+    def test_pricing_rows_keeps_billed_candidates_with_marker(self) -> None:
+        payload = {"routes": {
+            "a/board": {"ask_in": 1.0, "ask_out": 3.0},
+            "c/cand-billed": {"ask_in": 1.0, "ask_out": 3.0, "candidate": True,
+                              "reqs": 42, "eff_per_mtok": 0.5,
+                              "cost_usdc": "0.010"},
+            "c/cand-unbilled": {"ask_in": 1.0, "ask_out": 3.0,
+                                "candidate": True, "reqs": 0},
+        }}
+        rows = rundata.pricing_rows(payload)
+        self.assertEqual([r["route"] for r in rows],
+                         ["a/board", "c/cand-billed"])
+        self.assertTrue(rows[1]["candidate"])
+        self.assertFalse(rows[0].get("candidate", False))
+
     def test_candidate_pass_count_and_failed_ids(self) -> None:
         run = {"cells":
             [self._cell("c/m", "stream_tools"),

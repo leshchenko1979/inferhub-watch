@@ -719,6 +719,14 @@ dl.plumb dd .dim {
   margin-left: 1px;
 }
 
+.cand-mark {
+  color: var(--accent);
+  font-size: 0.72em;
+  font-weight: 600;
+  margin-left: 6px;
+  vertical-align: 2px;
+}
+
 /* ── Spend block: stats + 30-day sparkline ── */
 
 .spend-block {
