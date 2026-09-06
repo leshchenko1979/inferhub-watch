@@ -24,7 +24,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from probe.costs import fetch_log_rows
-from probe.market import QUALITY_FLOOR, _perf_block, _route_iq, family, incumbent_bar
+from probe.market import (QUALITY_FLOOR, _family_iq, _family_ttft,
+                          _perf_block, _route_iq, board_families,
+                          family, incumbent_bar)
 from probe.pricing import _float, bump_usage, failure_stats, rate_label
 from probe.registry import repo_root
 
@@ -204,9 +206,7 @@ def boarding_candidates(routes_by_day: list[dict], run: dict | None,
     """
     iq_fn = iq_fn or _route_iq
     board = set(aliases)
-    fams: dict[str, list[str]] = {}
-    for alias in aliases:
-        fams.setdefault(family(alias), []).append(alias)
+    fams = board_families(aliases)
 
     def _ttft(route: str) -> float | None:
         ttft = (perf.get(route) or {}).get("ttft_p50_ms")
@@ -244,15 +244,13 @@ def boarding_candidates(routes_by_day: list[dict], run: dict | None,
             continue
         bar = min(bars)
         # (c) quality wash — unknown IQ passes
-        inc_iq = max((iq for r in incumbents if (iq := iq_fn(r)) is not None),
-                     default=None)
+        inc_iq = _family_iq(incumbents, iq_fn=iq_fn)
         cand_iq = iq_fn(route)
         if inc_iq is not None and cand_iq is not None \
                 and cand_iq < inc_iq * QUALITY_FLOOR:
             continue
         # (d) speed — unknown ttft passes
-        inc_ttft = min((t for r in incumbents if (t := _ttft(r)) is not None),
-                       default=None)
+        inc_ttft = _family_ttft(incumbents, ttft_fn=_ttft)
         cand_ttft = _ttft(route)
         if (inc_ttft is not None and cand_ttft is not None
                 and cand_ttft > inc_ttft * BOARD_TTFT_MULTIPLE):

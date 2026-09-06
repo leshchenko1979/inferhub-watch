@@ -88,9 +88,7 @@ def family_verdicts(run: dict, pricing_routes: dict, aliases: list[str]) -> list
     for cell in run.get("cells") or []:
         if cell.get("candidate") and cell.get("alias"):
             statuses.setdefault(cell["alias"], {})[cell.get("check_id")] = cell.get("status")
-    fams: dict[str, list[str]] = {}
-    for alias in aliases:
-        fams.setdefault(market.family(alias), []).append(alias)
+    fams = market.board_families(aliases)
     verdicts = []
     for fam in sorted(fams):
         try:

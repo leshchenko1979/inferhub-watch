@@ -30,7 +30,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from probe.pricing import fetch_catalog, parse_ts
-from probe.registry import aa_slug, intelligence_models, load_aliases, repo_root
+from probe.registry import (_cached_read, aa_slug, intelligence_models,
+                            load_aliases, repo_root)
 
 PROVEN_TTL = timedelta(days=7)
 TOP_N = 2
@@ -83,12 +84,16 @@ def dated_eligible(route: str) -> bool:
 
 
 def load_pricing(root: Path | None = None) -> dict | None:
-    """data/pricing.json payload, or None when absent/unreadable."""
+    """data/pricing.json payload, or None when absent/unreadable.
+
+    Cached per (path, mtime, size) — _perf_block reads it per candidate
+    route. Callers treat the payload as read-only (all call sites are
+    .get() chains); load_proven stays uncached because record_proven
+    mutates its result.
+    """
     root = root or repo_root()
-    try:
-        return json.loads((root / "data" / "pricing.json").read_text())
-    except (OSError, ValueError):
-        return None
+    payload = _cached_read(root / "data" / "pricing.json", None, json.loads)
+    return payload if isinstance(payload, dict) else None
 
 
 def load_proven(root: Path | None = None) -> dict:
@@ -207,6 +212,19 @@ def worst_case_predicted(row: dict, w_in: float, w_out: float) -> float:
     return predicted_usd_m(row["ask_in"], row["ask_out"], 0.0, w_in, w_out)
 
 
+def board_families(aliases: list[str]) -> dict[str, list[str]]:
+    """Board aliases grouped by family — the ONLY copy of the grouping.
+
+    Shared by market.shortlist, radar.family_verdicts and the daily
+    report's boarding check; a divergent second grouping would let the
+    three views disagree on what a family is.
+    """
+    fams: dict[str, list[str]] = {}
+    for alias in aliases:
+        fams.setdefault(family(alias), []).append(alias)
+    return fams
+
+
 def family_context(pricing_routes: dict, aliases: list[str],
                    catalog: dict | None = None) -> dict[str, dict]:
     """Per family of the board: incumbent bar, cache rate, token weights.
@@ -216,9 +234,7 @@ def family_context(pricing_routes: dict, aliases: list[str],
     falls back to its catalog asks when the catalog is supplied — see
     ask_bar(). bar_source names which one it is ("billed" / "ask").
     """
-    families: dict[str, list[str]] = {}
-    for alias in aliases:
-        families.setdefault(family(alias), []).append(alias)
+    families = board_families(aliases)
     out: dict[str, dict] = {}
     for fam, incumbents in families.items():
         bar, entry = incumbent_bar(pricing_routes, incumbents)
@@ -305,8 +321,11 @@ def _route_iq(route: str) -> float | None:
     iq = (intelligence_models().get(slug) or {}).get("iq")
     return float(iq) if iq is not None else None
 
-def _family_iq(incumbents: list[str]) -> float | None:
-    iqs = [iq for r in incumbents if (iq := _route_iq(r)) is not None]
+def _family_iq(incumbents: list[str],
+               iq_fn=None) -> float | None:
+    """Best IQ among incumbents; iq_fn injectable for tests/callers."""
+    iq_fn = iq_fn or _route_iq
+    iqs = [iq for r in incumbents if (iq := iq_fn(r)) is not None]
     return max(iqs) if iqs else None
 
 def _perf_block() -> dict:
@@ -319,8 +338,11 @@ def _route_ttft(route: str) -> float | None:
     ttft = (_perf_block().get(route) or {}).get("ttft_p50_ms")
     return float(ttft) if ttft is not None else None
 
-def _family_ttft(incumbents: list[str]) -> float | None:
-    ttfts = [t for r in incumbents if (t := _route_ttft(r)) is not None]
+def _family_ttft(incumbents: list[str],
+                 ttft_fn=None) -> float | None:
+    """Best ttft among incumbents; ttft_fn injectable for callers."""
+    ttft_fn = ttft_fn or _route_ttft
+    ttfts = [t for r in incumbents if (t := ttft_fn(r)) is not None]
     return min(ttfts) if ttfts else None
 
 def _classify(row: dict, bar: float | None, proven: dict,
