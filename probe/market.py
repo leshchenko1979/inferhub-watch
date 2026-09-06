@@ -324,7 +324,7 @@ def _family_ttft(incumbents: list[str]) -> float | None:
     return min(ttfts) if ttfts else None
 
 def _classify(row: dict, bar: float | None, proven: dict,
-              w_in: float = 0.75, w_out: float | None = None,
+              w_in: float = FALLBACK_W_IN, w_out: float | None = None,
               now: datetime | None = None,
               ctx: dict | None = None) -> tuple[bool, str]:
     """(picked, why) for one catalog row — the ONLY copy of the parking law.
