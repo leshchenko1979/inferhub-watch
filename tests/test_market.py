@@ -605,6 +605,88 @@ class ClassifyLawTest(unittest.TestCase):
         self.assertTrue(picked)
         self.assertEqual(why, "SHORTLIST")
 
+class ScreenTests(unittest.TestCase):
+    """Non-cost screens — quality floor, speed, minimum advantage.
+
+    Unknown data never blocks: each screen passes when its inputs are
+    missing, so a fresh family or an unmapped slug can't wedge the radar.
+    """
+
+    ROUTE = "cb/glm-5.3-flash"
+    INCUMBENT = "zai/glm-5.3-flash"
+
+    @staticmethod
+    def _row(predicted: float, route: str = "cb/glm-5.3-flash") -> dict:
+        return {"route": route, "ask_in": 0.004, "ask_out": 0.004,
+                "predicted": predicted}
+
+    @staticmethod
+    def _ctx(**over) -> dict:
+        ctx = {"bar": 0.005, "incumbents": ["zai/glm-5.3-flash"]}
+        ctx.update(over)
+        return ctx
+
+    def test_under_20pct_advantage_skips(self) -> None:
+        # predicted 0.0045 vs bar 0.005 = only 10% under
+        picked, why = market._classify(self._row(0.0045), 0.005, {},
+                                       ctx=self._ctx())
+        self.assertFalse(picked)
+        self.assertTrue(why.startswith("skip — under 20% advantage"), why)
+
+    def test_big_advantage_passes_advantage_screen(self) -> None:
+        picked, _ = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
+        self.assertTrue(picked)
+
+    def test_quality_floor_skips_dumb_candidate(self) -> None:
+        with mock.patch.object(market, "_route_iq", lambda r: 40.0 if r == ScreenTests.ROUTE else 46.0):
+            picked, why = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
+        self.assertFalse(picked)
+        self.assertIn("iq 40.0 below floor", why)
+
+    def test_quality_floor_passes_wash(self) -> None:
+        with mock.patch.object(market, "_route_iq", lambda r: 45.0 if r == ScreenTests.ROUTE else 46.0):
+            picked, why = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
+        self.assertTrue(picked)
+
+    def test_quality_floor_unknown_iq_passes(self) -> None:
+        with mock.patch.object(market, "_route_iq", lambda r: None):
+            picked, why = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
+        self.assertTrue(picked)
+
+    def test_speed_screen_skips_slouch(self) -> None:
+        # candidate ttft 14s vs incumbent 4s = 3.5x
+        with mock.patch.object(market, "_route_ttft",
+                               lambda r: 14000.0 if r == ScreenTests.ROUTE else 4000.0):
+            picked, why = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
+        self.assertFalse(picked)
+        self.assertIn("ttft 14000ms > 3x incumbent", why)
+
+    def test_speed_screen_passes_equal_footed(self) -> None:
+        with mock.patch.object(market, "_route_ttft",
+                               lambda r: 4000.0 if r == ScreenTests.ROUTE else 4000.0):
+            picked, _ = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
+        self.assertTrue(picked)
+
+    def test_speed_screen_unknown_ttft_passes(self) -> None:
+        with mock.patch.object(market, "_route_ttft", lambda r: None):
+            picked, _ = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
+        self.assertTrue(picked)
+
+    def test_no_ctx_means_no_screens(self) -> None:
+        # legacy callers (tests, tools) without ctx keep the bare parking law
+        picked, why = market._classify(self._row(0.0049), 0.005, {})
+        self.assertTrue(picked)
+        self.assertEqual(why, "SHORTLIST")
+
+    def test_order_screens_before_parking_law(self) -> None:
+        # a parked-pass route that ALSO fails the advantage gate reports the
+        # cheaper screen as the reason (screens run first)
+        fresh = (datetime(2026, 9, 5, tzinfo=timezone.utc) - timedelta(days=1)).isoformat()
+        proven = {self.ROUTE: {"last_probe": fresh, "statuses": {"core": "pass"}}}
+        picked, why = market._classify(self._row(0.0049), 0.005, proven, ctx=self._ctx())
+        self.assertFalse(picked)
+        self.assertTrue(why.startswith("skip — under 20% advantage"), why)
+
 
 class DryRunTopNTest(unittest.TestCase):
     """Routes ranked past TOP_N must print the cutoff marker, not a law one."""

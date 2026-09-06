@@ -30,10 +30,16 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from probe.pricing import fetch_catalog, parse_ts
-from probe.registry import load_aliases, repo_root
+from probe.registry import aa_slug, intelligence_models, load_aliases, repo_root
 
 PROVEN_TTL = timedelta(days=7)
 TOP_N = 2
+# Non-cost candidate screens (owner review 2026-09-06): a slot is only
+# worth probing when the predicted saving is real, quality holds, and the
+# route is not a known slouch. Unknown data skips a screen, never blocks.
+MIN_ADVANTAGE = 0.80   # predicted must be >=20% under the incumbent bar
+QUALITY_FLOOR = 0.90   # candidate iq >= 0.9x the family incumbent's
+SPEED_MULTIPLE = 3.0   # skip when prior ttft > 3x the incumbent's
 FALLBACK_W_IN = 0.75
 
 
@@ -258,9 +264,69 @@ def rank_family(catalog: dict, fam: str, ctx: dict, exclude: set[str]) -> list[d
     return rows
 
 
+def _screens(row: dict, ctx: dict) -> str | None:
+    """Non-cost screens for a candidate row; None = all pass.
+
+    Unknown data never blocks: each screen degrades to a pass when its
+    inputs are missing (no IQ for the slug, no perf sample yet).
+    """
+    bar = ctx.get("bar")
+    # Minimum advantage: probing noise is not worth a slot — the predicted
+    # $/M must clear the incumbent bar by >=20%.
+    if bar is not None and row["predicted"] >= bar * MIN_ADVANTAGE:
+        return (
+            f"skip — under {1 - MIN_ADVANTAGE:.0%} advantage "
+            f"(predicted ${row['predicted']:.4f} vs bar ${bar:.4f})"
+        )
+    # Quality floor: candidate IQ >= 0.9x the family incumbent's when both
+    # are known (AA slugs auto-derived — no hand-edited [aa] needed).
+    inc_iq = _family_iq(ctx.get("incumbents") or [])
+    cand_iq = _route_iq(row["route"])
+    if inc_iq is not None and cand_iq is not None and cand_iq < inc_iq * QUALITY_FLOOR:
+        return (
+            f"skip — iq {cand_iq} below floor "
+            f"{QUALITY_FLOOR:.0%} of incumbent {inc_iq}"
+        )
+    # Speed screen: a prior probe ttft > 3x the family incumbent's
+    # main-traffic ttft p50 means a probe slot would buy nothing.
+    inc_ttft = _family_ttft(ctx.get("incumbents") or [])
+    cand_ttft = _route_ttft(row["route"])
+    if inc_ttft is not None and cand_ttft is not None and cand_ttft > inc_ttft * SPEED_MULTIPLE:
+        return (
+            f"skip — ttft {cand_ttft:.0f}ms > {SPEED_MULTIPLE:.0f}x incumbent "
+            f"{inc_ttft:.0f}ms"
+        )
+    return None
+
+def _route_iq(route: str) -> float | None:
+    slug = aa_slug(route)
+    if slug is None:
+        return None
+    iq = (intelligence_models().get(slug) or {}).get("iq")
+    return float(iq) if iq is not None else None
+
+def _family_iq(incumbents: list[str]) -> float | None:
+    iqs = [iq for r in incumbents if (iq := _route_iq(r)) is not None]
+    return max(iqs) if iqs else None
+
+def _perf_block() -> dict:
+    """data/pricing.json 'perf' section ({route: {ttft_p50_ms, ...}}), or {}."""
+    pricing = load_pricing(repo_root())
+    perf = (pricing or {}).get("perf") or {}
+    return perf.get("models") if isinstance(perf.get("models"), dict) else {}
+
+def _route_ttft(route: str) -> float | None:
+    ttft = (_perf_block().get(route) or {}).get("ttft_p50_ms")
+    return float(ttft) if ttft is not None else None
+
+def _family_ttft(incumbents: list[str]) -> float | None:
+    ttfts = [t for r in incumbents if (t := _route_ttft(r)) is not None]
+    return min(ttfts) if ttfts else None
+
 def _classify(row: dict, bar: float | None, proven: dict,
               w_in: float = 0.75, w_out: float | None = None,
-              now: datetime | None = None) -> tuple[bool, str]:
+              now: datetime | None = None,
+              ctx: dict | None = None) -> tuple[bool, str]:
     """(picked, why) for one catalog row — the ONLY copy of the parking law.
 
     _pick consumes the boolean; main's display prints the why. Keeping one
@@ -271,11 +337,21 @@ def _classify(row: dict, bar: float | None, proven: dict,
     conclusively GOOD (every check "pass") — a parked FAIL does not bury
     a route whose worst-case (zero-cache) ask would still beat the bar
     (owner rule 2026-09-04): such a route re-enters the next sweep.
+
+    When ctx (family_context output) is supplied, three non-cost screens
+    apply BEFORE the parking law: minimum advantage (>=MIN_ADVANTAGE under
+    the bar), quality floor (AA iq >= QUALITY_FLOOR x incumbent), speed
+    (prior ttft <= 3x incumbent's). Unknown data skips a screen, never
+    blocks.
     """
     if bar is None:
         return False, "skip — no incumbent bar"
     if row["predicted"] >= bar:
         return False, "skip — not cheaper"
+    if ctx is not None:
+        screened = _screens(row, ctx)
+        if screened is not None:
+            return False, screened
     if proven_recent(proven, row["route"], now):
         marks = list(((proven.get(row["route"]) or {}).get("statuses") or {}).values())
         if marks and all(s == "pass" for s in marks):
@@ -288,7 +364,8 @@ def _classify(row: dict, bar: float | None, proven: dict,
 
 def _pick(rows: list[dict], bar: float | None, proven: dict,
           w_in: float = 0.75, w_out: float | None = None,
-          now: datetime | None = None) -> list[str]:
+          now: datetime | None = None,
+          ctx: dict | None = None) -> list[str]:
     """Top-N routes cheaper than the bar and outside the proven window.
 
     Rows arrive pre-filtered by `rank_family` (dated-only gate included).
@@ -298,7 +375,7 @@ def _pick(rows: list[dict], bar: float | None, proven: dict,
     w_out = (1.0 - w_in) if w_out is None else w_out
     chosen: list[str] = []
     for row in rows:
-        picked, _why = _classify(row, bar, proven, w_in, w_out, now)
+        picked, _why = _classify(row, bar, proven, w_in, w_out, now, ctx)
         if picked:
             chosen.append(row["route"])
             if len(chosen) >= TOP_N:
@@ -326,7 +403,7 @@ def shortlist(key: str, pricing: dict | None, root: Path | None = None,
         rows = rank_family(catalog, fam, ctx[fam], board)
         chosen = _pick(
             rows, ctx[fam]["bar"], proven,
-            ctx[fam]["w_in"], ctx[fam]["w_out"], now,
+            ctx[fam]["w_in"], ctx[fam]["w_out"], now, ctx[fam],
         )
         if chosen:
             groups.append({"model": fam, "routes": chosen})
@@ -368,11 +445,11 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         if not rows:
             print("  (no catalog routes)")
             continue
-        chosen = _pick(rows, bar, proven, info["w_in"], info["w_out"])
+        chosen = _pick(rows, bar, proven, info["w_in"], info["w_out"], None, info)
         w_out = 1.0 - info["w_in"]
         for row in rows:
             picked, mark = _classify(
-                row, bar, proven, info["w_in"], w_out
+                row, bar, proven, info["w_in"], w_out, None, info
             )
             if picked != (row["route"] in chosen):  # TOP_N cutoff below
                 mark = "skip — beyond top-N"
