@@ -58,11 +58,11 @@ def payload(alias: str, blocks: int) -> dict:
 def measure(client: InferHubClient, alias: str, blocks: int) -> dict:
     pl = payload(alias, blocks)
     # Prime (result ignored beyond status).
-    status, raw, _ = client.post(pl)
+    status, raw, _, _ = client.post(pl)
     if status != 200:
         return {"blocks": blocks, "error": f"prime HTTP {status}"}
     time.sleep(1.0)
-    status, raw, ms = client.post(pl)
+    status, raw, ms, ttft = client.post(pl)
     if status != 200:
         return {"blocks": blocks, "error": f"measure HTTP {status}"}
     chunks = parse_sse(raw)
@@ -77,6 +77,8 @@ def measure(client: InferHubClient, alias: str, blocks: int) -> dict:
     if isinstance(prompt, int) and prompt:
         row["hit_ratio"] = round(cached / prompt, 4)
     row["latency_ms"] = round(ms)
+    if ttft is not None:
+        row["ttft_ms"] = round(ttft)
     return row
 
 

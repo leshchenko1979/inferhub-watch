@@ -1070,6 +1070,10 @@ def _candidate_route_row(
     ask_out = rundata.rate_label(entry.get("ask_out")) or "n/a"
     passed, seen = rundata.route_window_record(runs, route, score_ids, candidate)
     window = f"{passed}/{seen}" if seen else "&#8212;"
+    ttft_ms, tps = rundata.stream_perf_of(latest, route)
+    ttft_label = f"{ttft_ms / 1000:.1f}s" if ttft_ms is not None else "&#8212;"
+    tps_label = f"{tps:.0f}" if tps is not None else "&#8212;"
+    perf_tip = "First-token latency and tokens/sec from the latest core probe (one streamed request; dash = pre-perf run)."
     return (
         "<tr>"
         f'<th scope="row"><code>{html.escape(route)}</code>{pill}'
@@ -1082,6 +1086,8 @@ def _candidate_route_row(
             data_label="cache hit",
             data_tip="Prompt-cache share — board routes from the 30-day billing window, audition routes from probe evidence.",
         )
+        + f'<td class="num" data-label="ttft" data-tip="{perf_tip}">{ttft_label}</td>'
+        + f'<td class="num" data-label="tps" data-tip="{perf_tip}">{tps_label}</td>'
         + f'<td class="num" data-label="ask in / out" data-tip="Ask price per M tokens (input / output); audition routes are billed on probe traffic.">{ask_in} / {ask_out}</td>'
         + f'<td class="num" data-label="window" data-tip="All-pass runs / probed runs since the route was first seen.">{window}</td>'
         "</tr>"
@@ -1240,6 +1246,8 @@ def probe_results_section(
             '<th scope="col" title="Provider route; the in-use pill marks the route currently on the board.">Route</th>'
             '<th scope="col" class="num" title="Scoring checks passed in the latest probe; hover a value for the failed ones.">tests</th>'
             '<th scope="col" class="num" title="Prompt-cache share — board routes from the 30-day billing window, audition routes from probe evidence.">cache hit</th>'
+            '<th scope="col" class="num" title="Time to first streamed token from the latest core probe.">ttft</th>'
+            '<th scope="col" class="num" title="Tokens per second, generation time only, from the latest core probe.">tps</th>'
             '<th scope="col" class="num" title="Ask price per M tokens (input / output); audition routes are billed on probe traffic.">ask in / out</th>'
             '<th scope="col" class="num" title="All-pass runs / probed runs since the route was first seen.">window</th>'
             "</tr></thead>"

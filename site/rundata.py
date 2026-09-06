@@ -110,6 +110,26 @@ def candidate_cache_pct(run: dict, route: str) -> float | None:
     return min(100.0, cached / prompt * 100.0)
 
 
+def stream_perf_of(run: dict, route: str) -> tuple[float | None, float | None]:
+    """(ttft_ms, tps) from the route's core probe cell; (None, None) without.
+
+    Older run JSON carries neither field (dash renders); any present value
+    passes through. TPS is probe-observed tokens/sec on the core payload's
+    single request — a spot sample, not a sustained rate.
+    """
+    all_cells = board_cells(run) + candidate_cells(run)
+    cell = next(
+        (c for c in all_cells if c.get("alias") == route and c.get("check_id") == "core"),
+        {},
+    )
+    ttft = cell.get("ttft_ms")
+    tps = cell.get("tps")
+    return (
+        ttft if isinstance(ttft, (int, float)) else None,
+        tps if isinstance(tps, (int, float)) else None,
+    )
+
+
 def route_window_record(
     runs: list[dict], route: str, check_ids: list[str], candidate: bool
 ) -> tuple[int, int]:

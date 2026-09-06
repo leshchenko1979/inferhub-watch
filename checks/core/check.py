@@ -4,7 +4,7 @@ Russian answer in one trip. The answer is expected on the tool argument
 zero text content. Every failing sub-assertion is named in the summary.
 
 Stream-shape standard = what the consuming runtime's tool-call accumulator
-actually survives, not the textbook OpenAI spec (see
+actually survives, not the textbook [OI] spec (see
 `oc-work/stream-quirk-risk-2026-08-28.md`): empty-string tool names are
 tolerated (the consumer skips them, first non-empty sticks), while an
 empty-string `finish_reason` is terminal to the consumer and flushes the
@@ -29,10 +29,29 @@ from probe.sse import (
     usage_pricing_fields,
 )
 
+def stream_perf(
+    ttft_ms: float | None, elapsed_ms: float, usage: dict
+) -> tuple[float | None, float | None]:
+    """(ttft_ms, tps) from the client's TTFT sample, total elapsed, and usage.
+
+    TPS = completion_tokens / stream seconds, where stream seconds span
+    first-line -> end-of-body: generation happens strictly between the two,
+    so the denominator excludes connect + time-to-first-token. None when
+    either side is missing (error path, no usage) or degenerate
+    (elapsed <= ttft).
+    """
+    if ttft_ms is None:
+        return None, None
+    ttft = float(ttft_ms)
+    stream_s = (float(elapsed_ms) - ttft) / 1000.0
+    out = usage.get("completion_tokens")
+    if not isinstance(out, int) or out <= 0 or stream_s <= 0:
+        return ttft, None
+    return ttft, out / stream_s
 
 def run(client: InferHubClient, alias: str) -> dict:
     payload = core_payload(alias)
-    status, raw, ms = client.post(payload)
+    status, raw, ms, ttft = client.post(payload)
     if status != 200:
         return result(
             check_id="core",
@@ -49,6 +68,7 @@ def run(client: InferHubClient, alias: str) -> dict:
     content = text_content(chunks)
     argument = tool_argument_text(chunks)
     answer = content + argument
+    ttft_ms, tps = stream_perf(ttft, ms, usage)
     evidence: dict = dict(stats)
     evidence["usage"] = usage_pricing_fields(usage)
     evidence.update(mojibake_stats(answer))
@@ -66,6 +86,8 @@ def run(client: InferHubClient, alias: str) -> dict:
             resolved_model=resolved,
             http_status=status,
             latency_ms=ms,
+            ttft_ms=ttft_ms,
+            tps=tps,
             evidence=evidence,
         )
     if stats["empty_finish_chunks"]:
@@ -87,6 +109,8 @@ def run(client: InferHubClient, alias: str) -> dict:
             resolved_model=resolved,
             http_status=status,
             latency_ms=ms,
+            ttft_ms=ttft_ms,
+            tps=tps,
             evidence=evidence,
         )
     if not stats["names"]:
@@ -98,6 +122,8 @@ def run(client: InferHubClient, alias: str) -> dict:
             resolved_model=resolved,
             http_status=status,
             latency_ms=ms,
+            ttft_ms=ttft_ms,
+            tps=tps,
             evidence=evidence,
         )
     if not answer:
@@ -109,6 +135,8 @@ def run(client: InferHubClient, alias: str) -> dict:
             resolved_model=resolved,
             http_status=status,
             latency_ms=ms,
+            ttft_ms=ttft_ms,
+            tps=tps,
             evidence=evidence,
         )
     verdict = mojibake_verdict(answer)
@@ -121,6 +149,8 @@ def run(client: InferHubClient, alias: str) -> dict:
             resolved_model=resolved,
             http_status=status,
             latency_ms=ms,
+            ttft_ms=ttft_ms,
+            tps=tps,
             evidence=evidence,
         )
     if evidence["cyrillic_chars"] == 0:
@@ -132,6 +162,8 @@ def run(client: InferHubClient, alias: str) -> dict:
             resolved_model=resolved,
             http_status=status,
             latency_ms=ms,
+            ttft_ms=ttft_ms,
+            tps=tps,
             evidence=evidence,
         )
     where = "in tool arguments" if argument and not content else "as text content"
@@ -147,5 +179,7 @@ def run(client: InferHubClient, alias: str) -> dict:
         resolved_model=resolved,
         http_status=status,
         latency_ms=ms,
+        ttft_ms=ttft_ms,
+        tps=tps,
         evidence=evidence,
     )

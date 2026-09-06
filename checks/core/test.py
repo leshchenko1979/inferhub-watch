@@ -28,9 +28,9 @@ class _Fake:
         self.status = status
         self.payload: dict = {}
 
-    def post(self, payload: dict) -> tuple[int, str, float]:
+    def post(self, payload: dict) -> tuple[int, str, float, float | None]:
         self.payload = payload
-        return self.status, self.body, 1.0
+        return self.status, self.body, 1.0, 0.5
 
 
 ANSWER = "Игорь Великий атаковал католических инков в 1187 году."

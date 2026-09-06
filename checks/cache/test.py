@@ -35,13 +35,13 @@ class _Fake:
         self.calls = 0
         self._script = list(responses) if responses is not None else [(status, body)]
 
-    def post(self, payload: dict) -> tuple[int, str, float]:
+    def post(self, payload: dict) -> tuple[int, str, float, float | None]:
         self.payload = payload
         self.payloads.append(payload)
         idx = min(self.calls, len(self._script) - 1)
         status, body = self._script[idx]
         self.calls += 1
-        return status, body, 1.0
+        return status, body, 1.0, 0.5
 
 
 def _chunks(*, cached: int = 0) -> list[dict]:
