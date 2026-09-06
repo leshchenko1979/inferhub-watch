@@ -25,7 +25,7 @@ import sys
 import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
-from statistics import median
+from statistics import median, mean
 from pathlib import Path
 
 from probe.costs import MANAGEMENT, USER_AGENT, fetch_log_rows
@@ -409,6 +409,54 @@ def marginal_stats(rows: list[dict], cutoff: str | None) -> dict[str, dict]:
     return out
 
 
+def perf_stats(rows: list[dict], window_hours: int = 24) -> dict:
+    """Main-traffic speed per model from usage-log rows: TTFT p50 + mean TPS.
+
+    Usage-log rows carry ttft_ms and duration_ms for EVERY request — probe
+    and production traffic alike — so this is the real-traffic speed view,
+    not a probe spot-sample. Sliced to the newest `window_hours` of the
+    fetched rows (the snapshot refetches 30d daily, so the slice rolls).
+
+    TPS per row = completion_tokens / ((duration_ms - ttft_ms) / 1000);
+    rows without both timings or with zero completion tokens (failed,
+    non-stream) are skipped for the medians but still counted in `reqs`.
+    """
+    stamped = [r for r in rows if r.get("ts")]
+    if not stamped:
+        return {"window_hours": window_hours, "models": {}}
+    newest = max(parse_ts(r["ts"]) for r in stamped)
+    cutoff = newest - timedelta(hours=window_hours)
+    models: dict[str, dict] = {}
+    for row in stamped:
+        ts = parse_ts(row.get("ts") or "")
+        if ts is None or ts < cutoff:
+            continue
+        model = row.get("model") or ""
+        if not model:
+            continue
+        m = models.setdefault(model, {"reqs": 0, "ttfts": [], "tpss": []})
+        m["reqs"] += 1
+        ttft = _float(row.get("ttft_ms"))
+        duration = _float(row.get("duration_ms"))
+        out = row.get("completion_tokens")
+        out = out if isinstance(out, int) and out > 0 else None
+        if ttft is None or duration is None:
+            continue
+        m["ttfts"].append(ttft)
+        stream_s = (duration - ttft) / 1000.0
+        if out is not None and stream_s > 0:
+            m["tpss"].append(out / stream_s)
+    out_models: dict[str, dict] = {}
+    for model, m in models.items():
+        entry: dict = {"reqs": m["reqs"]}
+        if m["ttfts"]:
+            entry["ttft_p50_ms"] = round(float(median(m["ttfts"])), 1)
+        if m["tpss"]:
+            entry["tps_mean"] = round(float(mean(m["tpss"])), 1)
+            entry["tps_samples"] = len(m["tpss"])
+        out_models[model] = entry
+    return {"window_hours": window_hours, "models": dict(sorted(out_models.items(), key=lambda kv: -kv[1]["reqs"]))}
+
 def snapshot(key: str, aliases: list[str], range_: str = RANGE,
              candidates: list[str] | None = None) -> dict:
     """Build the full pricing payload; candidate routes are flagged as such."""
@@ -446,6 +494,7 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
         "requests_scanned": len(rows),
         "days": daily_series(rows),
         "failures": failure_stats(rows),
+        "perf": perf_stats(rows),
         "routes": {alias: _entry(alias) for alias in aliases},
     }
 

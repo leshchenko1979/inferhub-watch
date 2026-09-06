@@ -792,9 +792,56 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     )
 
 
+def perf_table(payload: dict | None) -> str:
+    """Main-traffic speed sub-table for the evidence layer, or ''.
+
+    Built from the `perf` block probe.pricing aggregates into
+    data/pricing.json — usage-log timings (ttft_ms/duration_ms) over ALL
+    traffic in the newest 24h of the 30d window, production requests
+    included. Absent on snapshots written before this block existed.
+    """
+    if not payload:
+        return ""
+    perf = payload.get("perf") or {}
+    models = perf.get("models") or {}
+    if not models:
+        return ""
+    rows = []
+    for model, m in models.items():
+        ttft = m.get("ttft_p50_ms")
+        tps = m.get("tps_mean")
+        ttft_label = f"{ttft / 1000:.2f}s" if isinstance(ttft, (int, float)) else "&#8212;"
+        tps_label = f"{tps:.1f}" if isinstance(tps, (int, float)) else "&#8212;"
+        rows.append(
+            "<tr>"
+            f'<th scope="row"><code>{html.escape(str(model))}</code></th>'
+            f'<td class="num">{int(m.get("reqs") or 0)}</td>'
+            f'<td class="num">{ttft_label}</td>'
+            f'<td class="num">{tps_label}</td>'
+            "</tr>"
+        )
+    hours = perf.get("window_hours") or 24
+    caption = (
+        f"Every request billed in the newest {hours}h — production traffic included, "
+        "not just probes. ttft = median time to first token; tps = mean tokens/sec "
+        "of generation time only (duration minus ttft); dash = no timed requests."
+    )
+    return (
+        '<div class="scroll"><table class="pricing">'
+        f"<caption>{caption}</caption>"
+        "<thead><tr>"
+        '<th scope="col">Route</th>'
+        '<th scope="col" class="num">requests</th>'
+        '<th scope="col" class="num">ttft p50</th>'
+        '<th scope="col" class="num">tps mean</th>'
+        "</tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody>"
+        "</table></div>"
+    )
+
 def evidence_block(payload: dict | None, catalog: dict | None,
                    dated: list | None = None) -> str:
-    """The EVIDENCE layer: official-price and reliability, open on demand.
+    """The EVIDENCE layer: official-price, reliability, main-traffic speed.
 
     Sits at the bottom of #pricing; collapsed by default so the decision
     surface (verdict + board) stays uncluttered. Renders only when at
@@ -803,7 +850,8 @@ def evidence_block(payload: dict | None, catalog: dict | None,
     """
     official = official_table(payload, catalog, dated)
     failures = failures_table(payload)
-    if not official and not failures:
+    perf = perf_table(payload)
+    if not official and not failures and not perf:
         return ""
     items = ""
     if official:
@@ -817,6 +865,12 @@ def evidence_block(payload: dict | None, catalog: dict | None,
             '<details class="evidence-item" id="evidence-failures">'
             "<summary>Reliability &#8212; failed requests</summary>"
             f"<div>{failures}</div></details>"
+        )
+    if perf:
+        items += (
+            '<details class="evidence-item" id="evidence-perf">'
+            "<summary>Main-traffic speed &#8212; ttft &amp; tps</summary>"
+            f"<div>{perf}</div></details>"
         )
     return f'<div class="evidence">{items}</div>'
 
