@@ -338,5 +338,18 @@ class CandidatesHelpersTests(unittest.TestCase):
         self.assertEqual(rundata.incumbent_aliases(aliases, "gpt-5.6-luna"), [])
 
 
+    def test_aa_slug_explicit_entry_wins(self) -> None:
+        # Real models.toml has ali/qwen3.8-max mapped explicitly.
+        self.assertEqual(rundata.aa_slug("ali/qwen3.8-max"), "qwen3-8-max")
+
+    def test_aa_slug_derives_from_intelligence(self) -> None:
+        # cbcn/glm-5.3-flash has NO [aa] entry; dots normalize to dashes and
+        # the derived slug exists in intelligence.json's known models.
+        self.assertEqual(rundata.aa_slug("cbcn/glm-5.3-flash"), "glm-5-3-flash")
+
+    def test_aa_slug_unknown_route_is_none(self) -> None:
+        self.assertIsNone(rundata.aa_slug("foo/bar-baz-999"))
+        self.assertIsNone(rundata.aa_slug("cmc/Qwen/Qwen3.6-Max-Preview"))
+
 if __name__ == "__main__":
     unittest.main()

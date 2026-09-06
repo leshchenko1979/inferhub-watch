@@ -279,9 +279,10 @@ def load_intelligence(root: Path) -> dict | None:
 
 
 def aa_slug(route: str) -> str | None:
-    """Route -> Artificial Analysis slug from models.toml [aa], or None."""
-    data = tomllib.loads((repo_root() / "models.toml").read_text())
-    return (data.get("aa") or {}).get(route)
+    """Route -> AA slug. Thin delegate — the logic lives in probe.registry
+    (single copy, so the radar screens and the site can never diverge)."""
+    from probe.registry import aa_slug as _aa_slug
+    return _aa_slug(route)
 
 
 def ask_series(dated: list[tuple[str, dict]], route: str, current: dict | None = None) -> list[tuple[str, float, float]]:
