@@ -1232,11 +1232,6 @@ def probe_results_section(
     blocks = []
     for group in groups:
         incumbents = rundata.incumbent_aliases(aliases, group["model"])
-        rows_html = []
-        for alias in incumbents:
-            rows_html.append(
-                _candidate_route_row(runs, route_entries, alias, score_ids, candidate=False)
-            )
         ranked = []
         incumbent_set = set(incumbents)
         for route in group["routes"]:
@@ -1260,10 +1255,14 @@ def probe_results_section(
                 r[0],
             )
         )
-        for route, *_ in ranked:
-            rows_html.append(
-                _candidate_route_row(runs, route_entries, route, score_ids, candidate=True)
-            )
+        rows_html = [
+            _candidate_route_row(runs, route_entries, alias, score_ids, candidate=False)
+            for alias in incumbents
+        ]
+        rows_html += [
+            _candidate_route_row(runs, route_entries, route, score_ids, candidate=True)
+            for route, *_ in ranked
+        ]
         if not rows_html:
             continue
         chips = []
@@ -1293,29 +1292,18 @@ def probe_results_section(
             if price_chip:
                 chips.append(price_chip)
         blocks.append(
-            '<details class="model-group">'
-            f'<summary><span class="model-name">{html.escape(group["model"])}</span>'
-            f"{''.join(chips)}</summary>"
-            '<div class="scroll"><table class="pricing candidates">'
-            "<thead><tr>"
-            '<th scope="col" title="Provider route; the in-use pill marks the route currently on the board.">Route</th>'
-            '<th scope="col" class="num" title="Scoring checks passed in the latest probe; hover a value for the failed ones.">tests</th>'
-            '<th scope="col" class="num" title="Prompt-cache share — board routes from the 30-day billing window, audition routes from probe evidence.">cache hit</th>'
-            '<th scope="col" class="num" title="Time to first streamed token from the latest core probe.">ttft</th>'
-            '<th scope="col" class="num" title="Tokens per second, generation time only, from the latest core probe.">tps</th>'
-            '<th scope="col" class="num" title="Ask price per M tokens (input / output); audition routes are billed on probe traffic.">ask in / out</th>'
-            '<th scope="col" class="num" title="All-pass runs / probed runs since the route was first seen.">window</th>'
-            "</tr></thead>"
-            f"<tbody>{''.join(rows_html)}</tbody></table></div>"
-            "</details>"
+            (f'<tr class="fam-head"><th colspan="7" id="fam-{html.escape(group["model"])}">'
+             f'{html.escape(group["model"])}{"".join(chips)}</th></tr>')
+            + "".join(rows_html)
         )
     if not blocks:
         return ""
     note = (
         "Board routes in current use (&#8220;in use&#8221; pill) plus audition routes "
         "from the market shortlist — live catalog asks ranked by predicted $/M, "
-        "cheaper-than-in-use only — grouped by model and probed after each board sweep. "
-        "Audition routes rank by checks passed, then cache hit, then blended ask. "
+        "cheaper-than-in-use only — probed after each board sweep. One merged table: "
+        "family bands in reading order, incumbent first, then audition routes by "
+        "checks passed, cache hit, blended ask. "
         "Cache share: board routes from the 30-day billing window, audition routes "
         "from the probe. Window = runs all-pass / runs probed since first seen. "
         "Audition asks are billed on probe traffic."
@@ -1324,8 +1312,18 @@ def probe_results_section(
         '<section class="probe-results" id="results">'
         f"<h2>{html.escape(section_title('results'))}</h2>"
         f'<p class="section-note">{note}</p>'
-        + "".join(blocks)
-        + "</section>"
+        '<div class="scroll"><table class="pricing candidates">'
+        "<thead><tr>"
+        '<th scope="col" title="Provider route; the in-use pill marks the route currently on the board.">Route</th>'
+        '<th scope="col" class="num" title="Scoring checks passed in the latest probe; hover a value for the failed ones.">tests</th>'
+        '<th scope="col" class="num" title="Prompt-cache share — board routes from the 30-day billing window, audition routes from probe evidence.">cache hit</th>'
+        '<th scope="col" class="num" title="Time to first streamed token from the latest core probe.">ttft</th>'
+        '<th scope="col" class="num" title="Tokens per second, generation time only, from the latest core probe.">tps</th>'
+        '<th scope="col" class="num" title="Ask price per M tokens (input / output); audition routes are billed on probe traffic.">ask in / out</th>'
+        '<th scope="col" class="num" title="All-pass runs / probed runs since the route was first seen.">window</th>'
+        "</tr></thead>"
+        f"<tbody>{''.join(blocks)}</tbody></table></div>"
+        "</section>"
     )
 
 

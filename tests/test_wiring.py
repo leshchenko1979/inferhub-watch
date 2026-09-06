@@ -134,7 +134,7 @@ class WiringTests(unittest.TestCase):
         )
         expected_first = rundata.incumbent_aliases(aliases, first_group["model"])[0]
         self.assertIn(f"<code>{expected_first}</code>", results)
-        self.assertIn('class="model-group"', results)
+        self.assertIn('class="fam-head"', results)
         self.assertIn('class="chip', results)
         self.assertIn('class="pill in-use"', results)
         self.assertIn('data-label="tests"', results)
@@ -759,7 +759,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
         section = gen.probe_results_section(
             [run], ["ali/qwen3.8-max"], gen.load_registry(), self.PAYLOAD
         )
-        self.assertIn('class="model-group"', section)
+        self.assertIn('class="fam-head"', section)
         self.assertIn("qwen3.8-max", section)
         self.assertIn("ali/qwen3.8-max", section)
         self.assertIn("chip price", section)
@@ -791,7 +791,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
         self.assertIn('id="results"', page)
         self.assertIn('href="#results"', nav)
         self.assertIn("<h2>Probe results</h2>", page)
-        self.assertIn('class="model-group"', page)
+        self.assertIn('class="fam-head"', page)
         self.assertIn('class="pill in-use"', page)
         pos_inc = page.find("ali/qwen3.8-max", page.find('id="results"'))
         pos_cp = page.find("cp/cline-pass/qwen3.8-max", page.find('id="results"'))
@@ -799,7 +799,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
         self.assertTrue(pos_inc < pos_cp < pos_cx)
         self.assertIn('class="chip ok">ali/qwen3.8-max · 2/2', page)
         self.assertIn('class="chip ok">cp/cline-pass/qwen3.8-max · 2/2 · 93%', page)
-        self.assertIn('class="model-name">qwen3.8-max', page)
+        self.assertIn('id="fam-qwen3.8-max"', page)
 
     def test_failed_checks_rank_last_and_show_missed(self) -> None:
         gen = _load_generate()
@@ -863,10 +863,12 @@ class ProbeResultsSectionTests(unittest.TestCase):
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
         page, _ = self._page(gen, run)
         seg = page[page.find('id="results"'):page.find('id="earlier"')]
-        # Probe groups render collapsed: the board above is the glance
-        # layer, so eight open candidate tables no longer shout first.
-        self.assertIn('<details class="model-group">', seg)
-        self.assertNotIn('class="model-group" open', seg)
+        # One merged table: family bands as full-width head rows — no
+        # per-family <details> grids anymore.
+        self.assertNotIn('class="model-group"', seg)
+        self.assertIn('<tr class="fam-head">', seg)
+        # Exactly ONE probe-results table on the page (was 8).
+        self.assertEqual(seg.count('class="pricing candidates"'), 1)
         for label in ("tests", "cache hit", "ask in / out", "window"):
             self.assertIn(f'data-label="{label}"', seg)
         for hint in (

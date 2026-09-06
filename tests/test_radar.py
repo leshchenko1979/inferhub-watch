@@ -266,14 +266,14 @@ class PriceChipTests(unittest.TestCase):
 
     def test_unbilled_incumbent_renders_without_price_chip(self) -> None:
         section = self._section(RUN_PASS, routes={})
-        self.assertIn("model-group", section)
+        self.assertIn("fam-head", section)
         self.assertNotIn("chip price", section)
 
     def test_board_only_run_renders_board_group(self) -> None:
         # Suite v2 renders every probed family — a board-only run (no
         # shortlist candidates) still shows its incumbent group + verdict.
         section = self._section(RUN_BOARD_ONLY)
-        self.assertIn('class="model-group"', section)
+        self.assertIn('class="fam-head"', section)
         self.assertIn("qwen3.8-max", section)
         self.assertIn("ali/qwen3.8-max", section)
 
