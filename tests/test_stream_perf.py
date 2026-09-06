@@ -91,5 +91,19 @@ class PerfStatsTest(unittest.TestCase):
         self.assertEqual(m["reqs"], 1)
         self.assertEqual(m["ttft_p50_ms"], 2000.0)
 
+    def test_degenerate_and_implausible_tps_rows_skipped(self) -> None:
+        # duration≈ttft (non-stream / queue-only timing) and >500 tps rows
+        # would poison the mean — both must be skipped for tps but still
+        # count in reqs and feed the ttft median.
+        rows = [
+            self._row("2026-09-06T10:00:00Z", 2273, 2275, 2000),   # 0.002s window
+            self._row("2026-09-06T10:01:00Z", 500, 2000, 1200),    # 800 tps
+            self._row("2026-09-06T10:02:00Z", 1500, 11000, 400),   # 41.7 tps, sane
+        ]
+        m = perf_stats(rows)["models"]["m/a"]
+        self.assertEqual(m["reqs"], 3)
+        self.assertEqual(m["tps_samples"], 1)
+        self.assertAlmostEqual(m["tps_mean"], round(400 / 9.5, 1), places=6)
+
     def test_empty_rows(self) -> None:
         self.assertEqual(perf_stats([]), {"window_hours": 24, "models": {}})

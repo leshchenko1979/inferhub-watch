@@ -444,7 +444,12 @@ def perf_stats(rows: list[dict], window_hours: int = 24) -> dict:
             continue
         m["ttfts"].append(ttft)
         stream_s = (duration - ttft) / 1000.0
-        if out is not None and stream_s > 0:
+        # A "generation window" shorter than ~2s with non-trivial output means
+        # the row's timing fields don't describe streaming generation (batch /
+        # non-stream requests report duration≈ttft, or upstream times only
+        # queue+prefill). Dividing there yields absurd tps (22701, 65245 seen
+        # live) — skip those rows rather than poison the mean.
+        if out is not None and stream_s >= 2.0 and out / stream_s < 500:
             m["tpss"].append(out / stream_s)
     out_models: dict[str, dict] = {}
     for model, m in models.items():
