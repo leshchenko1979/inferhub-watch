@@ -279,6 +279,48 @@ class BoardingCandidatesTest(unittest.TestCase):
             self.ALIASES + ["cb/qwen3.8-max"])
         self.assertEqual(out, [])
 
+    def test_iq_wash_failure_blocks(self):
+        # incumbent IQ 50, candidate IQ 43 -> below the 0.9 wash floor
+        out = daily_report.boarding_candidates(
+            [self._routes() for _ in range(3)], self._run(), self._perf(),
+            self.ALIASES, iq_fn=lambda r: 43.0 if "cb/" in r else 50.0)
+        self.assertEqual(out, [])
+
+    def test_iq_wash_passes_at_floor_boundary(self):
+        # candidate IQ exactly 0.9x incumbent passes (>= is the rule)
+        out = daily_report.boarding_candidates(
+            [self._routes() for _ in range(3)], self._run(), self._perf(),
+            self.ALIASES, iq_fn=lambda r: 45.0 if "cb/" in r else 50.0)
+        self.assertEqual([c["route"] for c in out], ["cb/qwen3.8-max"])
+
+    def test_ttft_failure_blocks(self):
+        # candidate ttft 6s vs incumbent 2.26s = >2x BOARD_TTFT_MULTIPLE
+        perf = {"cb/qwen3.8-max": {"ttft_p50_ms": 6000.0},
+                "ali/qwen3.8-max": {"ttft_p50_ms": 2263.0}}
+        out = daily_report.boarding_candidates(
+            [self._routes() for _ in range(3)], self._run(), perf,
+            self.ALIASES, iq_fn=lambda r: None)
+        self.assertEqual(out, [])
+
+    def test_empty_perf_passes_speed_gate(self):
+        # unknown ttft degrades to a pass — route must earn on what is known
+        out = daily_report.boarding_candidates(
+            [self._routes() for _ in range(3)], self._run(), {},
+            self.ALIASES, iq_fn=lambda r: None)
+        self.assertEqual([c["route"] for c in out], ["cb/qwen3.8-max"])
+
+    def test_candidate_family_without_board_incumbent_is_dropped(self):
+        out = daily_report.boarding_candidates(
+            [self._routes() for _ in range(3)], self._run(), self._perf(),
+            aliases=["other-family/ incumbent"])  # no incumbent in cand's family
+        self.assertEqual(out, [])
+
+    def test_fewer_snapshots_than_board_snapshots_fails(self):
+        out = daily_report.boarding_candidates(
+            [self._routes() for _ in range(2)], self._run(), self._perf(),
+            self.ALIASES, iq_fn=lambda r: None)
+        self.assertEqual(out, [])
+
     def test_never_billed_route_is_skipped(self):
         routes = self._routes()
         routes["cb/qwen3.8-max"]["reqs"] = 0

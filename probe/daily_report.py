@@ -24,6 +24,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from probe.costs import fetch_log_rows
+from probe.market import QUALITY_FLOOR, _perf_block, _route_iq, family, incumbent_bar
 from probe.pricing import _float, bump_usage, failure_stats, rate_label
 from probe.registry import repo_root
 
@@ -187,19 +188,21 @@ BOARD_SNAPSHOTS = 3      # consecutive daily snapshots under the bar
 BOARD_TTFT_MULTIPLE = 2.0
 
 def boarding_candidates(routes_by_day: list[dict], run: dict | None,
-                        perf: dict, aliases: list[str]) -> list[dict]:
+                        perf: dict, aliases: list[str],
+                        iq_fn=None) -> list[dict]:
     """[{route, eff, bar, iq, why}] — non-board routes meeting all four gates.
 
-    (a) core pass on the newest run covering the route; (b) realized eff
-    $/M under the family incumbent bar in the last BOARD_SNAPSHOTS daily
-    snapshots; (c) IQ wash vs the family incumbent (auto-derived AA
-    slugs); (d) ttft p50 not more than BOARD_TTFT_MULTIPLE x the
-    incumbent's (perf = {route: {ttft_p50_ms}}). Gates with missing data
-    degrade: no probe record fails (a), no IQ or ttft data passes (c)/(d)
-    — a route must EARN the flag on what is known.
+    (a) core pass on the single newest run — a route absent from that run
+    fails closed; (b) realized eff $/M under the family incumbent bar in
+    the last BOARD_SNAPSHOTS daily snapshots; (c) IQ wash vs the family
+    incumbent (auto-derived AA slugs; iq_fn is injectable for tests —
+    defaults to the registry-backed market._route_iq); (d) ttft p50 not
+    more than BOARD_TTFT_MULTIPLE x the incumbent's
+    (perf = {route: {ttft_p50_ms}}). Gates with missing data degrade: no
+    probe record fails (a), no IQ or ttft data passes (c)/(d) — a route
+    must EARN the flag on what is known.
     """
-    from probe.market import _route_iq, family, incumbent_bar
-
+    iq_fn = iq_fn or _route_iq
     board = set(aliases)
     fams: dict[str, list[str]] = {}
     for alias in aliases:
@@ -241,10 +244,11 @@ def boarding_candidates(routes_by_day: list[dict], run: dict | None,
             continue
         bar = min(bars)
         # (c) quality wash — unknown IQ passes
-        inc_iq = max((iq for r in incumbents if (iq := _route_iq(r)) is not None),
+        inc_iq = max((iq for r in incumbents if (iq := iq_fn(r)) is not None),
                      default=None)
-        cand_iq = _route_iq(route)
-        if inc_iq is not None and cand_iq is not None and cand_iq < inc_iq * 0.9:
+        cand_iq = iq_fn(route)
+        if inc_iq is not None and cand_iq is not None \
+                and cand_iq < inc_iq * QUALITY_FLOOR:
             continue
         # (d) speed — unknown ttft passes
         inc_ttft = min((t for r in incumbents if (t := _ttft(r)) is not None),
@@ -302,7 +306,6 @@ def build_report(key: str, root: Path | None = None) -> str:
 
 def boarding_data(root: Path) -> list[dict]:
     """Assemble the four-gate inputs from on-disk artifacts."""
-    from probe.market import _perf_block
     from probe.radar import latest_run
     from probe.registry import load_aliases
 
