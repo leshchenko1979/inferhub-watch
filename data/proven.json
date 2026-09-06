@@ -7,21 +7,21 @@
     }
   },
   "cb/gpt-5.6-luna": {
-    "last_probe": "2026-09-06T17:42:40.484539+00:00",
+    "last_probe": "2026-09-06T17:54:37.893922+00:00",
     "statuses": {
       "cache": "skipped",
       "core": "fail"
     }
   },
   "cb/gpt-5.6-sol": {
-    "last_probe": "2026-09-06T17:42:40.484539+00:00",
+    "last_probe": "2026-09-06T17:54:37.893922+00:00",
     "statuses": {
       "cache": "skipped",
       "core": "fail"
     }
   },
   "cb/gpt-5.6-terra": {
-    "last_probe": "2026-09-06T17:42:40.484539+00:00",
+    "last_probe": "2026-09-06T17:54:37.893922+00:00",
     "statuses": {
       "cache": "skipped",
       "core": "fail"
@@ -56,7 +56,7 @@
     }
   },
   "cbcn/glm-5.3-flash": {
-    "last_probe": "2026-09-06T17:42:40.484539+00:00",
+    "last_probe": "2026-09-06T17:54:37.893922+00:00",
     "statuses": {
       "cache": "skipped",
       "core": "fail"
@@ -84,7 +84,7 @@
     }
   },
   "cp/zai/glm-5.3-flash": {
-    "last_probe": "2026-09-06T17:42:40.484539+00:00",
+    "last_probe": "2026-09-06T17:54:37.893922+00:00",
     "statuses": {
       "cache": "fail",
       "core": "pass"
