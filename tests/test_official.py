@@ -310,10 +310,6 @@ class OfficialTableRenderTest(unittest.TestCase):
         self.assertEqual(thin, "")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class BoardIqSortTest(unittest.TestCase):
     """Board rows sort by IQ per $ descending; unmapped routes sink last."""
 
@@ -363,3 +359,50 @@ class BoardIqSortTest(unittest.TestCase):
                    for r in ("zai/glm-5.3-flash", "ali/kimi-k3", "ocg/unmapped"))
         self.assertLess(g, k, "glm (5088 IQ/$) must precede kimi (213 IQ/$)")
         self.assertLess(k, u, "unmapped route must sort last")
+
+
+class CandMarkRenderTest(BoardIqSortTest):
+    """Render-level proof: a billed candidate row carries the cand-mark span.
+
+    Data-layer coverage (test_rundata) keeps the row; this pins that the
+    renderer actually emits the marker — deleting the cand variable from
+    pricing_section must fail here.
+    """
+
+    def test_billed_candidate_row_renders_cand_mark(self):
+        rows = {
+            "ali/kimi-k3": {"ask_in": 0.195, "ask_out": 0.975, "eff_per_mtok": 0.28,
+                            "reqs": 10, "source": "usage-logs"},
+            "cb/cand-billed": {"ask_in": 0.01, "ask_out": 0.02, "eff_per_mtok": 0.008,
+                               "reqs": 42, "source": "usage-logs",
+                               "candidate": True},
+        }
+        payload = {"range": "30d", "requests_scanned": 100,
+                   "routes": {r: rows[r] for r in ("ali/kimi-k3", "cb/cand-billed")}}
+        intel = {"models": {"kimi-k3": {"iq": 59.7}}}
+        rd, mod = self.rundata, self.mod
+        input_rows = [{"route": r, **payload["routes"][r]} for r in payload["routes"]]
+        with mock.patch.object(rd, "pricing_rows", return_value=input_rows), \
+            mock.patch.object(rd, "load_dated_pricing", return_value=[]), \
+            mock.patch.object(rd, "load_intelligence", return_value=intel), \
+            mock.patch.object(rd, "ask_series", return_value=[]), \
+            mock.patch.object(rd, "load_catalog", return_value={"models": {}}):
+            out = mod.pricing_section(payload, [])
+        self.assertIn("cand-mark", out)
+        self.assertIn("&#9666; cand", out)
+        # and the board row carries none
+        board_row = out[out.index("<code>ali/kimi-k3</code>"):]
+        board_row = board_row[:board_row.index("</tr>")]
+        self.assertNotIn("cand-mark", board_row)
+
+    def test_pricing_rows_skip_edge_reqs_but_no_money(self):
+        # candidate flagged, reqs > 0, but eff and cost both None: skip
+        payload = {"routes": {"c/ghost": {"ask_in": 1.0, "ask_out": 3.0,
+                                          "candidate": True, "reqs": 5}}}
+        self.assertEqual(self.rundata.pricing_rows(payload), [])
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+

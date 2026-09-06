@@ -5,7 +5,7 @@ import math
 import tomllib
 from pathlib import Path
 
-from probe import market, pricing
+from probe import market, pricing, registry
 from probe.registry import repo_root
 
 
@@ -281,8 +281,7 @@ def load_intelligence(root: Path) -> dict | None:
 def aa_slug(route: str) -> str | None:
     """Route -> AA slug. Thin delegate — the logic lives in probe.registry
     (single copy, so the radar screens and the site can never diverge)."""
-    from probe.registry import aa_slug as _aa_slug
-    return _aa_slug(route)
+    return registry.aa_slug(route)
 
 
 def ask_series(dated: list[tuple[str, dict]], route: str, current: dict | None = None) -> list[tuple[str, float, float]]:
