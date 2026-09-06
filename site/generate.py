@@ -116,6 +116,22 @@ def board_nav() -> str:
         items.append(
             f'<li><a href="#{html.escape(sid)}">{html.escape(title)}</a></li>'
         )
+    # Family anchors: jump straight to a family band inside #results.
+    families = []
+    aliases = load_aliases()
+    for run in reversed(rundata.load_runs(ROOT)[-1:]):
+        for group in run_groups(run):
+            if rundata.incumbent_aliases(aliases, group["model"]) or group["routes"]:
+                families.append(group["model"])
+    if families:
+        items.append(
+            '<li class="nav-fams">'
+            + " ".join(
+                f'<a class="nav-fam" href="#fam-{html.escape(f)}">{html.escape(f)}</a>'
+                for f in families
+            )
+            + "</li>"
+        )
     return tmpl.render("nav.html", items="".join(items))
 
 
@@ -1150,9 +1166,23 @@ def _candidate_route_row(
     ttft_label = f"{ttft_ms / 1000:.1f}s" if ttft_ms is not None else "&#8212;"
     tps_label = f"{tps:.0f}" if tps is not None else "&#8212;"
     perf_tip = "First-token latency and tokens/sec from the latest core probe (one streamed request; dash = pre-perf run)."
+    # Drill-down: each route links to the per-check pages (Level-3 IA).
+    base = base_href()
+    if base:
+        core_href = f"{base}/checks/core.html"
+        cache_href = f"{base}/checks/cache.html"
+    else:
+        core_href = "../checks/core.html"
+        cache_href = "../checks/cache.html"
+    drill = (
+        f'<span class="route-drill">'
+        f'<a href="{core_href}" title="Open the core check page — request JSON and pass/fail rule">core</a>'
+        f' · <a href="{cache_href}" title="Open the cache check page — request JSON and pass/fail rule">cache</a>'
+        f"</span>"
+    )
     return (
         "<tr>"
-        f'<th scope="row"><code>{html.escape(route)}</code>{pill}'
+        f'<th scope="row"><code>{html.escape(route)}</code>{pill}{drill}'
         f'<span class="route-ask">{html.escape(publisher_label(resolved))}</span></th>'
         f'<td class="num" data-label="tests"{cell_title}><span class="{val_cls}">{probe_val}</span>{probe_sub}</td>'
         + _viz_cell(
@@ -1348,6 +1378,18 @@ def probe_results_section(
     )
 
 
+def hidden_runs_html(total: int, shown: int) -> str:
+    """Note when the timeline grid shows only the newest `shown` runs."""
+    if total <= shown:
+        return ""
+    older = total - shown
+    return (
+        f'<p class="section-note hidden-runs">Showing the newest {shown} runs; '
+        f"{older} older runs are in "
+        f'<a href="https://github.com/leshchenko1979/inferhub-watch/tree/main/data/runs">data/runs</a>.'
+        f"</p>"
+    )
+
 def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> str:
     if not runs:
         return shell("InferHub Watch", tmpl.render("empty.html"))
@@ -1420,6 +1462,7 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
         score_label="check" if n_score == 1 else "checks",
         rule=rule,
         grid_rows="".join(grid_rows),
+        hidden_runs=hidden_runs_html(len(runs), len(window)),
         verdict_section=verdict_section(payload),
         pricing_section=pricing_section(payload, runs),
         probe_results_section=probe_results_section(

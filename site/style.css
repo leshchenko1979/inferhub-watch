@@ -1140,6 +1140,66 @@ footer {
     font-weight: 500;
   }
 
+  /* Mobile fold (IA research): in the merged probe table keep the
+     decision fields (tests, cache, ttft, tps); ask + window are
+     lower-value — drop them from the card to kill scroll depth. */
+  .candidates tr > td[data-label="ask in / out"],
+  .candidates tr > td[data-label="window"] {
+    display: none;
+  }
+
+  /* Family band heads: full-width separators, chips wrap. */
+  .candidates tr.fam-head > th {
+    display: block;
+    padding: var(--space-3) 0 0;
+  }
+
+  /* Nav family quick-jumps. */
+  .nav-fams {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+  }
+  .nav-fam {
+    font-family: var(--mono);
+    font-size: var(--text-caption);
+  }
+}
+
+@media (min-width: 721px) {
+  .nav-fams {
+    display: inline-flex;
+    gap: 0.5rem;
+    margin-left: 0.75rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--line);
+  }
+  .nav-fam {
+    font-family: var(--mono);
+    font-size: var(--text-caption);
+    color: var(--muted);
+  }
+  .nav-fam:hover {
+    color: var(--ink);
+  }
+
+  /* Route drill-down links: quiet until hover. */
+  .route-drill {
+    font-size: var(--text-caption);
+    margin-left: 0.4rem;
+  }
+  .route-drill a {
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--line);
+  }
+  .route-drill a:hover {
+    color: var(--ink);
+  }
+  tr.fam-head > th {
+    padding-top: var(--space-4);
+    font-size: var(--text-body);
+  }
 }
 
 @media (pointer: coarse) {
