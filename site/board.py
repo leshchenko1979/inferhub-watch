@@ -513,7 +513,12 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
         # Owner follow-up: labels must not obstruct OTHER dots either — every
         # dot is an obstacle too (y within label band AND x inside the text
         # span), not just other labels.
-        occupied: list[float] = []
+        # Owner follow-up: row-blocking must be x-aware too — two labels on
+        # the same baseline but at opposite ends of the chart do NOT collide
+        # (the old y-only model pushed the rightmost label rows away "for no
+        # reason"). Track occupied (baseline, x0, x1) spans; a row is taken
+        # only when baselines are close AND x-spans overlap.
+        occupied: list[tuple[float, float, float]] = []
         dot_obs = [
             (sx(eff), sy(iq), usage_radius(reqs, ponly))
             for _route, eff, iq, reqs, _bt, ponly in points
@@ -527,25 +532,33 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
             label_right = cx < W - pad_r - label_cap * 6
             lx = cx + 10 if label_right else cx - 10
             anchor = "start" if label_right else "end"
+            x0 = (cx + 10) if label_right else (cx - 10 - len(short) * 6)
+            x1 = x0 + len(short) * 6
+
             def _hits_dot(y: float) -> bool:
-                # Dot obstructed when its center is inside the label band
-                # (y +- step/2, generous) and its center+r crosses the text
-                # span. Span follows the anchor: right-flipped labels extend
-                # left, normal ones right (cap*6 approximates rendered width).
+                # Dot obstructed when its center is inside the glyph band
+                # and its center+r crosses THIS label's span (x0..x1).
                 # Own dot excluded by exact coords (it always borders the
                 # label).
-                x0 = (cx + 10) if label_right else (cx - 10 - label_cap * 6)
-                x1 = x0 + label_cap * 6
                 for ox, oy, orr in dot_obs:
                     if ox == cx and oy == cy:
                         continue
                     # Glyph band around the baseline: ascenders ~9px above,
                     # descenders ~3px below (11px label font).
-                    if not (ly - 9 - orr <= oy <= ly + 3 + orr):
+                    if not (y - 9 - orr <= oy <= y + 3 + orr):
                         continue
                     if ox + orr >= x0 and ox - orr <= x1:
                         return True
                 return False
+
+            def _row_taken(y: float) -> bool:
+                # A previously placed label blocks this row only when the
+                # baselines are close AND the x-spans overlap (same baseline
+                # at opposite chart ends does NOT collide).
+                return any(
+                    abs(y - oy) < label_step * 0.9 and ox0 < x1 and ox1 > x0
+                    for oy, ox0, ox1 in occupied
+                )
 
             ly = cy + 3
             leader = ""
@@ -554,21 +567,27 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
             # label always takes the CLOSEST free row to its dot (owner
             # 2026-09-07: "label needs to be as close to their dot as
             # possible" — the old ladder skipped the up-1 row entirely).
-            # "Free" = no label row collision AND no foreign dot inside the
-            # label band/span.
-            while (
-                any(abs(ly - oy) < label_step * 0.9 for oy in occupied) or _hits_dot(ly)
-            ) and guard < 10:
+            # "Free" = no overlapping label span AND no foreign dot inside
+            # the glyph band/span.
+            while (_row_taken(ly) or _hits_dot(ly)) and guard < 10:
                 guard += 1
                 ly = cy + 3 + ((guard + 1) // 2) * label_step * (1 if guard % 2 else -1)
                 if ly < pad_t + 8 or ly > H - pad_b - 4:
                     ly = cy + 3  # reset and try the other direction next round
-            if guard >= 10 and (
-                any(abs(ly - oy) < label_step * 0.9 for oy in occupied) or _hits_dot(ly)
-            ):
-                # Ladder exhausted without a free row: fall back to the
-                # at-dot position rather than parking on a colliding row.
+            if guard >= 10 and (_row_taken(ly) or _hits_dot(ly)):
+                # Ladder exhausted on this side: flip to the opposite side of
+                # the dot before accepting any collision (the other side is
+                # usually empty — it was only not tried when the edge forced
+                # the original side).
+                label_right = not label_right
+                lx = cx + 10 if label_right else cx - 10
+                anchor = "start" if label_right else "end"
+                x0 = (cx + 10) if label_right else (cx - 10 - len(short) * 6)
+                x1 = x0 + len(short) * 6
                 ly = cy + 3
+                if _row_taken(ly) or _hits_dot(ly):
+                    # Both sides blocked at the dot: give up, park at dot.
+                    ly = cy + 3
             if abs(ly - (cy + 3)) > 1:
                 # Label moved: draw a leader from the dot edge to the label.
                 y1 = cy + (r + 1) if ly > cy else cy - (r + 1)
@@ -576,7 +595,7 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
                     f'<line x1="{cx:.1f}" y1="{y1:.1f}" x2="{lx:.1f}" y2="{ly - 3:.1f}" '
                     'class="sleader"/>'
                 )
-            occupied.append(ly)
+            occupied.append((ly, x0, x1))
             tip = (
                 f"{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis_tag}) &#183; "
                 f"IQ {iq:.1f} &#183; {reqs} reqs/{hours}h"
