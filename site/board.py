@@ -510,7 +510,14 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
         # name reads. A thin leader line ties the moved label back to its dot
         # (owner 2026-09-07: "labels torn off from the dots") — and when the
         # nudge gives up, the label sits at the dot instead of wandering.
+        # Owner follow-up: labels must not obstruct OTHER dots either — every
+        # dot is an obstacle too (y within label band AND x inside the text
+        # span), not just other labels.
         occupied: list[float] = []
+        dot_obs = [
+            (sx(eff), sy(iq), usage_radius(reqs, ponly))
+            for _route, eff, iq, reqs, _bt, ponly in points
+        ]
         for route, eff, iq, reqs, basis_tag, ponly in points:
             cx, cy = sx(eff), sy(iq)
             r = usage_radius(reqs, ponly)
@@ -520,6 +527,26 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
             label_right = cx < W - pad_r - label_cap * 6
             lx = cx + 10 if label_right else cx - 10
             anchor = "start" if label_right else "end"
+            def _hits_dot(y: float) -> bool:
+                # Dot obstructed when its center is inside the label band
+                # (y +- step/2, generous) and its center+r crosses the text
+                # span. Span follows the anchor: right-flipped labels extend
+                # left, normal ones right (cap*6 approximates rendered width).
+                # Own dot excluded by exact coords (it always borders the
+                # label).
+                x0 = (cx + 10) if label_right else (cx - 10 - label_cap * 6)
+                x1 = x0 + label_cap * 6
+                for ox, oy, orr in dot_obs:
+                    if ox == cx and oy == cy:
+                        continue
+                    # Glyph band around the baseline: ascenders ~9px above,
+                    # descenders ~3px below (11px label font).
+                    if not (ly - 9 - orr <= oy <= ly + 3 + orr):
+                        continue
+                    if ox + orr >= x0 and ox - orr <= x1:
+                        return True
+                return False
+
             ly = cy + 3
             leader = ""
             guard = 0
@@ -527,11 +554,21 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
             # label always takes the CLOSEST free row to its dot (owner
             # 2026-09-07: "label needs to be as close to their dot as
             # possible" — the old ladder skipped the up-1 row entirely).
-            while any(abs(ly - oy) < label_step * 0.9 for oy in occupied) and guard < 6:
+            # "Free" = no label row collision AND no foreign dot inside the
+            # label band/span.
+            while (
+                any(abs(ly - oy) < label_step * 0.9 for oy in occupied) or _hits_dot(ly)
+            ) and guard < 10:
                 guard += 1
                 ly = cy + 3 + ((guard + 1) // 2) * label_step * (1 if guard % 2 else -1)
                 if ly < pad_t + 8 or ly > H - pad_b - 4:
                     ly = cy + 3  # reset and try the other direction next round
+            if guard >= 10 and (
+                any(abs(ly - oy) < label_step * 0.9 for oy in occupied) or _hits_dot(ly)
+            ):
+                # Ladder exhausted without a free row: fall back to the
+                # at-dot position rather than parking on a colliding row.
+                ly = cy + 3
             if abs(ly - (cy + 3)) > 1:
                 # Label moved: draw a leader from the dot edge to the label.
                 y1 = cy + (r + 1) if ly > cy else cy - (r + 1)
