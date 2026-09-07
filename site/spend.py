@@ -133,7 +133,7 @@ def spend_block(payload: dict, runs: list[dict]) -> str:
 def _delta_span(delta: float) -> str:
     if abs(delta) < 1e-9:
         return '<span class="delta-flat" title="ask unchanged">=</span>'
-    mag = rundata.rate_label(abs(delta)) or f"${abs(delta):.3f}"
+    mag = rundata.rate_label(abs(delta), fixed=4) or f"${abs(delta):.4f}"
     if delta < 0:
         return f'<span class="delta-down" title="ask fell">&#8595;{mag}</span>'
     return f'<span class="delta-up" title="ask rose">&#8593;{mag}</span>'
