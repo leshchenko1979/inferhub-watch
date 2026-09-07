@@ -11,7 +11,10 @@ on:
       - "data/**"
 
 concurrency:
-  group: inferhub-watch-${{ github.workflow }}-${{ github.event_name }}
+  # P1b: ONE group across every trigger. A schedule run and a manual
+  # dispatch probing at the same time double-bill the InferHub balance and
+  # race their data commits — later trigger queues instead.
+  group: inferhub-watch
   cancel-in-progress: false
 
 jobs:
@@ -35,6 +38,7 @@ jobs:
   probe:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: write
     steps:
