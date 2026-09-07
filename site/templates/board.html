@@ -1,24 +1,24 @@
-$verdict_section
-$pricing_section
-$probe_results_section
+{{ verdict_section }}
+{{ pricing_section }}
+{{ probe_results_section }}
 <section class="history" id="earlier">
-  <h2>$earlier_title</h2>
+  <h2>{{ earlier_title }}</h2>
   <p class="section-note">Each column is one committed probe. Same-day reruns stay separate. A cell is how many of the
-    $n_score scoring $score_label passed ($rule), and which ones missed. A blank slot means the alias was not on the
+    {{ n_score }} scoring {{ score_label }} passed ({{ rule }}), and which ones missed. A blank slot means the alias was not on the
     board that run.</p>
   <details class="evidence-item" id="evidence-runs">
     <summary>Show run history</summary>
     <div class="scroll">
       <table class="timeline">
         <caption>Hover or tap a bar for the run stamp, origin, pass count, and missed checks.</caption>
-        <tbody>$grid_rows</tbody>
+        <tbody>{{ grid_rows }}</tbody>
       </table>
     </div>
-    $hidden_runs
+    {{ hidden_runs }}
   </details>
 </section>
 <section class="explanations" id="method">
-  <h2>$method_title</h2>
+  <h2>{{ method_title }}</h2>
   <h3>The endpoint</h3>
   <p><a href="https://inferhub.dev/">InferHub</a> exposes an OpenAI-compatible <code>/v1/chat/completions</code> API.
     This site probes that endpoint daily with <code>stream: true</code>. A failed test score means a check missed in
@@ -36,16 +36,16 @@ $probe_results_section
   </ul>
   <h3>Each check</h3>
   <p class="section-note">Open a check for the request JSON and the pass/fail rule.</p>
-  <div class="explainers">$explainers</div>
+  <div class="explainers">{{ explainers }}</div>
   <h3>Ask for another</h3>
-  <p>To probe another InferHub alias, <a href="$github/issues/new">open a GitHub issue</a> with the name you send in
-    <code>model</code>. The current list is <a href="$github/blob/main/models.toml">models.toml</a>. To add a check,
+  <p>To probe another InferHub alias, <a href="{{ github }}/issues/new">open a GitHub issue</a> with the name you send in
+    <code>model</code>. The current list is <a href="{{ github }}/blob/main/models.toml">models.toml</a>. To add a check,
     describe the request JSON and what should pass or fail. Pull requests follow the README <a
-      href="$github/blob/main/README.md#add-a-check">Add a check</a> steps.
+      href="{{ github }}/blob/main/README.md#add-a-check">Add a check</a> steps.
   </p>
 </section>
 <footer class="board-footer">
-  <p>$clone The public board uses the site owner’s InferHub key on GitHub Actions.
+  <p>{{ clone }} The public board uses the site owner’s InferHub key on GitHub Actions.
     Intelligence data: <a href="https://artificialanalysis.ai">Artificial Analysis</a> Data API, fetched fresh every
     sweep. Official prices: upstream price pages, joined via each route’s publisher catalog.</p>
 </footer>

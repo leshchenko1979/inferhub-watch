@@ -4,24 +4,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>$title</title>
+  <title>{{ title }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="$fonts" rel="stylesheet">
-  <link rel="stylesheet" href="$css">
+  <link href="{{ fonts }}" rel="stylesheet">
+  <link rel="stylesheet" href="{{ css }}">
 </head>
-<body$body_class>
+<body{{ body_class }}>
   <header class="site-header">
-    <a class="mark" href="$home">InferHub Watch</a>
-    $page_nav
-    $header_meta
+    <a class="mark" href="{{ home }}">InferHub Watch</a>
+    {{ page_nav }}
+    {{ header_meta }}
   </header>
   <main>
-    $crumb
-    $body
+    {{ crumb }}
+    {{ body }}
   </main>
-  $footer
-  $script
+  {{ footer }}
+  {{ script }}
   </body>
 
 </html>
