@@ -291,6 +291,11 @@ def spend_block(payload: dict, runs: list[dict]) -> str:
     Rides below the board table in the evidence tier — the money trail
     is supporting detail, not the glance layer. Returns '' without data.
     """
+    SPEND_TIPS = {
+        "mtd": "Total InferHub bill for the calendar month so far, across all routes and traffic.",
+        "today": "Bill so far today (UTC day), all routes.",
+        "probe": "Spend attributable to probe runs only — the cost of running this watch, separate from real traffic.",
+    }
     days = rundata.spend_days(payload)
     today = _snapshot_day(payload)
     if not days or not today:
@@ -302,14 +307,15 @@ def spend_block(payload: dict, runs: list[dict]) -> str:
     probe_cap = "probe runs" + (f" · since {since}" if since else "")
     mtd_label = rundata.cost_label(f"{mtd:.6f}") or "$0.00"
     stats = (
-        (mtd_label, "month to date"),
-        (rundata.cost_label(f"{today_cost:.6f}") or "$0.00", "today so far"),
-        (rundata.cost_label(f"{rundata.probe_spend(runs):.6f}") or "$0.00", probe_cap),
+        (mtd_label, "month to date", "mtd"),
+        (rundata.cost_label(f"{today_cost:.6f}") or "$0.00", "today so far", "today"),
+        (rundata.cost_label(f"{rundata.probe_spend(runs):.6f}") or "$0.00", probe_cap, "probe"),
     )
     bits = "".join(
-        f'<div class="spend-stat"><span class="spend-val">{val}</span>'
+        f'<div class="spend-stat" data-tip="{SPEND_TIPS[cap_key]}">'
+        f'<span class="spend-val">{val}</span>'
         f'<span class="spend-cap">{html.escape(cap)}</span></div>'
-        for val, cap in stats
+        for val, cap, cap_key in stats
     )
     return (
         '<details class="evidence-item spend-item" id="spend">'
@@ -408,7 +414,12 @@ def _iq_cells(route: str, eff: float | None, intel: dict | None) -> str:
     if values is None:
         return '<td class="num"></td>' * 2
     iq, iq_per_dollar = values
-    return f'<td class="num">{iq}</td><td class="num">{iq_per_dollar}</td>'
+    tip_iq = "Artificial Analysis intelligence index for this model (higher is smarter)."
+    tip_iqd = "Intelligence per ranking dollar — index divided by the route&#8217;s $/M basis."
+    return (
+        f'<td class="num" data-tip="{tip_iq}">{iq}</td>'
+        f'<td class="num" data-tip="{tip_iqd}">{iq_per_dollar}</td>'
+    )
 
 
 def _proj_eff(dated: list, payload: dict, route: str) -> float | None:
@@ -841,6 +852,7 @@ def perf_table(payload: dict | None) -> str:
     models = perf.get("models") or {}
     if not models:
         return ""
+    hours = perf.get("window_hours") or 24
     rows = []
     for model, m in models.items():
         ttft = m.get("ttft_p50_ms")
@@ -852,13 +864,12 @@ def perf_table(payload: dict | None) -> str:
     body = "".join(
         "<tr>"
         f'<th scope="row"><code>{html.escape(str(model))}</code></th>'
-        f'<td class="num">{reqs}</td>'
-        f'<td class="num">{ttft_label}</td>'
-        f'<td class="num">{tps_label}</td>'
+        f'<td class="num" data-tip="All InferHub requests billed for this model in the newest {hours}h window — production traffic, not just probes.">{reqs}</td>'
+        f'<td class="num" data-tip="Median time to first token across this model&#8217;s billed requests in the window (p50).">{ttft_label}</td>'
+        f'<td class="num" data-tip="Mean tokens/sec of generation time only (duration minus ttft); rows with a &lt;2s generation window or impossible tps are excluded.">{tps_label}</td>'
         "</tr>"
         for reqs, model, _m, ttft_label, tps_label in rows
     )
-    hours = perf.get("window_hours") or 24
     caption = (
         f"Every request billed in the newest {hours}h — production traffic included, "
         "not just probes. ttft = median time to first token; tps = mean tokens/sec "
@@ -940,7 +951,7 @@ def official_table(payload: dict | None, catalog: dict | None,
             body.append(
                 "<tr>"
                 f'<th scope="row"><code>{route}</code></th>'
-                f'<td class="num" colspan="3">{gap}</td>'
+                f'<td class="num" colspan="3" data-tip="No billed traffic for this route in the window — nothing to compare.">{gap}</td>'
                 "</tr>"
             )
             continue
@@ -953,9 +964,9 @@ def official_table(payload: dict | None, catalog: dict | None,
         body.append(
             "<tr>"
             f'<th scope="row"><code>{route}</code></th>'
-            f'<td class="num">{rundata.rate_label(r["ih_eff"]) or "n/a"}</td>'
-            f'<td class="num">{rundata.rate_label(r["off_eff"]) or "n/a"}</td>'
-            f'<td class="num">{ratio}</td>'
+            f'<td class="num" data-tip="What the 30-day window actually billed per M tokens (cache-discounted).">{rundata.rate_label(r["ih_eff"]) or "n/a"}</td>'
+            f'<td class="num" data-tip="The same traffic priced at official upstream list prices.">{rundata.rate_label(r["off_eff"]) or "n/a"}</td>'
+            f'<td class="num" data-tip="Official &#247; InferHub — above 1&#215; means the route bills under list price.">{ratio}</td>'
             "</tr>"
         )
     drift = [r["route"] for r in rows if r["drift"]]
@@ -1056,10 +1067,10 @@ def failures_table(payload: dict | None) -> str:
         body.append(
             "<tr>"
             f'<th scope="row"><code>{html.escape(model)}</code></th>'
-            f'<td class="num">{m_reqs}</td>'
-            f'<td class="num">{m_failed}</td>'
-            f'<td class="num">{rate_cell}</td>'
-            f'<td class="num">{html.escape(m_codes) or "&#8212;"}</td>'
+            f'<td class="num" data-tip="Requests billed for this model in the failure window.">{m_reqs}</td>'
+            f'<td class="num" data-tip="Billed requests that came back with a failure status in the window.">{m_failed}</td>'
+            f'<td class="num" data-tip="Failed requests as a share of billed requests — the route&#8217;s miss rate.">{rate_cell}</td>'
+            f'<td class="num" data-tip="HTTP status codes behind the failures, with counts.">{html.escape(m_codes) or "&#8212;"}</td>'
             "</tr>"
         )
     caption = (

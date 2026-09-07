@@ -98,6 +98,16 @@ class ErrorsTableRenderTest(unittest.TestCase):
     def test_no_errors_block_renders_nothing(self):
         self.assertEqual(self.mod.failures_table({"range": "30d", "routes": {}}), "")
 
+    def test_every_metric_cell_carries_a_tip(self):
+        failures = {"total": 4, "failed": 3, "rate_pct": 75.0,
+                  "codes": {"502": 2},
+                  "by_model": {"m/a": {"reqs": 3, "failed": 2, "codes": {"502": 2}}}}
+        out = self.mod.failures_table(self._payload(failures))
+        # every data cell in a model row is tappable/_hoverable on touch
+        rows = [r for r in out.split("<tr>") if "<code>m/a</code>" in r]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].count('data-tip='), 4)
+
     def test_empty_window_renders_nothing(self):
         self.assertEqual(self.mod.failures_table(self._payload({"total": 0, "failed": 0})), "")
 

@@ -255,12 +255,14 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn("chip dim", results)
 
     def test_tooltip_engine_covers_every_data_tip_cell(self) -> None:
-        # the board.js tip engine binds every td[data-tip] (hover + tap),
-        # and style.css outlines any focused/open tip cell — not just the
-        # timeline's, since pricing and candidates cells carry tips too
+        # the board.js tip engine binds EVERY [data-tip] element (hover on
+        # pointer devices, tap-toggle on touch, swipe-safe), and style.css
+        # outlines any focused/open tip cell
         js = (repo_root() / "site" / "templates" / "board.js").read_text()
         css = (repo_root() / "site" / "style.css").read_text()
-        self.assertIn('querySelectorAll("td[data-tip]")', js)
+        self.assertIn('querySelectorAll("[data-tip]")', js)
+        self.assertIn("pointerup", js)  # touch tap-toggle
+        self.assertIn("pointerdown", js)  # swipe-vs-tap discrimination
         self.assertIn("td[data-tip]:focus-visible", css)
         self.assertIn("td.tip-open", css)
 

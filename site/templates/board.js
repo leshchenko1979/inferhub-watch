@@ -36,9 +36,10 @@
   });
 })();
 
-/* Timeline tooltips: hover on pointer devices, tap to toggle on touch. */
+/* Metric tooltips: hover on pointer devices, tap to toggle on touch.
+   Matches ANY element with data-tip (td, div.spend-stat, th, …). */
 (function () {
-  var cells = document.querySelectorAll("td[data-tip]");
+  var cells = document.querySelectorAll("[data-tip]");
   if (!cells.length) return;
 
   var tip = document.createElement("div");
@@ -89,7 +90,27 @@
   cells.forEach(function (cell) {
     cell.addEventListener("focus", function () { show(cell); });
     cell.addEventListener("blur", function () { hide(); });
+    // pointerup fires after touch scroll ends; the movement check below
+    // keeps a scroll-swipe from opening a tooltip — only a tap does.
+    var downXY = null;
+    var touchToggled = false;
+    cell.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "touch") downXY = [e.clientX, e.clientY];
+      else downXY = null;
+    });
+    cell.addEventListener("pointerup", function (e) {
+      if (e.pointerType !== "touch") return; // mouse handled by click/hover
+      if (!downXY) return;
+      var dx = e.clientX - downXY[0], dy = e.clientY - downXY[1];
+      downXY = null;
+      if (dx * dx + dy * dy > 100) return; // scrolled, not a tap
+      touchToggled = true; // suppress the synthetic click that follows
+      e.stopPropagation();
+      if (current === cell && !tip.hidden) hide();
+      else show(cell);
+    });
     cell.addEventListener("click", function (e) {
+      if (touchToggled) { touchToggled = false; return; }
       e.stopPropagation();
       if (current === cell && !tip.hidden) hide();
       else show(cell);

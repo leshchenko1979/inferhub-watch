@@ -449,6 +449,32 @@ class CandMarkRenderTest(BoardIqSortTest):
                                           "candidate": True, "reqs": 5}}}
         self.assertEqual(self.rundata.pricing_rows(payload), [])
 
+    def test_official_and_spend_cells_carry_tips(self):
+        # official-price rows: every metric cell tappable on touch
+        payload = {"range": "30d", "requests_scanned": 100, "routes": {
+            "ali/qwen3.8-max": {"ask_in": 0.01, "ask_out": 0.02, "reqs": 10,
+                                "eff_per_mtok": 0.012, "source": "usage-logs",
+                                "cache_pct": 50.0, "tok_in": 1_000_000,
+                                "tok_out": 100_000},
+        }}
+        catalog = {"models": {"ali/qwen3.8-max": QWEN_OFFICIAL}}
+        rd, mod = self.rundata, self.mod
+        with mock.patch.object(rd, "load_intelligence", return_value={"models": {}}), \
+            mock.patch.object(rd, "ask_series", return_value=[]):
+            out = mod.official_table(payload, catalog, [])
+        body = out[out.index("<code>ali/qwen3.8-max</code>"):]
+        body = body[:body.index("</tr>")]
+        self.assertEqual(body.count("data-tip="), 3)
+
+    def test_perf_table_cells_carry_tips(self):
+        payload = {"perf": {"window_hours": 24, "models": {
+            "ali/qwen3.8-max": {"reqs": 100, "ttft_p50_ms": 2200, "tps_mean": 55.0},
+        }}}
+        out = self.mod.perf_table(payload)
+        body = out[out.index("<code>ali/qwen3.8-max</code>"):]
+        body = body[:body.index("</tr>")]
+        self.assertEqual(body.count("data-tip="), 3)
+
 
 if __name__ == "__main__":
     unittest.main()
