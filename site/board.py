@@ -212,10 +212,9 @@ def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
         f"{gate.get('within')}/{gate.get('n')} transitions within "
         f"{int((gate.get('tol') or 0.2) * 100)}%). "
         "Effective bars are log-scaled over "
-        "$0.001&#8211;$10 per M and colored teal &#8804; $0.02, amber above. "
-        "Show plumbing folds each route&#8217;s ask movement (&#916; ask in / out vs "
-        "the previous daily snapshot: &#8595; teal cheaper, &#8593; amber pricier, "
-        "&#8212; no earlier snapshot to compare yet), ask source, ask history, "
+        "&#36;0.001&#8211;&#36;10 per M and colored teal &#8804; &#36;0.02, amber above. "
+        "Show plumbing folds each route&#8217;s ask movement "
+        "(the color key sits under the table), ask source, ask history, "
         "cache hit, failures, window traffic and cost, IQ, and retries (when a "
         "sweep replayed a route). "
         "Marginal $/M is billed cost over requests since the previous daily "
@@ -224,7 +223,7 @@ def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
         "* = floor ask &#8212; catalog minimum, shown when the route has no billed traffic in the window. "
         "IQ = Artificial Analysis Intelligence Index (composite of 9 public evals, "
         "artificialanalysis.ai, effort level max), refreshed every sweep; IQ per $ divides it by the route&#8217;s effective $/M &#8212; higher is smarter per dollar. "
-        "Sparkline bars are log-scaled $0.001&#8211;$10 per day. "
+        "Sparkline bars are log-scaled &#36;0.001&#8211;&#36;10 per day. "
         "Rates for this board&#8217;s routes only; other traffic is not listed."
     )
 
@@ -303,6 +302,13 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             plumb_cells.append(marg)
         body_rows.append(_plumb_row(plumb_cells))
     caption = _pricing_caption(span, use_proj, gate)
+    # Delta legend as a visible note (QA: it lived only in a hover title).
+    legend = (
+        '<p class="section-note delta-legend">&#916; ask in / out vs the previous '
+        "daily snapshot: <span class=\"delta-down\">&#8595; cheaper</span> · "
+        "<span class=\"delta-up\">&#8593; pricier</span> · "
+        "&#8212; no earlier snapshot. In = prompt tokens, out = completion tokens.</p>"
+    )
     from tmpl import render
 
     return render(
@@ -312,7 +318,8 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         caption=caption,
         body_rows="".join(body_rows),
         after=(
-            scatter_section(payload, intel, runs)
+            legend
+            + scatter_section(payload, intel, runs)
             + spend_block(payload, runs)
             + evidence_block(payload, rundata.load_catalog(ROOT), dated)
         ),
@@ -384,67 +391,90 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
     ys = [p[2] for p in points]
     x_lo, x_hi = min(xs) / 1.5, max(xs) * 1.5
     y_lo, y_hi = max(0.0, min(ys) - 5), max(ys) + 5
-    W, H, PAD_L, PAD_R, PAD_T, PAD_B = 640, 300, 44, 12, 14, 34
+    # Rendered TWICE (QA M2: a fixed viewBox scales SVG text to illegibility on
+    # phones — 5.6px labels at 390px): a 640x300 landscape SVG for
+    # desktop and a 440x520 portrait SVG with larger baked-in type and
+    # truncated labels for mobile; CSS shows exactly one per viewport.
+    def _render(W: int, H: int, pad_l: int, pad_r: int, pad_t: int, pad_b: int,
+                label_step: float, label_cap: int, cls: str) -> str:
+        def sx(eff: float) -> float:
+            # Cheaper = RIGHT (board money law + caption): invert so
+            # higher price renders left. x_lo (cheap) sits at the right edge.
+            lo, hi = math.log10(x_lo), math.log10(x_hi)
+            return pad_l + (hi - math.log10(eff)) / (hi - lo) * (W - pad_l - pad_r)
 
-    def sx(eff: float) -> float:
-        lo, hi = math.log10(x_lo), math.log10(x_hi)
-        return PAD_L + (math.log10(eff) - lo) / (hi - lo) * (W - PAD_L - PAD_R)
+        def sy(iq: float) -> float:
+            return pad_t + (1 - (iq - y_lo) / (y_hi - y_lo)) * (H - pad_t - pad_b)
 
-    def sy(iq: float) -> float:
-        return PAD_T + (1 - (iq - y_lo) / (y_hi - y_lo)) * (H - PAD_T - PAD_B)
-
-    log_lo, log_hi = math.log10(x_lo), math.log10(x_hi)
-    grid = []
-    step = (log_hi - log_lo) / 4
-    for i in range(5):
-        v = 10 ** (log_lo + i * step)
-        gx = PAD_L + i * (W - PAD_L - PAD_R) / 4
-        grid.append(
-            f'<line x1="{gx:.1f}" y1="{PAD_T}" x2="{gx:.1f}" y2="{H - PAD_B}" class="sg"/>'
-            f'<text x="{gx:.1f}" y="{H - PAD_B + 14}" class="st" text-anchor="middle">'
-            f"{rundata.rate_label(v, fixed=4)}</text>"
-        )
-    # IQ gridlines at nice steps of 10.
-    iq_lo, iq_hi = int(math.floor(y_lo / 10) * 10), int(math.ceil(y_hi / 10) * 10)
-    for v in range(iq_lo, iq_hi + 1, 10):
-        gy = sy(v)
-        if PAD_T <= gy <= H - PAD_B:
+        log_lo, log_hi = math.log10(x_lo), math.log10(x_hi)
+        grid = []
+        step = (log_hi - log_lo) / 4
+        # Gridline ticks walk cheap→expensive left→right (axis inverted);
+        # edge ticks anchor inward so the outermost label can't clip (QA m10).
+        for i in range(5):
+            v = 10 ** (log_lo + i * step)
+            gx = W - pad_r - i * (W - pad_l - pad_r) / 4
+            if i == 0:
+                anchor = "end"
+            elif i == 4:
+                anchor = "start"
+            else:
+                anchor = "middle"
             grid.append(
-                f'<line x1="{PAD_L}" y1="{gy:.1f}" x2="{W - PAD_R}" y2="{gy:.1f}" class="sg"/>'
-                f'<text x="{PAD_L - 6}" y="{gy + 3:.1f}" class="st" text-anchor="end">{v}</text>'
+                f'<line x1="{gx:.1f}" y1="{pad_t}" x2="{gx:.1f}" y2="{H - pad_b}" class="sg"/>'
+                f'<text x="{gx:.1f}" y="{H - pad_b + 14}" class="st" text-anchor="{anchor}">'
+                f"{rundata.rate_label(v, fixed=4)}</text>"
             )
-    dots = ""
-    # Label-collision pass (QA finding: cx/cb pairs at identical y printed
-    # on top of each other). Track occupied y rows; nudge a colliding label
-    # down/up by rows of ~13px until free, both sides, so every name reads.
-    occupied: list[float] = []
-    LABEL_STEP = 13.0
-    for route, eff, iq, reqs, basis_tag, ponly in points:
-        cx, cy = sx(eff), sy(iq)
-        # Label right of the dot; flip left when it would clip the frame.
-        label_right = cx < W - PAD_R - 130
-        lx = cx + 10 if label_right else cx - 10
-        anchor = "start" if label_right else "end"
-        ly = cy + 3
-        guard = 0
-        while any(abs(ly - oy) < LABEL_STEP * 0.9 for oy in occupied) and guard < 6:
-            guard += 1
-            ly = cy + 3 + guard * LABEL_STEP * (1 if guard % 2 else -1)
-            if ly < PAD_T + 8 or ly > H - PAD_B - 4:
-                ly = cy + 3  # reset and try the other direction next round
-        occupied.append(ly)
-        tip = (
-            f"{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis_tag}) &#183; "
-            f"IQ {iq:.1f} &#183; {reqs} reqs/{hours}h"
-            + (" &#183; probes only" if ponly else "")
+        # IQ gridlines at nice steps of 10.
+        iq_lo, iq_hi = int(math.floor(y_lo / 10) * 10), int(math.ceil(y_hi / 10) * 10)
+        for v in range(iq_lo, iq_hi + 1, 10):
+            gy = sy(v)
+            if pad_t <= gy <= H - pad_b:
+                grid.append(
+                    f'<line x1="{pad_l}" y1="{gy:.1f}" x2="{W - pad_r}" y2="{gy:.1f}" class="sg"/>'
+                    f'<text x="{pad_l - 6}" y="{gy + 3:.1f}" class="st" text-anchor="end">{v}</text>'
+                )
+        dots = ""
+        # Label-collision pass (QA finding: cx/cb pairs at identical y printed
+        # on top of each other). Track occupied y rows; nudge a colliding label
+        # down/up by rows of label_step px until free, both sides, so every
+        # name reads.
+        occupied: list[float] = []
+        for route, eff, iq, reqs, basis_tag, ponly in points:
+            cx, cy = sx(eff), sy(iq)
+            name = html.escape(route)
+            short = name if len(name) <= label_cap else name[: label_cap - 1] + "…"
+            # Label right of the dot; flip left when it would clip the frame.
+            label_right = cx < W - pad_r - label_cap * 6
+            lx = cx + 10 if label_right else cx - 10
+            anchor = "start" if label_right else "end"
+            ly = cy + 3
+            guard = 0
+            while any(abs(ly - oy) < label_step * 0.9 for oy in occupied) and guard < 6:
+                guard += 1
+                ly = cy + 3 + guard * label_step * (1 if guard % 2 else -1)
+                if ly < pad_t + 8 or ly > H - pad_b - 4:
+                    ly = cy + 3  # reset and try the other direction next round
+            occupied.append(ly)
+            tip = (
+                f"{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis_tag}) &#183; "
+                f"IQ {iq:.1f} &#183; {reqs} reqs/{hours}h"
+                + (" &#183; probes only" if ponly else "")
+            )
+            dots += (
+                f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="6" fill="{usage_color(reqs, ponly)}" '
+                f'data-tip="{tip}" '
+                f'aria-label="{html.escape(route)}"/>'
+                f'<text x="{lx:.1f}" y="{ly:.1f}" class="slabel" text-anchor="{anchor}" '
+                f'data-tip="{tip}">{short}</text>'
+            )
+        return (
+            f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="{html.escape(caption)}" class="{cls}">'
+            f"{''.join(grid)}{dots}"
+            '<text x="50%" y="12" class="st" text-anchor="middle">AA IQ</text>'
+            "</svg>"
         )
-        dots += (
-            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="6" fill="{usage_color(reqs, ponly)}" '
-            f'data-tip="{tip}" '
-            f'aria-label="{html.escape(route)}"/>'
-            f'<text x="{lx:.1f}" y="{ly:.1f}" class="slabel" text-anchor="{anchor}" '
-            f'data-tip="{tip}">{html.escape(route)}</text>'
-        )
+
     caption = (
         "Marginal $/M vs AA IQ, in use = billed traffic in the newest "
         f"{hours}h. Right = cheaper, up = smarter. Log x-axis; eff fallback "
@@ -454,12 +484,14 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
     return (
         '<figure class="scatter">'
         f"<figcaption>{caption}</figcaption>"
-        f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="{html.escape(caption)}">'
-        f"{''.join(grid)}{dots}"
-        '<text x="50%" y="12" class="st" text-anchor="middle">AA IQ</text>'
-        "</svg>"
-        f"{_scatter_legend()}"
-        "</figure>"
+        # Desktop: landscape, full route names (640x300).
+        + _render(640, 300, 44, 12, 14, 34, 13.0, 40, "desktop")
+        # Mobile (QA M2): portrait, larger relative type, truncated names.
+        # At a 358px viewport the 440 viewBox scales ~0.81, so 14px labels
+        # land at ~11px rendered — legible.
+        + _render(440, 520, 40, 96, 20, 36, 17.0, 16, "mobile")
+        + _scatter_legend()
+        + "</figure>"
     )
 
 def perf_table(payload: dict | None) -> str:
@@ -589,7 +621,7 @@ def official_table(payload: dict | None, catalog: dict | None,
             f'<th scope="row"><code>{route}</code></th>'
             f'<td class="num" data-tip="What the 30-day window actually billed per M tokens (cache-discounted).">{rundata.rate_label(r["ih_eff"], fixed=4) or "n/a"}</td>'
             f'<td class="num" data-tip="The same traffic priced at official upstream list prices.">{rundata.rate_label(r["off_eff"], fixed=4) or "n/a"}</td>'
-            f'<td class="num" data-tip="Official &#247; InferHub — above 1&#215; means the route bills under list price.">{ratio}</td>'
+            f'<td class="num" data-tip="Official &#247; InferHub — above 1× means the route bills under list price.">{ratio}</td>'
             "</tr>"
         )
     drift = [r["route"] for r in rows if r["drift"]]
@@ -664,7 +696,7 @@ def failures_table(payload: dict | None) -> str:
         return ""
     span = html.escape(str(payload.get("range") or "30d"))
     codes = failures.get("codes") or {}
-    code_line = ", ".join(f"{html.escape(c)}&#215;{n}" for c, n in codes.items()) or "&#8212;"
+    code_line = ", ".join(f"{html.escape(c)}×{n}" for c, n in codes.items()) or "&#8212;"
     rate = failures.get("rate_pct")
     headline = (
         f'<p class="section-note"><span class="chip {"bad" if failed else "ok"}">'
@@ -682,7 +714,7 @@ def failures_table(payload: dict | None) -> str:
         if m_failed:
             rate_cell = f'<span class="chip bad">{rate_cell}</span>'
         m_codes = ", ".join(
-            f"{html.escape(c)}&#215;{n}" for c, n in (m.get("codes") or {}).items()
+            f"{html.escape(c)}×{n}" for c, n in (m.get("codes") or {}).items()
         )
         body.append(
             "<tr>"
@@ -744,4 +776,3 @@ def _proj_eff(dated: list, payload: dict, route: str) -> float | None:
     """The forward-looking $/M for one route — delegates to probe.basis
     (P1a single money-basis owner). None without hit evidence or asks."""
     return basis.projected(payload, route, dated)
-

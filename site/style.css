@@ -150,7 +150,8 @@ footer {
 #pricing,
 #earlier,
 #method,
-tr.fam-head[id^="fam-"] {
+tr.fam-head[id^="fam-"],
+tr.fam-head th[id^="fam-"] {
   scroll-margin-top: 160px;
 }
 
@@ -163,6 +164,8 @@ tr.fam-head[id^="fam-"] {
 
 .probe-meta time {
   color: var(--ink);
+  /* QA m4: the stamp split across lines on mobile */
+  white-space: nowrap;
 }
 
 .freshness-chip {
@@ -454,6 +457,24 @@ td {
   border-bottom: 0;
 }
 
+/* Visible time axis (QA: dates were hover-only). Header row of run
+   stamps above the grid; cells keep full stamp + origin in the tip. */
+.timeline tr.run-dates th {
+  font-weight: 400;
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 0 2px 0.35rem;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+
+.timeline tr.run-dates th.axis-label {
+  text-align: left;
+  padding-right: 0.7rem;
+  width: 1%;
+}
+
 .scroll {
   overflow-x: auto;
 }
@@ -653,6 +674,12 @@ dl.plumb dd .dim {
   stroke-width: 1.2;
 }
 
+/* QA: in and out were the same stroke — indistinguishable. Out (the
+   pricier one) renders amber; in keeps the blue mid. */
+.ask-spark .s-line-out {
+  stroke: var(--warn, #c90);
+}
+
 .ask-spark .s-dot {
   fill: var(--mid);
 }
@@ -735,7 +762,8 @@ dl.plumb dd .dim {
 
 .cand-mark {
   color: var(--accent);
-  font-size: 0.72em;
+  /* QA m5: was 0.72em (8.64px desktop) — below the 11px readability floor */
+  font-size: 0.85em;
   font-weight: 600;
   margin-left: 6px;
   vertical-align: 2px;
@@ -1312,9 +1340,19 @@ td.tip-open {
 /* Price-vs-IQ scatter */
 .scatter { margin: 1rem 0; }
 .scatter svg { width: 100%; height: auto; max-width: 720px; }
+/* QA M2: two renderings of the same chart — portrait viewBox with
+   larger baked-in type on phones, landscape on desktop. */
+.scatter svg.mobile { display: none; }
+.scatter svg.desktop { display: block; }
+@media (max-width: 720px) {
+  .scatter svg.mobile { display: block; }
+  .scatter svg.desktop { display: none; }
+}
 .scatter .sg { stroke: var(--line); stroke-width: 1; }
 .scatter .st { fill: var(--muted); font-size: 10px; font-family: var(--sans); }
 .scatter .slabel { fill: var(--ink); font-size: 9.5px; font-family: var(--sans); paint-order: stroke; stroke: var(--bg); stroke-width: 3px; cursor: default; }
+.scatter svg.mobile .slabel { font-size: 14px; }
+.scatter svg.mobile .st { font-size: 11px; }
 .scatter circle[data-tip] { cursor: pointer; }
 .scatter-legend { display: flex; gap: 1rem; font-size: var(--text-caption); color: var(--muted); align-items: center; margin-top: 0.25rem; }
 .scatter-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }

@@ -106,7 +106,19 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
     col_labels = [
         f"{rundata.run_stamp(run)} {rundata.origin_label(run)}" for run in window
     ]
-    grid_rows = []
+    # Visible time axis (QA: history dates lived only in per-cell hover
+    # tips). Column header carries the stamp (date + clock); the origin
+    # stays in the tip, which is per-run context, not the date itself.
+    header_cells = []
+    for run, col_label in zip(window, col_labels):
+        header_cells.append(
+            f'<th class="run-date" data-tip="{_html_escape(col_label)}" '
+            f'scope="col">{_html_escape(rundata.run_stamp(run))}</th>'
+        )
+    grid_rows = [
+        f'<tr class="run-dates"><th class="axis-label" scope="col">run ↦</th>'
+        f"{''.join(header_cells)}</tr>"
+    ]
     for alias in order:
         cells = []
         for run, col_label in zip(window, col_labels):

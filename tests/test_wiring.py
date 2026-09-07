@@ -388,7 +388,12 @@ class PricingSectionTests(unittest.TestCase):
 
     def test_mobile_fold_css_covers_pricing_but_not_timeline(self) -> None:
         css = (repo_root() / "site" / "style.css").read_text()
-        mobile = css[css.rindex("@media (max-width: 720px)"):]
+        # slice the mobile media block that holds the pricing fold (line
+        # ~1044; the scatter's own 720px block lives later for the mobile
+        # SVG, and a smaller 720px timeline block sits just before it)
+        start = css.rindex("@media (max-width: 720px)", 0, css.index(".pricing tbody,"))
+        end = css.index("@media (min-width: 721px)", start)
+        mobile = css[start:end]
         # cost + candidates tables fold like the matrix
         self.assertIn(".pricing tbody,", mobile)
         self.assertIn(".pricing td[data-label]::before", mobile)
@@ -683,8 +688,10 @@ class SpendDashboardTests(unittest.TestCase):
         page = self._page(self.PAYLOAD, [("2026-08-27", self.PAYLOAD)])
         self.assertIn("&#916; ask in / out", page)
         self.assertIn("no earlier snapshot for this route", page)
-        self.assertNotIn("delta-down", page)
-        self.assertNotIn("delta-up", page)
+        self.assertIn("no earlier snapshot. In = prompt tokens", page)  # legend
+        # no route cell shows a movement arrow; legend spans carry no title
+        self.assertNotIn('class="delta-down" title', page)
+        self.assertNotIn('class="delta-up" title', page)
 
     def test_delta_column_against_prior_snapshot(self) -> None:
         dated = [("2026-08-26", self.PRIOR), ("2026-08-27", self.PAYLOAD)]
@@ -693,7 +700,9 @@ class SpendDashboardTests(unittest.TestCase):
         self.assertIn("delta-down", page)
         self.assertIn('title="ask unchanged"', page)
         self.assertNotIn("no earlier snapshot for this route", page)
-        self.assertNotIn("delta-up", page)
+        # delta-up appears only in the visible legend line (color key),
+        # not in any route's delta cell
+        self.assertNotIn('class="delta-up" title', page)
 
     def test_payload_without_days_skips_spend_block(self) -> None:
         legacy = {k: v for k, v in self.PAYLOAD.items() if k != "days"}

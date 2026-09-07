@@ -84,7 +84,8 @@ class ErrorsTableRenderTest(unittest.TestCase):
         out = self.mod.failures_table(self._payload(failures))
         self.assertIn("3&#8202;/&#8202;4 failed", out)
         self.assertIn("75% of requests", out)
-        self.assertIn("502&#215;2", out)
+        self.assertIn("502×2", out)
+        self.assertNotIn("amp;#215", out)
         self.assertIn("<code>m/a</code>", out)
         self.assertIn('class="chip bad"', out)
 

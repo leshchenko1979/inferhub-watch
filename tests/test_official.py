@@ -547,10 +547,12 @@ class ScatterSectionTest(unittest.TestCase):
     def test_every_priced_and_iq_route_renders_a_tipped_circle(self) -> None:
         svg = self._svg()
         for route in ("zai/glm-5.3-flash", "ali/kimi-k3", "ali/kimi-k2"):
-            # data-tip precedes aria-label inside the same <circle .../>
+            # data-tip precedes aria-label inside the same <circle .../>;
+            # the chart renders twice (desktop + mobile SVG, QA M2), so the
+            # count is 2 — one circle per rendering
             at = svg.index(f'aria-label="{route}"')
             head = svg[max(0, at - 400):at]
-            self.assertEqual(1, svg.count(f'aria-label="{route}"'), route)
+            self.assertEqual(2, svg.count(f'aria-label="{route}"'), route)
             self.assertIn("data-tip=", head, route)
         self.assertNotIn("ocg/unmapped", svg)  # no IQ -> skipped
 
@@ -596,7 +598,8 @@ class ScatterSectionTest(unittest.TestCase):
 
     def test_dots_carry_model_name_labels(self) -> None:
         svg = self._svg()
-        self.assertEqual(svg.count('class="slabel"'), 3)
+        # chart renders twice (desktop + mobile SVG, QA M2) -> 2x labels
+        self.assertEqual(svg.count('class="slabel"'), 6)
         self.assertIn(">zai/glm-5.3-flash</text>", svg)
         self.assertIn(">ali/kimi-k3</text>", svg)
 

@@ -51,7 +51,7 @@ def chip_html(payload: dict | None, *, now: datetime | None = None) -> str:
     cls = "stale" if info["stale"] else "fresh"
     return (
         f'<span class="freshness-chip {cls}" '
-        f'title="pricing.json age; stale beyond {STALE_HOURS}h">'
+        f'title="age of the newest pricing snapshot; stale beyond {STALE_HOURS}h">'
         f"&#9679; data {info['label']}</span>"
     )
 
