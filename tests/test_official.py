@@ -8,6 +8,7 @@ from probe.official_compare import (
     cache_rule_stats,
     comparison_rows,
     drift_flag,
+    hit_series,
     inferhub_eff,
     official_eff,
     projection_gate,
@@ -171,7 +172,30 @@ class ProjectionHitTest(unittest.TestCase):
         self.assertEqual(projection_hit([], "x", stats, {}), (None, "low"))
 
 
-class ProjectionGateTest(unittest.TestCase):
+class HitSeriesHygieneTest(unittest.TestCase):
+    """hit_series drops thin snapshots: same MIN_CONF_REQS law the live
+    window gets. A 4-req 29% day and a 1-req 0% day must not poison the
+    EWMA that prices every later confident snapshot (cbcn, 2026-09-07)."""
+
+    def test_thin_snapshots_excluded(self):
+        dated = [
+            ("2026-08-28", {"routes": {"r/x": _snapshot(0.286, reqs=4)}}),
+            ("2026-09-05", {"routes": {"r/x": _snapshot(0.0, reqs=1)}}),
+            ("2026-09-06", {"routes": {"r/x": _snapshot(0.949, reqs=237)}}),
+        ]
+        self.assertEqual(hit_series(dated, "r/x"), [0.949])
+
+    def test_projection_ignores_poison(self):
+        dated = [
+            ("2026-08-28", {"routes": {"r/x": _snapshot(0.286, reqs=4)}}),
+            ("2026-09-05", {"routes": {"r/x": _snapshot(0.0, reqs=1)}}),
+        ]
+        stats = _snapshot(0.946, reqs=4709)
+        hit, conf = projection_hit(dated, "r/x", stats, {})
+        self.assertEqual(conf, "ok")
+        self.assertGreater(hit, 0.93)  # was 0.779 with the poison in
+
+
     """projection_gate: backtest transitions against the next snapshot."""
 
     @staticmethod

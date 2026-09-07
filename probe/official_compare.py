@@ -110,12 +110,20 @@ def drift_flag(stats: dict) -> bool:
 
 
 def hit_series(dated: list, route: str) -> list[float]:
-    """Hit rates for one route across dated snapshots, oldest first."""
+    """Hit rates for one route across dated snapshots, oldest first.
+
+    Same hygiene the live window gets (MIN_CONF_REQS): a snapshot with a
+    handful of requests carries workload noise, not model behavior - a
+    1-request 0% day (cbcn 09-05) or a 4-request 29% day (cbcn 08-28)
+    poisoned the EWMA for months of confident snapshots after it.
+    """
     series: list[float] = []
     if not isinstance(dated, list):
         return series
     for _day, payload in dated:
         entry = (payload.get("routes") or {}).get(route) or {}
+        if int(entry.get("reqs") or 0) < MIN_CONF_REQS:
+            continue
         hit = _hit_rate(entry)
         if hit is not None:
             series.append(hit)
