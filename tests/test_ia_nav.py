@@ -53,15 +53,6 @@ class DrillDownLinksTest(tw.ProbeResultsSectionTests):
         self.assertIn('href="/inferhub-watch/checks/cache.html"', seg)
 
 
-class HiddenRunsNoteTest(tw.ProbeResultsSectionTests):
-    def test_note_appears_only_when_more_runs_exist_than_shown(self) -> None:
-        gen = _load_generate()
-        self.assertEqual(gen.hidden_runs_html(10, 14), "")   # all shown
-        note = gen.hidden_runs_html(30, 14)
-        self.assertIn("Showing the newest 14 runs", note)
-        self.assertIn("16 older runs", note)
-
-
 class MobileFoldCssTest(unittest.TestCase):
     def test_css_hides_ask_and_window_on_narrow_screens(self) -> None:
         css = (ROOT / "site" / "style.css").read_text()

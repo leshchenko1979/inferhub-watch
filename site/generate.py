@@ -49,11 +49,9 @@ from probe.registry import load_aliases as _load_aliases  # noqa: E402
 base_href = chrome_mod.base_href
 results_available = chrome_mod.results_available
 run_groups = rundata.run_groups
-alias_heading = chrome_mod.alias_heading
 board_nav = chrome_mod.board_nav
 section_title = chrome_mod.section_title
 shell = chrome_mod.shell
-hidden_runs_html = chrome_mod.hidden_runs_html
 _viz_cell = chrome_mod._viz_cell
 spend_sparkline = spend_mod.spend_sparkline
 spend_block = spend_mod.spend_block

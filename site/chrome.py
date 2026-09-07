@@ -12,7 +12,6 @@ from pathlib import Path
 
 import rundata
 import tmpl
-from probe.publishers import publisher_label
 from probe.registry import load_aliases, repo_root  # noqa: F401 — re-exported
 
 ROOT = repo_root()
@@ -58,14 +57,6 @@ def results_available(runs: list[dict] | None = None) -> bool:
         return False
     return bool(rundata.run_groups(runs[-1]))
 
-
-def alias_heading(alias: str, resolved: str) -> str:
-    return (
-        f'<th class="alias-cell" scope="row">'
-        f'<span class="alias">{html.escape(alias)}</span>'
-        f'<span class="pub">{html.escape(publisher_label(resolved))}</span>'
-        "</th>"
-    )
 
 
 def board_nav(runs: list[dict] | None = None) -> str:
@@ -172,14 +163,3 @@ def _viz_cell(
     )
 
 
-def hidden_runs_html(total: int, shown: int) -> str:
-    """Note when the timeline grid shows only the newest `shown` runs."""
-    if total <= shown:
-        return ""
-    older = total - shown
-    return (
-        f'<p class="section-note hidden-runs">Showing the newest {shown} runs; '
-        f"{older} older runs are in "
-        f'<a href="https://github.com/leshchenko1979/inferhub-watch/tree/main/data/runs">data/runs</a>.'
-        f"</p>"
-    )

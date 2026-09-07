@@ -192,12 +192,6 @@ def aliases_safe_first(
     return sorted(aliases, key=key)
 
 
-def run_stamp(run: dict) -> str:
-    raw = run.get("started_at") or ""
-    day = raw[5:10] if len(raw) >= 10 else day_key(run)
-    clock = raw[11:16] if len(raw) >= 16 else ""
-    return f"{day} {clock}".strip()
-
 
 def origin_label(run: dict) -> str:
     raw = (run.get("origin") or "").strip()
@@ -206,30 +200,6 @@ def origin_label(run: dict) -> str:
     if raw.endswith("-seed") or "seed" in raw:
         return "seed · fixture"
     return raw or "run"
-
-
-def resolved_for_alias(run: dict, alias: str, registry: list[dict]) -> str:
-    cmap = cell_map(run)
-    resolved = ""
-    for spec in registry:
-        cell = cmap.get((alias, spec["id"])) or {}
-        resolved = cell.get("resolved_model") or resolved
-    return resolved
-
-
-def resolved_for_alias_in_window(
-    window: list[dict], alias: str, registry: list[dict]
-) -> str:
-    """Newest resolved_model for the alias across the window, newest run first.
-
-    A fully failed run can come home with no resolved id at all — the
-    publisher label is identity, so fall back to the last run that carried it.
-    """
-    for run in reversed(window):
-        resolved = resolved_for_alias(run, alias, registry)
-        if resolved:
-            return resolved
-    return ""
 
 
 def cost_label(raw: object) -> str:
