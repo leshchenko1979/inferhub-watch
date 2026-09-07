@@ -292,21 +292,12 @@ def probe_results_section(
         "from the probe. Window = runs all-pass / runs probed since first seen. "
         "Audition asks are billed on probe traffic."
     )
-    return (
-        '<section class="probe-results" id="results">'
-        f"<h2>{html.escape(section_title('results'))}</h2>"
-        f'<p class="section-note">{note}</p>'
-        '<div class="scroll"><table class="pricing candidates">'
-        "<thead><tr>"
-        '<th scope="col" title="Provider route; the in-use pill marks the route currently on the board.">Route</th>'
-        '<th scope="col" class="num" title="Scoring checks passed in the latest probe; hover a value for the failed ones.">tests</th>'
-        '<th scope="col" class="num" title="Prompt-cache share — board routes from the 30-day billing window, audition routes from probe evidence.">cache hit</th>'
-        '<th scope="col" class="num" title="Time to first streamed token from the latest core probe.">ttft</th>'
-        '<th scope="col" class="num" title="Tokens per second, generation time only, from the latest core probe.">tps</th>'
-        '<th scope="col" class="num" title="Ask price per M tokens (input / output); audition routes are billed on probe traffic.">ask in / out</th>'
-        '<th scope="col" class="num" title="All-pass runs / probed runs since the route was first seen.">window</th>'
-        "</tr></thead>"
-        f"<tbody>{''.join(blocks)}</tbody></table></div>"
-        "</section>"
+    from tmpl import render
+
+    return render(
+        "results.html",
+        title=html.escape(section_title("results")),
+        note=note,
+        blocks="".join(blocks),
     )
 

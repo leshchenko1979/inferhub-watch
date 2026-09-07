@@ -296,23 +296,19 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             plumb_cells.append(marg)
         body_rows.append(_plumb_row(plumb_cells))
     caption = _pricing_caption(span, use_proj, gate)
-    return (
-        '<section class="pricing-block" id="pricing">'
-        f"<h2>{html.escape(section_title('pricing'))}</h2>"
-        f'<p class="section-note">{html.escape(note)}.</p>'
-        '<div class="scroll"><table class="pricing">'
-        f"<caption>{caption}</caption>"
-        "<thead><tr>"
-        '<th scope="col">Route</th>'
-        '<th scope="col" class="num">effective $/M</th>'
-        '<th scope="col" class="num">IQ per $</th>'
-        "</tr></thead>"
-        f"<tbody>{''.join(body_rows)}</tbody>"
-        "</table></div>"
-        + scatter_section(payload, intel, runs)
-        + spend_block(payload, runs)
-        + evidence_block(payload, rundata.load_catalog(ROOT), dated)
-        + "</section>"
+    from tmpl import render
+
+    return render(
+        "pricing.html",
+        title=html.escape(section_title("pricing")),
+        note=html.escape(note),
+        caption=caption,
+        body_rows="".join(body_rows),
+        after=(
+            scatter_section(payload, intel, runs)
+            + spend_block(payload, runs)
+            + evidence_block(payload, rundata.load_catalog(ROOT), dated)
+        ),
     )
 
 def usage_color(reqs: int | None, probe_only: bool = False) -> str:

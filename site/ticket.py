@@ -103,20 +103,15 @@ def verdict_section(payload: dict | None) -> str:
             f" &#8212; {alt_ratio:,.0f} IQ per $</p>"
         )
     spark = _ask_spark(series)
-    return (
-        '<section class="ticket" id="verdict">'
-        '<div class="ticket-main">'
-        '<div class="ticket-facts">'
-        '<p class="ticket-line">Route bulk here</p>'
-        f'<h2 class="ticket-route"><code>{html.escape(route)}</code></h2>'
-        f'<p class="ticket-big">{best_ratio:,.0f}'
-        '<span class="ticket-unit"> IQ per $</span></p>'
-        + why_html
-        + "</div>"
-        + (f'<div class="ticket-spark">{spark}</div>' if spark else "")
-        + "</div>"
-        + alt
-        + "</section>"
+    from tmpl import render
+
+    return render(
+        "ticket.html",
+        route=html.escape(route),
+        best_ratio=f"{best_ratio:,.0f}",
+        why_html=why_html,
+        spark_html=f'<div class="ticket-spark">{spark}</div>' if spark else "",
+        alt=alt,
     )
 
 
