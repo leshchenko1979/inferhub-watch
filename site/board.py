@@ -523,9 +523,13 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
             ly = cy + 3
             leader = ""
             guard = 0
+            # Nearest-first probe ladder: down 1, up 1, down 2, up 2 ... so a
+            # label always takes the CLOSEST free row to its dot (owner
+            # 2026-09-07: "label needs to be as close to their dot as
+            # possible" — the old ladder skipped the up-1 row entirely).
             while any(abs(ly - oy) < label_step * 0.9 for oy in occupied) and guard < 6:
                 guard += 1
-                ly = cy + 3 + guard * label_step * (1 if guard % 2 else -1)
+                ly = cy + 3 + ((guard + 1) // 2) * label_step * (1 if guard % 2 else -1)
                 if ly < pad_t + 8 or ly > H - pad_b - 4:
                     ly = cy + 3  # reset and try the other direction next round
             if abs(ly - (cy + 3)) > 1:
