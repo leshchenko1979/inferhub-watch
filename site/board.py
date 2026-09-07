@@ -62,11 +62,18 @@ def _probe_only(row: dict, runs: list[dict]) -> bool:
 def _plumb_row(cells: list[tuple[str, str]], colspan: int = 3) -> str:
     """One collapsed plumbing row under a board route: <details><dl>.
 
+    Owner 2026-09-07 ("do we need show plumbing on separate lines? why not
+    a small 'more' chip with an expansion mark?"): the summary is a compact
+    right-aligned 'more +' chip, not a full-width text line; the collapsed
+    row shrinks to chip height. A <details> can't toggle a DIFFERENT table
+    row without JS, so the chip lives on the plumbing row itself.
+
     Keys arrive pre-rendered (callers escape any data-derived text)."""
     pairs = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in cells)
     return (
         f'<tr class="plumb-row"><td colspan="{colspan}"><details>'
-        "<summary>Show plumbing</summary>"
+        '<summary aria-label="Show plumbing details"><span class="plumb-word">more</span>'
+        ' <span class="plumb-mark" aria-hidden="true">+</span></summary>'
         f'<dl class="plumb">{pairs}</dl></details></td></tr>'
     )
 
@@ -211,8 +218,9 @@ def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
         f"backtest gate {'passed' if use_proj else 'not passed'}: "
         f"{gate.get('within')}/{gate.get('n')} transitions within "
         f"{int((gate.get('tol') or 0.2) * 100)}%). "
-        "Effective bars are log-scaled over "
-        "&#36;0.001&#8211;&#36;10 per M and colored teal &#8804; &#36;0.02, amber above. "
+        "Effective bars are log-scaled from the cheapest to the priciest "
+        "route on the board (priciest = full bar) and colored teal &#8804; "
+        "&#36;0.02, amber above. "
         "Show plumbing folds each route&#8217;s ask movement "
         "(the color key sits under the table), ask source, ask history, "
         "cache hit, failures, window traffic and cost, IQ, and retries (when a "
@@ -243,11 +251,28 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     gate = official_compare.projection_gate(dated)
     use_proj = bool(gate.get("pass"))
     rows.sort(key=_iq_sort_key(intel, dated, payload, use_proj), reverse=False)
+    # Bar scale anchored to the board's own price range (owner 2026-09-07:
+    # "why is the line under prices just 50% on the most expensive model?" —
+    # the old fixed $0.001–$10 log scale left 4 decades of dead headroom).
+    # Log min→max of the routes' ranking prices; priciest board route = 100%.
+    board_prices = [
+        v for v in (_board_basis(r, dated, payload, use_proj) for r in rows)
+        if isinstance(v, (int, float)) and v > 0
+    ]
+    bar_lo = min(board_prices) if board_prices else 0.001
+    bar_hi = max(board_prices) if board_prices else 10.0
     body_rows = []
     for row in rows:
         logged = row.get("source") == "usage-logs"
         mark = "" if logged else '<span class="ask-mark" title="floor ask &#8212; catalog minimum, no billed traffic yet">*</span>'
-        cand = ' <span class="cand-mark" title="radar candidate &#8212; also billed here, see candidates section">&#9666; cand</span>' if row.get("candidate") else ""
+        cand = (' <span class="cand-mark" title="&#9666; cand = radar candidate: '
+                'the nightly market scan flagged this route as a cheaper/stronger '
+                'alternative to its family incumbent, and the sweep probes it '
+                'alongside the board. How it is given: the scan ranks catalog '
+                'routes by predicted saving vs its family (min 20% predicted '
+                'saving, IQ within 10% of incumbent), top-2 per family enter the '
+                'sweep; routes that keep passing all checks get billed here too. '
+                'Full method: candidates section.">&#9666; cand</span>') if row.get("candidate") else ""
         ask_in = rundata.rate_label(row.get("ask_in"), fixed=4) or "n/a"
         ask_out = rundata.rate_label(row.get("ask_out"), fixed=4) or "n/a"
         reqs = int(row.get("reqs") or 0)
@@ -270,7 +295,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             f'<span class="route-ask">ask {ask_in} / {ask_out} per M{mark}</span></th>'
             + _viz_cell(
                 pair,
-                rundata.log_bar_pct(ranking_basis, 0.001, 10.0),
+                rundata.log_bar_pct(ranking_basis, bar_lo, bar_hi),
                 rundata.rate_color_class(ranking_basis),
                 data_label=data_label,
                 data_tip=data_tip,
@@ -285,19 +310,46 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             ("&#916; ask in / out",
              f'<span title="{DELTA_TIP}">'
              f'{ask_delta_bits(payload, prior, str(row["route"]))}</span>'),
-            ("ask source", "billed ask" if logged else "floor ask"),
-            ("cache hit", rundata.cache_label(row.get("cache_pct")) or "n/a"),
-            ("failures", _route_failures(payload, str(row["route"]), reqs)),
-            (f"{span} traffic", f"{reqs} req · {toks} tok"),
-            (f"{span} cost", rundata.cost_label(row.get("cost_usdc")) or "n/a"),
+            ("ask source",
+             f'<span title="Where the ask price comes from: billed ask is the '
+             f'rate actually charged on this route&#8217;s fresh traffic; floor '
+             f'ask (*) is the catalog minimum shown when a route has no billed '
+             f'traffic yet.">billed ask</span>' if logged else
+             f'<span title="Where the ask price comes from: billed ask is the '
+             f'rate actually charged on this route&#8217;s fresh traffic; floor '
+             f'ask (*) is the catalog minimum shown when a route has no billed '
+             f'traffic yet.">floor ask</span>'),
+            ("cache hit",
+             f'<span title="Share of prompt tokens served from the provider&#8217;s '
+             f'prompt cache in the window &#8212; cached tokens are billed at the '
+             f'cache discount, so high cache hit = cheaper effective rate.">'
+             f'{rundata.cache_label(row.get("cache_pct")) or "n/a"}</span>'),
+            ("failures",
+             f'<span title="Failed requests / total requests, with HTTP status '
+             f'counts. Failures carry no tokens and no cost — the gateway '
+             f'accepted the request and the upstream dropped it.">'
+             f'{_route_failures(payload, str(row["route"]), reqs)}</span>'),
+            (f"{span} traffic",
+             f'<span title="Requests and tokens billed on this route over the '
+             f'{span} window (failed requests excluded from tokens).">'
+             f"{reqs} req · {toks} tok</span>"),
+            (f"{span} cost",
+             f'<span title="Total billed cost on this route over the {span} '
+             f'window.">{rundata.cost_label(row.get("cost_usdc")) or "n/a"}</span>'),
         ]
         spark = _ask_spark(series)
         if spark:
             plumb_cells.append(("ask history", spark))
         if iq:
-            plumb_cells.append(("IQ", iq[0]))
+            plumb_cells.append(("IQ",
+             f'<span title="Artificial Analysis Intelligence Index for this '
+             f'route (composite of 9 public evals, artificialanalysis.ai, '
+             f'effort max) &#8212; quality independent of price.">{iq[0]}</span>'))
         if retries := _route_retries(runs, str(row["route"])):
-            plumb_cells.append(("retries", retries))
+            plumb_cells.append(("retries",
+             f'<span title="Sweep evidence: the first probe attempt failed and '
+             f'a replay was needed. Recovered = second attempt passed; still '
+             f'down = failed again.">{retries}</span>'))
         if (marg := _marginal_cell(row, runs)) is not None:
             plumb_cells.append(marg)
         body_rows.append(_plumb_row(plumb_cells))
@@ -325,27 +377,44 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         ),
     )
 
+IN_USE_MIN_REQS = 100  # 24h billed reqs to count as "in use" — 2026-09-07 live
+# data: real traffic starts at 457 req/24h while probe-noise tops out at 13;
+# anything in between is trace traffic, drawn gray so teal stays meaningful.
+
 def usage_color(reqs: int | None, probe_only: bool = False) -> str:
     """Point color (owner orders 2026-09-07): teal = in use (real billed
-    traffic in the window — probe-only routes do NOT count as in use),
-    amber = probes only (the only fresh traffic is sweep probes: the
-    marginal price is real money but an unrepresentative cache-cold
-    workload), gray = no traffic at all."""
+    traffic in the window at meaningful volume — probe-only routes do NOT
+    count), amber = probes only, gray = little or no traffic (trace-level
+    billed requests are NOT "in use": the owner called the old 1-req
+    threshold out as flooding the category)."""
     if probe_only:
         return "var(--warn, #c90)"
-    if not reqs or reqs <= 0:
+    if not reqs or reqs < IN_USE_MIN_REQS:
         return "var(--muted)"
     return "var(--ok)"
+
+def usage_radius(reqs: int | None, probe_only: bool = False) -> float:
+    """Dot size tracks usage (owner order 2026-09-07): sqrt-scaled 3.5→9px
+    over 0..10k reqs/24h so the 8.9k-req leader reads big without
+    flattening the single-digit tail. Probe-only dots stay small regardless
+    — their request count is sweep noise, not usage."""
+    if not reqs or reqs <= 0 or probe_only:
+        return 3.5
+    return 3.5 + 5.5 * math.sqrt(min(reqs, 10000) / 10000.0)
 
 def _scatter_legend() -> str:
     return (
         '<div class="scatter-legend">'
         '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--ok)"/></svg>'
-        " in use (real traffic/24h)</span>"
+        " in use (&#8805;100 reqs/24h)</span>"
         '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--warn, #c90)"/></svg>'
         " probes only</span>"
         '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--muted)"/></svg>'
-        " not in use</span>"
+        " little/no traffic</span>"
+        '<span class="legend-size"><svg width="34" height="12">'
+        '<circle cx="6" cy="6" r="3.5" fill="var(--muted)"/>'
+        '<circle cx="20" cy="6" r="6" fill="var(--muted)"/>'
+        "</svg> dot size = 24h requests</span>"
         "</div>"
     )
 
@@ -438,10 +507,13 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
         # Label-collision pass (QA finding: cx/cb pairs at identical y printed
         # on top of each other). Track occupied y rows; nudge a colliding label
         # down/up by rows of label_step px until free, both sides, so every
-        # name reads.
+        # name reads. A thin leader line ties the moved label back to its dot
+        # (owner 2026-09-07: "labels torn off from the dots") — and when the
+        # nudge gives up, the label sits at the dot instead of wandering.
         occupied: list[float] = []
         for route, eff, iq, reqs, basis_tag, ponly in points:
             cx, cy = sx(eff), sy(iq)
+            r = usage_radius(reqs, ponly)
             name = html.escape(route)
             short = name if len(name) <= label_cap else name[: label_cap - 1] + "…"
             # Label right of the dot; flip left when it would clip the frame.
@@ -449,12 +521,20 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
             lx = cx + 10 if label_right else cx - 10
             anchor = "start" if label_right else "end"
             ly = cy + 3
+            leader = ""
             guard = 0
             while any(abs(ly - oy) < label_step * 0.9 for oy in occupied) and guard < 6:
                 guard += 1
                 ly = cy + 3 + guard * label_step * (1 if guard % 2 else -1)
                 if ly < pad_t + 8 or ly > H - pad_b - 4:
                     ly = cy + 3  # reset and try the other direction next round
+            if abs(ly - (cy + 3)) > 1:
+                # Label moved: draw a leader from the dot edge to the label.
+                y1 = cy + (r + 1) if ly > cy else cy - (r + 1)
+                leader = (
+                    f'<line x1="{cx:.1f}" y1="{y1:.1f}" x2="{lx:.1f}" y2="{ly - 3:.1f}" '
+                    'class="sleader"/>'
+                )
             occupied.append(ly)
             tip = (
                 f"{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis_tag}) &#183; "
@@ -462,9 +542,10 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
                 + (" &#183; probes only" if ponly else "")
             )
             dots += (
-                f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="6" fill="{usage_color(reqs, ponly)}" '
+                f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" fill="{usage_color(reqs, ponly)}" '
                 f'data-tip="{tip}" '
                 f'aria-label="{html.escape(route)}"/>'
+                f"{leader}"
                 f'<text x="{lx:.1f}" y="{ly:.1f}" class="slabel" text-anchor="{anchor}" '
                 f'data-tip="{tip}">{short}</text>'
             )

@@ -566,12 +566,26 @@ class ScatterSectionTest(unittest.TestCase):
         self.assertIn("$0.0080 $/M (eff)", svg)  # kimi-k2 has no marginal
 
     def test_usage_color_binary_in_use(self) -> None:
+        # Owner 2026-09-07: "in use" needs meaningful volume — trace-level
+        # billed requests (1–99/24h) render gray, teal starts at 100.
         f = self.mod.usage_color
         self.assertEqual("var(--ok)", f(2500))
         self.assertEqual("var(--ok)", f(150))
-        self.assertEqual("var(--ok)", f(3))
+        self.assertEqual("var(--muted)", f(99))
+        self.assertEqual("var(--muted)", f(3))
         self.assertEqual("var(--muted)", f(None))
         self.assertEqual("var(--muted)", f(0))
+
+    def test_usage_radius_scales_with_requests(self) -> None:
+        f = self.mod.usage_radius
+        self.assertEqual(f(0), f(None))
+        self.assertEqual(3.5, f(0))
+        self.assertEqual(3.5, f(9, probe_only=True))  # probes don't grow dots
+        big = f(8900)
+        small = f(457)
+        self.assertGreater(big, small)
+        self.assertGreater(small, 3.5)
+        self.assertLessEqual(big, 9.0)
 
     def test_probe_only_traffic_is_not_in_use(self) -> None:
         # Owner order 2026-09-07: probes-only routes render amber, not teal.

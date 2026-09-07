@@ -553,33 +553,46 @@ td {
   color: var(--ink);
 }
 
-/* Collapsed plumbing row under each board route */
+/* Collapsed plumbing row under each board route.
+   Owner 2026-09-07: collapsed state is a small right-aligned "more +" chip
+   (min-height dropped 44→24px); expands in place. */
 .plumb-row td {
   padding: 0;
+  text-align: right;
 }
 
 .plumb-row summary {
   cursor: pointer;
   list-style: none;
-  min-height: 44px;
-  display: flex;
+  min-height: 24px;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 0.3rem;
   font-size: var(--text-caption);
   color: var(--muted);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.plumb-row summary:hover {
+  color: var(--ink);
+  background: var(--bg-soft, rgba(127, 127, 127, 0.08));
 }
 
 .plumb-row summary::-webkit-details-marker {
   display: none;
 }
 
-.plumb-row summary::before {
-  content: "▸";
-  font-size: var(--text-caption);
+.plumb-row .plumb-mark {
+  display: inline-block;
+  font-weight: 600;
+  min-width: 11px;
+  text-align: center;
 }
 
-.plumb-row details[open] summary::before {
-  content: "▾";
+.plumb-row details[open] summary .plumb-word {
+  display: none;
 }
 
 .plumb-row details[open] summary {
@@ -812,6 +825,11 @@ dl.plumb dd .dim {
 
 .spark-zero {
   fill: var(--line);
+}
+
+.spark-missing {
+  fill: var(--line);
+  opacity: 0.35;
 }
 
 .spark-axis {
@@ -1354,5 +1372,7 @@ td.tip-open {
 .scatter svg.mobile .slabel { font-size: 14px; }
 .scatter svg.mobile .st { font-size: 11px; }
 .scatter circle[data-tip] { cursor: pointer; }
-.scatter-legend { display: flex; gap: 1rem; font-size: var(--text-caption); color: var(--muted); align-items: center; margin-top: 0.25rem; }
+.scatter-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; font-size: var(--text-caption); color: var(--muted); align-items: center; margin-top: 0.4rem; line-height: 12px; }
 .scatter-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.scatter-legend svg { flex: none; vertical-align: middle; }
+.scatter .sleader { stroke: var(--line); stroke-width: 1; }

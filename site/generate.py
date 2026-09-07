@@ -67,6 +67,7 @@ evidence_block = board_mod.evidence_block
 official_table = board_mod.official_table
 failures_table = board_mod.failures_table
 usage_color = board_mod.usage_color
+usage_radius = board_mod.usage_radius
 _iq_cells = board_mod._iq_cells
 _pair_cell = board_mod._pair_cell
 _probe_only = board_mod._probe_only

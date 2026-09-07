@@ -86,4 +86,7 @@ def check_brief_html(root: Path, spec: dict) -> str:
         lines = lines[1:]
     while lines and not lines[0].strip():
         lines.pop(0)
-    return md_to_html("\n".join(lines))
+    # Briefs render inside the board's "How we test" h3 — demote the md
+    # h2 section heads to h4 so explanation headings sit BELOW the page's
+    # table/section tiers in the outline (owner order 2026-09-07).
+    return md_to_html("\n".join(lines)).replace("<h2>", "<h4>").replace("</h2>", "</h4>")
