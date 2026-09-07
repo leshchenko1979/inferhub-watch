@@ -1300,6 +1300,7 @@ td.tip-open {
 .scatter svg { width: 100%; height: auto; max-width: 720px; }
 .scatter .sg { stroke: var(--line); stroke-width: 1; }
 .scatter .st { fill: var(--muted); font-size: 10px; font-family: var(--sans); }
+.scatter .slabel { fill: var(--ink); font-size: 9.5px; font-family: var(--sans); paint-order: stroke; stroke: var(--bg); stroke-width: 3px; cursor: default; }
 .scatter circle[data-tip] { cursor: pointer; }
 .scatter-legend { display: flex; gap: 1rem; font-size: var(--text-caption); color: var(--muted); align-items: center; margin-top: 0.25rem; }
 .scatter-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }

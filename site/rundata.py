@@ -332,13 +332,19 @@ def pricing_rows(payload: dict | None) -> list[dict]:
     return rows
 
 
-def rate_label(raw: object, sig: int = 3) -> str:
+def rate_label(raw: object, sig: int = 3, prefix: str = "$",
+               fixed: int | None = None) -> str:
     """Compact $/M label: '$0.014', '$2.49'; extra decimals when tiny.
+
+    fixed=N forces N decimal places (owner order 2026-09-07: all prices
+    in a comparison surface must carry the same decimal count for visual
+    scanning) — the caller chooses the count per surface; default keeps
+    the compact sig-fig form.
 
     Thin delegate — the formatter lives in probe.pricing so the daily
     report and the site share one money format (review C3).
     """
-    return pricing.rate_label(raw, sig=sig)
+    return pricing.rate_label(raw, sig=sig, fixed=fixed)
 
 
 def token_label(count: int) -> str:

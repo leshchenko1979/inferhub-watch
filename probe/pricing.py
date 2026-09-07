@@ -134,8 +134,14 @@ def _float(raw: object) -> float | None:
     return value
 
 
-def rate_label(raw: object, sig: int = 3, prefix: str = "$") -> str:
+def rate_label(raw: object, sig: int = 3, prefix: str = "$",
+               fixed: int | None = None) -> str:
     """Compact money label: '$0.014', '$2.49'; extra decimals when tiny.
+
+    fixed=N forces N decimal places (owner order 2026-09-07: all prices
+    in a comparison surface must carry the same decimal count for visual
+    scanning) — the caller chooses the count per surface; default keeps
+    the compact sig-fig form.
 
     The one money formatter (review C3) — the site (via rundata) and the
     daily report both render money through this; prefix='' gives the
@@ -147,6 +153,8 @@ def rate_label(raw: object, sig: int = 3, prefix: str = "$") -> str:
         return ""
     if value <= 0:
         return ""
+    if fixed is not None:
+        return f"{prefix}{value:.{fixed}f}"
     text = f"{prefix}{value:.{sig}g}"
     if "e" in text or "E" in text:
         # .6f would round 5e-07 to 0 — ten decimals keep sub-1e-6 asks real.

@@ -501,7 +501,7 @@ def verdict_section(payload: dict | None) -> str:
     if use_proj:
         proj = _proj_eff(dated, payload, route)
         if proj is not None:
-            label = rundata.rate_label(proj) or "n/a"
+            label = rundata.rate_label(proj, fixed=4) or "n/a"
             why.append(f"projects {label} $/M now")
 
     why_html = ""
@@ -697,7 +697,7 @@ def _marginal_cell(row: dict, runs: list[dict]) -> tuple[str, str] | None:
     """The marginal $/M plumbing cell; dimmed when traffic is probe-only."""
     if row.get("marginal_per_mtok") is None:
         return None
-    marg_label = rundata.rate_label(row.get("marginal_per_mtok")) or "n/a"
+    marg_label = rundata.rate_label(row.get("marginal_per_mtok"), fixed=4) or "n/a"
     since_day = str(row.get("marginal_since") or "")[:10]
     marg_tip = (
         "Billed cost per M over requests since the previous daily "
@@ -766,8 +766,8 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         logged = row.get("source") == "usage-logs"
         mark = "" if logged else '<span class="ask-mark" title="floor ask &#8212; catalog minimum, no billed traffic yet">*</span>'
         cand = ' <span class="cand-mark" title="radar candidate &#8212; also billed here, see candidates section">&#9666; cand</span>' if row.get("candidate") else ""
-        ask_in = rundata.rate_label(row.get("ask_in")) or "n/a"
-        ask_out = rundata.rate_label(row.get("ask_out")) or "n/a"
+        ask_in = rundata.rate_label(row.get("ask_in"), fixed=4) or "n/a"
+        ask_out = rundata.rate_label(row.get("ask_out"), fixed=4) or "n/a"
         reqs = int(row.get("reqs") or 0)
         toks = rundata.token_label(
             int(row.get("tok_in") or 0) + int(row.get("tok_out") or 0)
@@ -777,8 +777,8 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         # traffic, cost, failures, source) folds into the plumbing row.
         proj = _proj_eff(dated, payload, str(row["route"]))
         basis = _board_basis(row, dated, payload, use_proj)
-        eff_label = rundata.rate_label(row.get("eff_per_mtok")) or "n/a"
-        proj_label = rundata.rate_label(proj) if proj is not None else None
+        eff_label = rundata.rate_label(row.get("eff_per_mtok"), fixed=4) or "n/a"
+        proj_label = rundata.rate_label(proj, fixed=4) if proj is not None else None
         pair, data_label, data_tip = _pair_cell(eff_label, proj_label, use_proj)
         iq = _iq_value(str(row["route"]), basis, intel)
         series = rundata.ask_series(dated, str(row["route"]), payload)
@@ -841,28 +841,21 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
 
 
 def usage_color(reqs: int | None) -> str:
-    """Point color by 24h request volume (log buckets): teal = hot.
-
-    Ties into the console palette: --ok (teal, high traffic), --mid
-    (amber, light traffic), gray (no traffic in the window)."""
+    """Point color, binary in-use law (owner order 2026-09-07): teal =
+    billed traffic in the window, gray = none. No light bucket — a mid
+    bucket implied a precision the noise doesn't support."""
     if not reqs or reqs <= 0:
         return "var(--muted)"
-    if reqs >= 1000:
-        return "var(--ok)"
-    if reqs >= 100:
-        return "var(--mid)"
-    return "var(--muted)"
+    return "var(--ok)"
 
 
 def _scatter_legend(reqs_max: int) -> str:
     return (
         '<div class="scatter-legend">'
         '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--ok)"/></svg>'
-        f" hot &#8805;1k reqs/24h</span>"
-        '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--mid)"/></svg>'
-        " light 100&#8211;999</span>"
+        " in use (billed reqs/24h)</span>"
         '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--muted)"/></svg>'
-        " quiet &lt;100 / none</span>"
+        " not in use</span>"
         "</div>"
     )
 
@@ -925,7 +918,7 @@ def scatter_section(payload: dict | None, intel: dict | None) -> str:
         grid.append(
             f'<line x1="{gx:.1f}" y1="{PAD_T}" x2="{gx:.1f}" y2="{H - PAD_B}" class="sg"/>'
             f'<text x="{gx:.1f}" y="{H - PAD_B + 14}" class="st" text-anchor="middle">'
-            f"${rundata.rate_label(v)}</text>"
+            f"{rundata.rate_label(v, fixed=4)}</text>"
         )
     # IQ gridlines at nice steps of 10.
     iq_lo, iq_hi = int(math.floor(y_lo / 10) * 10), int(math.ceil(y_hi / 10) * 10)
@@ -936,15 +929,24 @@ def scatter_section(payload: dict | None, intel: dict | None) -> str:
                 f'<line x1="{PAD_L}" y1="{gy:.1f}" x2="{W - PAD_R}" y2="{gy:.1f}" class="sg"/>'
                 f'<text x="{PAD_L - 6}" y="{gy + 3:.1f}" class="st" text-anchor="end">{v}</text>'
             )
-    dots = "".join(
-        f'<circle cx="{sx(eff):.1f}" cy="{sy(iq):.1f}" r="6" fill="{usage_color(reqs)}" '
-        f'data-tip="{html.escape(route)} &#8212; {rundata.rate_label(eff)} $/M ({basis}) &#183; '
-        f'IQ {iq:.1f} &#183; {reqs} reqs/{hours}h" '
-        f'aria-label="{html.escape(route)}"/>'
-        for route, eff, iq, reqs, basis in points
-    )
+    dots = ""
+    for route, eff, iq, reqs, basis in points:
+        cx, cy = sx(eff), sy(iq)
+        # Label right of the dot; flip left when it would clip the frame.
+        label_right = cx < W - PAD_R - 130
+        lx = cx + 10 if label_right else cx - 10
+        anchor = "start" if label_right else "end"
+        dots += (
+            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="6" fill="{usage_color(reqs)}" '
+            f'data-tip="{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis}) &#183; '
+            f'IQ {iq:.1f} &#183; {reqs} reqs/{hours}h" '
+            f'aria-label="{html.escape(route)}"/>'
+            f'<text x="{lx:.1f}" y="{cy + 3:.1f}" class="slabel" text-anchor="{anchor}" '
+            f'data-tip="{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis}) &#183; '
+            f'IQ {iq:.1f} &#183; {reqs} reqs/{hours}h">{html.escape(route)}</text>'
+        )
     caption = (
-        "Marginal $/M vs AA IQ, color = billed requests in the newest "
+        "Marginal $/M vs AA IQ, in use = billed traffic in the newest "
         f"{hours}h. Right = cheaper, up = smarter. Log x-axis; eff fallback "
         f"for routes without a marginal sample; routes without a price or an "
         f"IQ mapping are not plotted ({skipped} skipped)."
@@ -1087,8 +1089,8 @@ def official_table(payload: dict | None, catalog: dict | None,
         body.append(
             "<tr>"
             f'<th scope="row"><code>{route}</code></th>'
-            f'<td class="num" data-tip="What the 30-day window actually billed per M tokens (cache-discounted).">{rundata.rate_label(r["ih_eff"]) or "n/a"}</td>'
-            f'<td class="num" data-tip="The same traffic priced at official upstream list prices.">{rundata.rate_label(r["off_eff"]) or "n/a"}</td>'
+            f'<td class="num" data-tip="What the 30-day window actually billed per M tokens (cache-discounted).">{rundata.rate_label(r["ih_eff"], fixed=4) or "n/a"}</td>'
+            f'<td class="num" data-tip="The same traffic priced at official upstream list prices.">{rundata.rate_label(r["off_eff"], fixed=4) or "n/a"}</td>'
             f'<td class="num" data-tip="Official &#247; InferHub — above 1&#215; means the route bills under list price.">{ratio}</td>'
             "</tr>"
         )
@@ -1292,8 +1294,8 @@ def _candidate_route_row(
         probe_sub = ""
         val_cls = "tests-none"
         cell_title = ' data-tip="Not probed in the latest run"'
-    ask_in = rundata.rate_label(entry.get("ask_in")) or "n/a"
-    ask_out = rundata.rate_label(entry.get("ask_out")) or "n/a"
+    ask_in = rundata.rate_label(entry.get("ask_in"), fixed=4) or "n/a"
+    ask_out = rundata.rate_label(entry.get("ask_out"), fixed=4) or "n/a"
     passed, seen = rundata.route_window_record(runs, route, score_ids, candidate)
     window = f"{passed}/{seen}" if seen else "&#8212;"
     ttft_ms, tps = rundata.stream_perf_of(latest, route)
@@ -1369,7 +1371,7 @@ def _price_chip_html(verdict: dict | None) -> str:
     """
     if not verdict or verdict.get("incumbent_usd_m") is None:
         return ""
-    in_use = rundata.rate_label(verdict["incumbent_usd_m"])
+    in_use = rundata.rate_label(verdict["incumbent_usd_m"], fixed=4)
     bar_note, probe_only = _bar_provenance(verdict)
     star = "*" if probe_only else ""
     incumbent = html.escape(str(verdict.get("incumbent") or ""))
@@ -1378,7 +1380,7 @@ def _price_chip_html(verdict: dict | None) -> str:
             f'<span class="chip price ok" title="In-use {incumbent}: {bar_note}. '
             f'No passing route bills cheaper.">in use {in_use}/M{star} · best</span>'
         )
-    best = rundata.rate_label(verdict["challenger_usd_m"])
+    best = rundata.rate_label(verdict["challenger_usd_m"], fixed=4)
     margin = verdict["margin_pct"]
     tone = "mid"
     cache_pct = verdict.get("challenger_cache_pct")

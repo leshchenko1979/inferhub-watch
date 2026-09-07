@@ -561,15 +561,21 @@ class ScatterSectionTest(unittest.TestCase):
 
     def test_eff_fallback_when_no_marginal_sample(self) -> None:
         svg = self._svg()
-        self.assertIn("0.008 $/M (eff)", svg)  # kimi-k2 has no marginal
+        self.assertIn("$0.0080 $/M (eff)", svg)  # kimi-k2 has no marginal
 
-    def test_usage_color_buckets(self) -> None:
+    def test_usage_color_binary_in_use(self) -> None:
         f = self.mod.usage_color
         self.assertEqual("var(--ok)", f(2500))
-        self.assertEqual("var(--mid)", f(150))
-        self.assertEqual("var(--muted)", f(3))
+        self.assertEqual("var(--ok)", f(150))
+        self.assertEqual("var(--ok)", f(3))
         self.assertEqual("var(--muted)", f(None))
         self.assertEqual("var(--muted)", f(0))
+
+    def test_dots_carry_model_name_labels(self) -> None:
+        svg = self._svg()
+        self.assertEqual(svg.count('class="slabel"'), 3)
+        self.assertIn(">zai/glm-5.3-flash</text>", svg)
+        self.assertIn(">ali/kimi-k3</text>", svg)
 
     def test_legend_and_caption_present(self) -> None:
         svg = self._svg()
