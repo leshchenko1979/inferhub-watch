@@ -7,24 +7,24 @@
     }
   },
   "cb/gpt-5.6-luna": {
-    "last_probe": "2026-09-07T16:09:25.003654+00:00",
+    "last_probe": "2026-09-07T19:20:44.711534+00:00",
     "statuses": {
-      "cache": "skipped",
-      "core": "fail"
+      "cache": "pass",
+      "core": "pass"
     }
   },
   "cb/gpt-5.6-sol": {
-    "last_probe": "2026-09-07T16:09:25.003654+00:00",
+    "last_probe": "2026-09-07T19:20:44.711534+00:00",
     "statuses": {
-      "cache": "skipped",
-      "core": "fail"
+      "cache": "pass",
+      "core": "pass"
     }
   },
   "cb/gpt-5.6-terra": {
-    "last_probe": "2026-09-07T16:09:25.003654+00:00",
+    "last_probe": "2026-09-07T19:20:44.711534+00:00",
     "statuses": {
-      "cache": "skipped",
-      "core": "fail"
+      "cache": "pass",
+      "core": "pass"
     }
   },
   "cb/kimi-k3": {
@@ -56,10 +56,10 @@
     }
   },
   "cbcn/glm-5.3-flash": {
-    "last_probe": "2026-09-07T16:09:25.003654+00:00",
+    "last_probe": "2026-09-07T19:20:44.711534+00:00",
     "statuses": {
-      "cache": "skipped",
-      "core": "fail"
+      "cache": "pass",
+      "core": "pass"
     }
   },
   "cmc/deepseek/deepseek-v4-flash": {
@@ -84,10 +84,10 @@
     }
   },
   "cp/zai/glm-5.3-flash": {
-    "last_probe": "2026-09-07T09:06:38.344359+00:00",
+    "last_probe": "2026-09-07T19:20:44.711534+00:00",
     "statuses": {
-      "cache": "skipped",
-      "core": "error"
+      "cache": "fail",
+      "core": "pass"
     }
   },
   "ocg/deepseek-v4-flash": {
