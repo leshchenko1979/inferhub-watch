@@ -68,9 +68,19 @@ def spend_sparkline(payload: dict) -> str:
                 "</rect>"
             )
         else:
-            suffix = " · no billed traffic" if entry is None else ""
+            # A day INSIDE the fetched series that shows zero = genuinely no
+            # billed traffic. A day entirely missing from `days` when the
+            # series itself is short = the window was truncated at fetch
+            # time — say so, do not dress it up as "no traffic" (owner
+            # 2026-09-07: "why only two days on the graph?").
+            if entry is None and len(days) < SPARK_DAYS:
+                suffix = " · outside the fetched window"
+                cls = "spark-missing"
+            else:
+                suffix = " · no billed traffic"
+                cls = "spark-zero"
             bars.append(
-                f'<rect class="spark-zero" x="{x}" y="{SPARK_BAR_H - 2}" '
+                f'<rect class="{cls}" x="{x}" y="{SPARK_BAR_H - 2}" '
                 f'width="{SPARK_BAR_W}" height="2" rx="1">'
                 f"<title>{html.escape(title + suffix)}</title></rect>"
             )

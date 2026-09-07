@@ -681,7 +681,11 @@ class SpendDashboardTests(unittest.TestCase):
         self.assertIn("probe runs", page)
         self.assertIn('class="spend-spark"', page)
         self.assertEqual(page.count('class="spark-bar"'), 3)
-        self.assertEqual(page.count('class="spark-zero"'), 27)
+        # 2-day fetched series → 27 of 30 slots render as window-missing
+        # stubs, not "no billed traffic" (owner 2026-09-07 honest-stub law).
+        self.assertEqual(page.count('class="spark-missing"'), 27)
+        self.assertEqual(page.count('class="spark-zero"'), 0)
+        self.assertIn("outside the fetched window", page)
         self.assertIn("Aug 27", page)           # sparkline end label
 
     def test_delta_column_em_dashes_without_prior_snapshot(self) -> None:

@@ -29,7 +29,7 @@ from datetime import datetime, timedelta, timezone
 from statistics import median, mean
 from pathlib import Path
 
-from probe.costs import MANAGEMENT, USER_AGENT, fetch_log_rows
+from probe.costs import MANAGEMENT, PAGE_SIZE, USER_AGENT, fetch_log_rows
 from probe.registry import atomic_write_text, load_aliases, repo_root
 
 CATALOG_TIMEOUT = 30
@@ -572,6 +572,32 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
     if not rows:
         raise RuntimeError("no usage rows from any source (pgstore + API)")
     print(f"pricing rows: {len(rows)} from {source}")
+    # Day-series window repair (owner 2026-09-07: "why only two days on the
+    # graph?"): the Management-API fallback caps at 12k rows, which at
+    # current volume spans ~2 days — the per-day spend graph collapses. The
+    # day series is the ONE aggregate the row cap breaks, so top it up from
+    # the pgstore cache when that is reachable (local runs / tunnel up) even
+    # though the row-based stats above came from the API.
+    days_rows = rows
+    days_source = source
+    if source == "api" and len(rows) >= MAX_PAGES * PAGE_SIZE - PAGE_SIZE:
+        try:
+            from probe.pgstore import load_env, _connect, rows_since, latest_ts
+            env = load_env()
+            if env.get("PGPASSWORD"):
+                conn = _connect(env)
+                try:
+                    lt = latest_ts(conn)
+                    if lt is not None:
+                        from datetime import timedelta as _td
+                        days_rows = rows_since(lt - _td(days=30), conn=conn)
+                        if days_rows:
+                            days_source = "api+pgstore-days"
+                finally:
+                    conn.close()
+        except Exception as exc:  # noqa: BLE001 — best-effort repair only
+            print(f"warning: day-series top-up from pgstore failed ({exc})",
+                  file=sys.stderr)
     stats = aggregate_rows(rows)
     catalog = fetch_catalog(key)
     cutoff = prior_snapshot_cutoff()
@@ -610,8 +636,9 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "range": range_,
         "row_source": source,
+        "days_source": days_source,
         "requests_scanned": len(rows),
-        "days": daily_series(rows),
+        "days": daily_series(days_rows),
         "failures": failure_stats(rows),
         "perf": perf_stats(rows),
         "routes": {alias: _entry(alias) for alias in aliases},
