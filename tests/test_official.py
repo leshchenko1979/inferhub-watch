@@ -476,6 +476,89 @@ class CandMarkRenderTest(BoardIqSortTest):
         self.assertEqual(body.count("data-tip="), 3)
 
 
+
+class ScatterSectionTest(unittest.TestCase):
+    """Price-vs-IQ scatter: marginal x, IQ y, usage color, touch tips."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        import importlib.util
+        from probe.registry import repo_root
+        path = repo_root() / "site" / "generate.py"
+        spec = importlib.util.spec_from_file_location("watch_generate_scatter", path)
+        assert spec and spec.loader
+        cls.mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.mod)
+
+    INTEL = {"models": {"glm-5-3-flash": {"iq": 46.2}, "kimi-k3": {"iq": 50.2},
+                        "kimi-k2": {"iq": 44.0}}}
+
+    def _payload(self) -> dict:
+        return {"range": "30d", "requests_scanned": 100,
+                "perf": {"window_hours": 24, "models": {
+                    "zai/glm-5.3-flash": {"reqs": 2500},
+                    "ali/kimi-k3": {"reqs": 150},
+                    "ali/kimi-k2": {"reqs": 3},
+                }},
+                "routes": {
+                    "zai/glm-5.3-flash": {"ask_in": 0.01, "ask_out": 0.03,
+                                          "eff_per_mtok": 0.0098,
+                                          "marginal_per_mtok": 0.0041,
+                                          "reqs": 100, "source": "usage-logs"},
+                    "ali/kimi-k3": {"ask_in": 0.02, "ask_out": 0.06,
+                                    "eff_per_mtok": 0.019,
+                                    "marginal_per_mtok": 0.019,
+                                    "reqs": 10, "source": "usage-logs"},
+                    "ali/kimi-k2": {"ask_in": 0.01, "ask_out": 0.02,
+                                    "eff_per_mtok": 0.008,
+                                    "reqs": 10, "source": "usage-logs"},
+                    "ocg/unmapped": {"ask_in": 0.01, "ask_out": 0.02,
+                                     "eff_per_mtok": 0.015, "marginal_per_mtok": 0.014,
+                                     "reqs": 10, "source": "usage-logs"},
+                }}
+
+    def _svg(self) -> str:
+        return self.mod.scatter_section(self._payload(), self.INTEL)
+
+    def test_every_priced_and_iq_route_renders_a_tipped_circle(self) -> None:
+        svg = self._svg()
+        for route in ("zai/glm-5.3-flash", "ali/kimi-k3", "ali/kimi-k2"):
+            # data-tip precedes aria-label inside the same <circle .../>
+            at = svg.index(f'aria-label="{route}"')
+            head = svg[max(0, at - 400):at]
+            self.assertEqual(1, svg.count(f'aria-label="{route}"'), route)
+            self.assertIn("data-tip=", head, route)
+        self.assertNotIn("ocg/unmapped", svg)  # no IQ -> skipped
+
+    def test_marginal_price_is_the_x_basis(self) -> None:
+        svg = self._svg()
+        self.assertIn("(marginal)", svg)
+        self.assertIn("0.0041", svg)  # zai marginal, not eff 0.0098
+
+    def test_eff_fallback_when_no_marginal_sample(self) -> None:
+        svg = self._svg()
+        self.assertIn("0.008 $/M (eff)", svg)  # kimi-k2 has no marginal
+
+    def test_usage_color_buckets(self) -> None:
+        f = self.mod.usage_color
+        self.assertEqual("var(--ok)", f(2500))
+        self.assertEqual("var(--mid)", f(150))
+        self.assertEqual("var(--muted)", f(3))
+        self.assertEqual("var(--muted)", f(None))
+        self.assertEqual("var(--muted)", f(0))
+
+    def test_legend_and_caption_present(self) -> None:
+        svg = self._svg()
+        self.assertIn("scatter-legend", svg)
+        self.assertIn("Marginal $/M vs AA IQ", svg)
+        self.assertIn("1 skipped", svg)  # ocg/unmapped has no IQ
+
+    def test_section_skipped_without_snapshot_or_sparse_points(self) -> None:
+        self.assertEqual("", self.mod.scatter_section(None, self.INTEL))
+        lone = self._payload()
+        lone["routes"] = {"zai/glm-5.3-flash": lone["routes"]["zai/glm-5.3-flash"]}
+        self.assertEqual("", self.mod.scatter_section(lone, self.INTEL))
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import math
 import os
 import shutil
 import sys
@@ -832,9 +833,131 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         "</tr></thead>"
         f"<tbody>{''.join(body_rows)}</tbody>"
         "</table></div>"
+        + scatter_section(payload, intel)
         + spend_block(payload, runs)
         + evidence_block(payload, rundata.load_catalog(ROOT), dated)
         + "</section>"
+    )
+
+
+def usage_color(reqs: int | None) -> str:
+    """Point color by 24h request volume (log buckets): teal = hot.
+
+    Ties into the console palette: --ok (teal, high traffic), --mid
+    (amber, light traffic), gray (no traffic in the window)."""
+    if not reqs or reqs <= 0:
+        return "var(--muted)"
+    if reqs >= 1000:
+        return "var(--ok)"
+    if reqs >= 100:
+        return "var(--mid)"
+    return "var(--muted)"
+
+
+def _scatter_legend(reqs_max: int) -> str:
+    return (
+        '<div class="scatter-legend">'
+        '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--ok)"/></svg>'
+        f" hot &#8805;1k reqs/24h</span>"
+        '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--mid)"/></svg>'
+        " light 100&#8211;999</span>"
+        '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--muted)"/></svg>'
+        " quiet &lt;100 / none</span>"
+        "</div>"
+    )
+
+
+def scatter_section(payload: dict | None, intel: dict | None) -> str:
+    """Price vs IQ scatter (inline SVG, zero-dependency) or ''.
+
+    X = MARGINAL $/M (the recent billed rate — owner order: "price =
+    marginal price"), falling back to realized eff when a route has no
+    marginal sample yet; cheaper = right, matching the board's money law.
+    Y = AA IQ (higher = up); point color = 24h billed requests (recent
+    usage). Every point carries data-tip, so the shared tooltip engine
+    covers touch and hover. Routes without BOTH a price and an IQ are
+    excluded (counted in the caption); the section is skipped without a
+    snapshot.
+    """
+    if not payload or not intel:
+        return ""
+    perf = ((payload.get("perf") or {}).get("models")) or {}
+    hours = (payload.get("perf") or {}).get("window_hours") or 24
+    points = []
+    skipped = 0
+    for row in rundata.pricing_rows(payload):
+        route = str(row["route"])
+        eff = row.get("marginal_per_mtok")
+        basis = "marginal"
+        if not isinstance(eff, (int, float)) or eff <= 0:
+            eff = row.get("eff_per_mtok")
+            basis = "eff"
+        slug = rundata.aa_slug(route)
+        entry = (intel.get("models") or {}).get(slug) if slug else None
+        iq = entry.get("iq") if isinstance(entry, dict) else None
+        if not isinstance(eff, (int, float)) or eff <= 0 or not isinstance(iq, (int, float)):
+            skipped += 1
+            continue
+        points.append((route, float(eff), iq,
+                       int((perf.get(route) or {}).get("reqs") or 0), basis))
+    if len(points) < 2:
+        return ""
+    # Frame: log-x over the realized price range, y over IQ.
+    xs = [p[1] for p in points]
+    ys = [p[2] for p in points]
+    x_lo, x_hi = min(xs) / 1.5, max(xs) * 1.5
+    y_lo, y_hi = max(0.0, min(ys) - 5), max(ys) + 5
+    W, H, PAD_L, PAD_R, PAD_T, PAD_B = 640, 300, 44, 12, 14, 34
+
+    def sx(eff: float) -> float:
+        lo, hi = math.log10(x_lo), math.log10(x_hi)
+        return PAD_L + (math.log10(eff) - lo) / (hi - lo) * (W - PAD_L - PAD_R)
+
+    def sy(iq: float) -> float:
+        return PAD_T + (1 - (iq - y_lo) / (y_hi - y_lo)) * (H - PAD_T - PAD_B)
+
+    log_lo, log_hi = math.log10(x_lo), math.log10(x_hi)
+    grid = []
+    step = (log_hi - log_lo) / 4
+    for i in range(5):
+        v = 10 ** (log_lo + i * step)
+        gx = PAD_L + i * (W - PAD_L - PAD_R) / 4
+        grid.append(
+            f'<line x1="{gx:.1f}" y1="{PAD_T}" x2="{gx:.1f}" y2="{H - PAD_B}" class="sg"/>'
+            f'<text x="{gx:.1f}" y="{H - PAD_B + 14}" class="st" text-anchor="middle">'
+            f"${rundata.rate_label(v)}</text>"
+        )
+    # IQ gridlines at nice steps of 10.
+    iq_lo, iq_hi = int(math.floor(y_lo / 10) * 10), int(math.ceil(y_hi / 10) * 10)
+    for v in range(iq_lo, iq_hi + 1, 10):
+        gy = sy(v)
+        if PAD_T <= gy <= H - PAD_B:
+            grid.append(
+                f'<line x1="{PAD_L}" y1="{gy:.1f}" x2="{W - PAD_R}" y2="{gy:.1f}" class="sg"/>'
+                f'<text x="{PAD_L - 6}" y="{gy + 3:.1f}" class="st" text-anchor="end">{v}</text>'
+            )
+    dots = "".join(
+        f'<circle cx="{sx(eff):.1f}" cy="{sy(iq):.1f}" r="6" fill="{usage_color(reqs)}" '
+        f'data-tip="{html.escape(route)} &#8212; {rundata.rate_label(eff)} $/M ({basis}) &#183; '
+        f'IQ {iq:.1f} &#183; {reqs} reqs/{hours}h" '
+        f'aria-label="{html.escape(route)}"/>'
+        for route, eff, iq, reqs, basis in points
+    )
+    caption = (
+        "Marginal $/M vs AA IQ, color = billed requests in the newest "
+        f"{hours}h. Right = cheaper, up = smarter. Log x-axis; eff fallback "
+        f"for routes without a marginal sample; routes without a price or an "
+        f"IQ mapping are not plotted ({skipped} skipped)."
+    )
+    return (
+        '<figure class="scatter">'
+        f"<figcaption>{caption}</figcaption>"
+        f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="{html.escape(caption)}">'
+        f"{''.join(grid)}{dots}"
+        '<text x="50%" y="12" class="st" text-anchor="middle">AA IQ</text>'
+        "</svg>"
+        f"{_scatter_legend(max(p[3] for p in points))}"
+        "</figure>"
     )
 
 
