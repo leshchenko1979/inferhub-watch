@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Generate site without calling InferHub
-        run: python3 site/generate.py
+        run: pip install -q -r requirements.txt && python3 site/generate.py
         env:
           PAGES_BASE: /inferhub-watch
       - name: Contract unit tests
@@ -105,7 +105,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Generate site
-        run: python3 site/generate.py
+        run: pip install -q -r requirements.txt && python3 site/generate.py
         env:
           PAGES_BASE: /inferhub-watch
           FRESHNESS_FAIL: "1"
