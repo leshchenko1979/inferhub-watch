@@ -377,7 +377,11 @@ class PricingSectionTests(unittest.TestCase):
         self.assertIn('class="pair-alt"', page)
         self.assertIn("backtest gate", page)
         self.assertIn('data-label="cache hit"', page)  # candidates table
+        # plumbing folds under each route via the compact "more +" chip
+        # (owner 2026-09-07: full-width "Show plumbing" line -> tiny chip;
+        # the aria-label keeps the accessible name)
         self.assertIn("Show plumbing", page)
+        self.assertIn('class="plumb-word">more</span>', page)
         self.assertIn("<dt>30d traffic</dt>", page)
         self.assertIn("<dt>30d cost</dt>", page)
         self.assertIn("<dt>failures</dt>", page)
