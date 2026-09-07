@@ -190,8 +190,16 @@ def main() -> int:
         run_payload["runner_errors"].append(f"proven cache write failed: {exc}")
     try:
         from probe.costs import attribute_costs, fetch_log_rows
+        from probe.pgstore import upsert_rows
 
         rows = fetch_log_rows(key, range_="24h", after=started - timedelta(minutes=5))
+        # Cache the raw rows so pricing's 30d aggregate can read them from
+        # Postgres (P0a). A cache failure must not break the run.
+        try:
+            cached = upsert_rows(rows)
+            print(f"pgstore: cached {cached} rows")
+        except Exception as exc:  # noqa: BLE001
+            print(f"warning: pgstore cache failed: {exc}", file=sys.stderr)
         costs = attribute_costs(run_payload, rows)
         run_payload["cost"] = costs
     except Exception as exc:  # noqa: BLE001 — cost reporting must never break a run
