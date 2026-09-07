@@ -366,6 +366,11 @@ class CandidatesHelpersTests(unittest.TestCase):
         self.assertIsNone(rundata.aa_slug("foo/bar-baz-999"))
         self.assertIsNone(rundata.aa_slug("cmc/Qwen/Qwen3.6-Max-Preview"))
 
+    def test_aa_slug_handles_doubled_gateway_prefix(self) -> None:
+        # owner 2026-09-07: cp/zai/glm-5.3-flash had no IQ — split on the
+        # FIRST slash left the gateway prefix in the model part
+        self.assertEqual(rundata.aa_slug("cp/zai/glm-5.3-flash"), "glm-5-3-flash")
+
 if __name__ == "__main__":
     unittest.main()
 

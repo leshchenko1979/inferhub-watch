@@ -299,7 +299,7 @@ def probe_results_section(
                 chips.append(price_chip)
         blocks.append(
             (f'<tr class="fam-head"><th colspan="7" id="fam-{html.escape(group["model"])}">'
-             f'{html.escape(group["model"])}{"".join(chips)}</th></tr>')
+             f'{html.escape(group["model"])}{"".join(f" {c}" for c in chips)}</th></tr>')
             + "".join(rows_html)
         )
     if not blocks:

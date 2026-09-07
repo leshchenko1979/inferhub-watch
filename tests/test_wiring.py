@@ -384,13 +384,17 @@ class PricingSectionTests(unittest.TestCase):
         self.assertIn('class="pair-alt"', page)
         self.assertIn("backtest gate", page)
         self.assertIn('data-label="cache hit"', page)  # candidates table
-        # plumbing: chip rides in the route row's last cell; on open, the
-        # grid reveals as a SEPARATE full-width sibling tr (owner 2026-09-07
-        # 20:16Z), via CSS :has() — zero JS
+        # plumbing: 'more' sits in its own route-row cell (owner 2026-09-07
+        # 21:xxZ — never shares the iq/$ line); on open the word flips to
+        # 'less' (no + glyph) and the grid reveals as a SEPARATE full-width
+        # sibling tr, via CSS :has() — zero JS
         self.assertIn("Show plumbing", page)
-        self.assertIn('class="plumb-word">more</span>', page)
-        self.assertIn('<span class="plumb"><details>', page)
+        self.assertIn('<td class="plumb-cell"><details class="plumb">', page)
+        self.assertIn('<span class="plumb-word">more</span>', page)
+        self.assertNotIn("plumb-mark", page)
         self.assertIn('<tr class="plumb-row">', page)
+        # every pricing metric carries a native tooltip; failures wrap
+        self.assertIn('class="plumb-fail"', page)
         self.assertIn("<dt>30d traffic</dt>", page)
         self.assertIn("<dt>30d cost</dt>", page)
         self.assertIn("<dt>ttft p50</dt>", page)

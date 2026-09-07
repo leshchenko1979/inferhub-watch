@@ -90,7 +90,10 @@ def aa_slug(route: str) -> str | None:
     mapped = (_load_models_toml().get("aa") or {}).get(route)
     if mapped:
         return mapped
-    candidate = route.split("/", 1)[-1].lower().replace(".", "-")
+    # Take the LAST path segment: gateway-prefixed routes like
+    # cp/zai/glm-5.3-flash carry a nested publisher before the model name,
+    # and splitting on the first slash left the prefix in the candidate.
+    candidate = route.rsplit("/", 1)[-1].lower().replace(".", "-")
     if candidate in intelligence_models():
         return candidate
     return None

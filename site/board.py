@@ -60,25 +60,27 @@ def _probe_only(row: dict, runs: list[dict]) -> bool:
     return True
 
 def _plumb_chip() -> str:
-    """The collapsed 'more +' chip riding in the route row's last cell.
+    """The collapsed 'more' chip in its own route-row cell.
 
-    Owner 2026-09-07 20:16Z: on click, the plumbing opens as a SEPARATE
-    full-width row of the parent table — not squeezed into the cell. The
-    chip's <details> lives in the route row; the dl content lives in the
-    sibling tr.plumb-row emitted right after, revealed by CSS :has()
+    Owner 2026-09-07 21:xxZ: the chip leaves the IQ-per-$ cell — it gets a
+    dedicated last cell of the route row ('more' must not share the iq/$
+    line). On open the summary word swaps to 'less' (pure CSS, the '+'
+    mark is gone), and the plumbing opens as a SEPARATE sibling
+    tr.plumb-row revealed by CSS :has()
     (tr:has(details[open]) + tr.plumb-row). Zero JS."""
     return (
-        '<span class="plumb"><details>'
-        '<summary aria-label="Show plumbing details"><span class="plumb-word">more</span>'
-        ' <span class="plumb-mark" aria-hidden="true">+</span></summary>'
-        "</details></span>"
+        '<td class="plumb-cell"><details class="plumb">'
+        '<summary aria-label="Show plumbing details"><span class="plumb-word">more</span></summary>'
+        "</details></td>"
     )
 
 def _plumb_row(cells: list[tuple[str, str]]) -> str:
     """The hidden sibling row that carries the plumbing grid.
 
     Emitted directly after each route row; CSS keeps it collapsed until the
-    route row's plumb details opens. Keys arrive pre-rendered."""
+    route row's plumb details opens. Keys arrive pre-rendered. The
+    failures dd wraps (owner 2026-09-07: code lists were clipped, not
+    wrapped) — .plumb-fail overrides the nowrap."""
     pairs = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in cells)
     return (
         '<tr class="plumb-row"><td colspan="5">'
@@ -317,7 +319,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
              f'cache discount, so high cache hit = cheaper effective rate.">'
              f'{rundata.cache_label(row.get("cache_pct")) or "n/a"}</span>'),
             ("failures",
-             f'<span title="Failed requests / total requests, with HTTP status '
+             f'<span class="plumb-fail" title="Failed requests / total requests, with HTTP status '
              f'counts. Failures carry no tokens and no cost — the gateway '
              f'accepted the request and the upstream dropped it.">'
              f'{_route_failures(payload, str(row["route"]), reqs)}</span>'),
@@ -371,9 +373,9 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         ])
         plumb_cells_row = _plumb_row(plumb_cells)
         chip = _plumb_chip()
-        # Owner 2026-09-07 20:16Z: chip rides in the route row's LAST
-        # decision cell; the plumbing grid opens as a SEPARATE full-width
-        # sibling <tr> right below (CSS :has(), zero JS).
+        # Owner 2026-09-07 21:xxZ: 'more' gets its own last cell — it must
+        # not share the iq/$ line. The plumbing grid opens as a SEPARATE
+        # full-width sibling <tr> right below (CSS :has(), zero JS).
         body_rows.append(
             "<tr>"
             f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>{cand}'
@@ -388,7 +390,8 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             + '<td class="num" data-label="IQ per $" '
             'data-tip="Intelligence (Artificial Analysis index) divided by the '
             'route&#8217;s ranking $/M &#8212; higher is smarter per dollar.">'
-            f"{iq[1] if iq else '&#8212;'}{chip}</td>"
+            f"{iq[1] if iq else '&#8212;'}</td>"
+            + chip
             + "</tr>"
             + plumb_cells_row
         )
@@ -678,32 +681,12 @@ def perf_table(payload: dict) -> str:
 
 def evidence_block(payload: dict | None, catalog: dict | None,
                    dated: list | None = None) -> str:
-    """The EVIDENCE layer: official-price, reliability.
-
-    Sits at the bottom of #pricing; collapsed by default so the decision
-    surface (verdict + board) stays uncluttered. `dated` snapshots switch
-    the official table's forward columns onto the smoothed projection hit
-    rate. The main-traffic speed table was removed 2026-09-07 — ttft/tps
-    are plumbing cells on the board now.
-    """
-    official = official_table(payload, catalog, dated)
-    failures = failures_table(payload)
-    if not official and not failures:
-        return ""
-    items = ""
-    if official:
-        items += (
-            '<details class="evidence-item" id="evidence-official">'
-            "<summary>What you&#8217;d pay official</summary>"
-            f"<div>{official}</div></details>"
-        )
-    if failures:
-        items += (
-            '<details class="evidence-item" id="evidence-failures">'
-            "<summary>Reliability &#8212; failed requests</summary>"
-            f"<div>{failures}</div></details>"
-        )
-    return f'<div class="evidence">{items}</div>'
+    """Retired (owner 2026-09-07): the 'What you'd pay official' and
+    'Reliability — failed requests' tables are gone — the board's plumbing
+    row carries per-route failures and the official comparison duplicated
+    figures already implied by the asks. Kept as a ''-returning stub so
+    older callers/tests don't break; removed with the next cleanup."""
+    return ""
 
 def official_table(payload: dict | None, catalog: dict | None,
                    dated: list | None = None) -> str:

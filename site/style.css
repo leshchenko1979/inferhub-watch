@@ -476,14 +476,19 @@ td {
   color: var(--ink);
 }
 
-/* Plumbing fold. Owner 2026-09-07 20:16Z: collapsed, a small "more +"
-   chip rides in the route row's last cell; OPEN, the plumbing grid
-   appears as a SEPARATE full-width row of the parent table — the hidden
-   sibling tr.plumb-row right below, revealed by :has() on the route row.
-   Zero JS. */
+/* ── Plumbing 'more' affordance ──
+   Owner 2026-09-07 21:xxZ: the chip gets its OWN last cell in the route
+   row ('more' must not share the iq/$ line); the + mark is gone — OPEN,
+   the word swaps to 'less'; the plumbing grid appears as a SEPARATE
+   full-width row of the parent table — the hidden sibling tr.plumb-row
+   right below, revealed by :has() on the route row. Zero JS. */
+.plumb-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
 .plumb {
   display: inline-block;
-  margin-left: 0.5rem;
 }
 
 .plumb summary {
@@ -492,7 +497,6 @@ td {
   min-height: 24px;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
   font-size: var(--text-caption);
   color: var(--muted);
   padding: 0.15rem 0.5rem;
@@ -509,15 +513,15 @@ td {
   display: none;
 }
 
-.plumb .plumb-mark {
-  display: inline-block;
-  font-weight: 600;
-  min-width: 11px;
-  text-align: center;
+/* Open: the word itself flips to 'less' — no +/- glyph. The ::after
+   carries the new word; the base word is hidden by collapsing its size. */
+.plumb details[open] summary .plumb-word {
+  font-size: 0;
 }
 
-.plumb details[open] summary .plumb-word {
-  display: none;
+.plumb details[open] summary .plumb-word::after {
+  content: "less";
+  font-size: var(--text-caption);
 }
 
 .plumb details[open] summary {
@@ -561,11 +565,31 @@ dl.plumb dd {
   white-space: nowrap;
 }
 
+/* Owner 2026-09-07: failure lines (codes × counts) wrap instead of
+   clipping past the card edge. */
+dl.plumb dd .plumb-fail {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 dl.plumb dd .dim {
   opacity: 0.55;
 }
 
 /* ── Cost per M tokens ── */
+
+/* Screen-reader-only label (pricing 4th col header). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 .pricing {
   width: 100%;
@@ -929,6 +953,15 @@ dl.plumb dd .dim {
   min-width: 16rem;
 }
 
+/* Family head: chips flow with a gap (owner 2026-09-07: the incumbent
+   score chip, best-candidate chip and price chip used to butt together). */
+.candidates tr.fam-head > th {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.5rem;
+}
+
 /* ── Mobile: timeline stays as a table (no card collapse) ── */
 
 @media (max-width: 720px) {
@@ -984,6 +1017,12 @@ dl.plumb dd .dim {
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--ink);
+}
+
+/* Owner 2026-09-07: breathing room between the use pill and the
+   core · cache drill links — they used to collide at every width. */
+.route-drill {
+  margin-left: 0.5rem;
 }
 
 .explainer {
@@ -1109,7 +1148,13 @@ footer {
     grid-column: 1 / -1;
   }
 
-  /* plumbing sibling row: full-width card under its route card */
+  /* plumbing: chip cell rides at the card's bottom edge; sibling row is
+     a full-width card under its route card */
+  .pricing tr > td.plumb-cell {
+    grid-column: 1 / -1;
+    text-align: right;
+  }
+
   .pricing tr.plumb-row > td {
     grid-column: 1 / -1;
   }
@@ -1249,16 +1294,17 @@ td.tip-open {
   outline-offset: 1px;
 }
 
-/* Evidence layer: collapsed detail blocks */
+/* Evidence fold: the spend block still uses it (official/failures
+   evidence tables retired 2026-09-07 — plumbing carries failures now). */
 .evidence {
   margin-top: var(--space-7);
 }
 
-.evidence-item {
+.spend-item {
   border-top: 1px solid var(--line);
 }
 
-.evidence-item summary {
+.spend-item summary {
   cursor: pointer;
   list-style: none;
   min-height: 44px;
@@ -1271,21 +1317,21 @@ td.tip-open {
   color: var(--ink);
 }
 
-.evidence-item summary::-webkit-details-marker {
+.spend-item summary::-webkit-details-marker {
   display: none;
 }
 
-.evidence-item summary::before {
+.spend-item summary::before {
   content: "▸";
   color: var(--muted);
   font-size: var(--text-caption);
 }
 
-.evidence-item[open] summary::before {
+.spend-item[open] summary::before {
   content: "▾";
 }
 
-.evidence-item > div {
+.spend-item > div {
   padding: 0 0 var(--space-5);
 }
 
