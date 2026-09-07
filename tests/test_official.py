@@ -490,14 +490,27 @@ class CandMarkRenderTest(BoardIqSortTest):
         body = body[:body.index("</tr>")]
         self.assertEqual(body.count("data-tip="), 3)
 
-    def test_perf_table_cells_carry_tips(self):
-        payload = {"perf": {"window_hours": 24, "models": {
-            "ali/qwen3.8-max": {"reqs": 100, "ttft_p50_ms": 2200, "tps_mean": 55.0},
-        }}}
-        out = self.mod.perf_table(payload)
-        body = out[out.index("<code>ali/qwen3.8-max</code>"):]
-        body = body[:body.index("</tr>")]
-        self.assertEqual(body.count("data-tip="), 3)
+    def test_perf_ttft_tps_render_as_plumbing_cells(self):
+        # perf table removed (owner 2026-09-07): ttft p50 / tps mean render as
+        # plumbing cells in the pricing row's hidden plumb dl
+        rows = {"ali/qwen3.8-max": {"ask_in": 0.014, "ask_out": 0.042,
+                                    "eff_per_mtok": 0.0201, "reqs": 12,
+                                    "source": "usage-logs"}}
+        payload = {"range": "30d", "requests_scanned": 100, "routes": rows,
+                   "perf": {"window_hours": 24, "models": {
+                       "ali/qwen3.8-max": {"reqs": 100, "ttft_p50_ms": 2200,
+                                           "tps_mean": 55.0}}}}
+        rd, mod = self.rundata, self.mod
+        input_rows = [{"route": r, **payload["routes"][r]} for r in payload["routes"]]
+        with mock.patch.object(rd, "pricing_rows", return_value=input_rows), \
+            mock.patch.object(rd, "load_dated_pricing", return_value=[]), \
+            mock.patch.object(rd, "load_intelligence", return_value={"models": {}}), \
+            mock.patch.object(rd, "ask_series", return_value=[]):
+            html = mod.pricing_section(payload, [])
+        self.assertIn("<dt>ttft p50</dt>", html)
+        self.assertIn("<dt>tps mean</dt>", html)
+        self.assertIn("2.20s", html)
+        self.assertIn("55.0", html)
 
 
 

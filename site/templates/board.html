@@ -1,22 +1,8 @@
+<body class="board">
 {{ verdict_section }}
+{{ scatter_section }}
 {{ pricing_section }}
 {{ probe_results_section }}
-<section class="history" id="earlier">
-  <h2>{{ earlier_title }}</h2>
-  <p class="section-note">Each column is one committed probe. Same-day reruns stay separate. A cell is how many of the
-    {{ n_score }} scoring {{ score_label }} passed ({{ rule }}), and which ones missed. A blank slot means the alias was not on the
-    board that run.</p>
-  <details class="evidence-item" id="evidence-runs">
-    <summary>Show run history</summary>
-    <div class="scroll">
-      <table class="timeline">
-        <caption>Hover or tap a bar for the run stamp, origin, pass count, and missed checks.</caption>
-        <tbody>{{ grid_rows }}</tbody>
-      </table>
-    </div>
-    {{ hidden_runs }}
-  </details>
-</section>
 <section class="explanations" id="method">
   <h2>{{ method_title }}</h2>
   <h3>The endpoint</h3>

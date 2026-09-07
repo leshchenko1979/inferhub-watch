@@ -30,7 +30,6 @@ FONTS = (
 SECTIONS = (
     ("pricing", "Cost per M tokens"),
     ("results", "Probe results"),
-    ("earlier", "Past runs"),
     ("method", "How we test"),
 )
 

@@ -79,7 +79,7 @@ class RenderAgainstFixturesTests(unittest.TestCase):
     def test_board_renders_all_major_sections(self) -> None:
         page = self._render()
         for section in ("id=\"verdict\"", "id=\"pricing\"", "id=\"results\"",
-                        "id=\"earlier\"", "id=\"method\""):
+                        "id=\"method\""):
             self.assertIn(section, page)
 
     def test_board_rows_render_from_fixture_routes(self) -> None:

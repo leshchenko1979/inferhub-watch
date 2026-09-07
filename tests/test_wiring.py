@@ -64,7 +64,6 @@ class WiringTests(unittest.TestCase):
         self.assertIn("Last probe:", header)
         self.assertIn('class="site-nav"', header)
         self.assertIn('href="#results"', header)
-        self.assertIn('href="#earlier"', header)
         self.assertIn('href="#method"', header)
         self.assertNotIn('href="#report"', header)
         self.assertNotIn('href="#today"', header)
@@ -99,7 +98,7 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn("Who should care", html)
         self.assertIn("<h2>Probe results</h2>", html)
         self.assertIn("<h2>Cost per M tokens</h2>", html)
-        self.assertIn("<h2>Past runs</h2>", html)
+        self.assertNotIn("<h2>Past runs</h2>", html)
         self.assertIn("<h2>How we test</h2>", html)
         self.assertNotIn("<h2>This probe</h2>", html)
         self.assertNotIn("<h2>Last report</h2>", html)
@@ -110,7 +109,10 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn("Failed scoring checks", html)
         self.assertNotIn("<h2>Mornings</h2>", html)
         self.assertNotIn("<th>Resolved</th>", html)
-        self.assertIn('class="alias-cell"', html)
+        # route cells render as <code> route names with the publisher/ask
+        # line underneath (alias-cell th retired with the results-table era)
+        self.assertIn('scope="row"><code>', html)
+        self.assertIn('class="route-ask"', html)
         self.assertIn('class="explanations"', html)
         self.assertNotIn('class="notes"', html)
         self.assertNotIn('class="about"', html)
@@ -120,12 +122,17 @@ class WiringTests(unittest.TestCase):
         # publisher labels render — dated-only board: cp/cline-pass left the
         # board, z.ai carries the check now
         self.assertIn("z.ai · zai/glm-5.3-flash", html)
-        self.assertIn("2/2: core + cache", html)
+        # family chip carries "alias · ok/total"; check names live on the
+        # drill links and the check pages now
+        self.assertIn(" · 2/2", html)
+        self.assertIn("chip ok", html)
         # the decision surface (board) leads; probe depth and history follow
         self.assertLess(html.find('id="pricing"'), html.find('id="results"'))
-        self.assertLess(html.find('id="pricing"'), html.find('id="earlier"'))
-        self.assertLess(html.find('id="earlier"'), html.find('id="method"'))
-        results = rest[rest.find('id="results"') : rest.find('id="earlier"')]
+        self.assertLess(html.find('id="pricing"'), html.find('id="method"'))
+        # chart sits just below the hero verdict (owner 2026-09-07)
+        self.assertLess(html.find('class="scatter"'),
+                        html.find('id="pricing"'))
+        results = rest[rest.find('id="results"') : rest.find('id="method"')]
         self.assertNotIn("Actions", results)
         groups = gen.run_groups(gen.load_runs()[-1])
         aliases = gen.load_aliases()
@@ -139,10 +146,7 @@ class WiringTests(unittest.TestCase):
         self.assertIn('class="pill in-use"', results)
         self.assertIn('data-label="tests"', results)
         self.assertNotIn("info · not ranked", html)
-        self.assertIn('class="timeline"', html)
-        self.assertIn("Actions · CI", html)
-        self.assertIn("Actions · CI", html)
-        self.assertIn("<caption>", html)
+        self.assertNotIn('class="timeline"', html)
         self.assertIn('<details class="nav-menu">', html)
         self.assertIn("aria-expanded", html)
         self.assertIn("On this page", html)
@@ -175,10 +179,10 @@ class WiringTests(unittest.TestCase):
         }
         with mock.patch.object(gen.rundata, "load_pricing", return_value=None):
             page = gen.index_html([older, newer], ["new/a"], registry)
-        self.assertIn('class="absent"', page)
-        self.assertIn("not probed", page)
+        # history grid is gone; what matters is the page still renders and
+        # the older unprobed run contributes no red cells anywhere
+        self.assertIn("<h2>Probe results</h2>", page)
         self.assertNotIn('class="bad"', page)
-        self.assertIn("was not on the", page)
 
     def test_candidate_cells_do_not_render_on_board(self) -> None:
         gen = _load_generate()
@@ -243,9 +247,11 @@ class WiringTests(unittest.TestCase):
         }
         with mock.patch.object(gen.rundata, "load_pricing", return_value=None):
             page = gen.index_html([run], ["ali/deepseek-v4-pro-0813"], registry)
-        results = page[page.find('id="results"') : page.find('id="earlier"')]
+        results = page[page.find('id="results"') : page.find('id="method"')]
         self.assertEqual(results.count("<code>ali/deepseek-v4-pro-0813</code>"), 1)
-        self.assertIn('class="pill in-use"', results)
+        # pill derives from 24h usage now — fixture has no perf block, so the
+        # freshly-boarded route reads "light use" (0 reqs/24h)
+        self.assertIn('class="pill in-use--light"', results)
         # the board row carries the audition probe evidence, not "not probed"
         self.assertIn("tests-bad", results)
         self.assertIn("missed: core, cache", results)
@@ -283,6 +289,8 @@ class PricingSectionTests(unittest.TestCase):
         "generated_at": "2026-08-27T20:00:00+00:00",
         "range": "30d",
         "requests_scanned": 5700,
+        "perf": {"window_hours": 24,
+                 "models": {"ali/qwen3.8-max": {"reqs": 8908}}},
         "routes": {
             "ali/qwen3.8-max": {
                 "ask_in": 0.014,
@@ -334,7 +342,6 @@ class PricingSectionTests(unittest.TestCase):
         self.assertNotIn('href="#pricing"', page)
         self.assertNotIn('href="#pricing"', nav)
         self.assertIn('href="#method"', nav)
-        self.assertIn('href="#earlier"', nav)
 
     def test_present_pricing_renders_before_history(self) -> None:
         gen = _load_generate()
@@ -349,7 +356,7 @@ class PricingSectionTests(unittest.TestCase):
         self.assertIn('href="#pricing"', nav)
         # the board now leads the probe-results depth section
         self.assertLess(page.find('id="pricing"'), page.find('id="results"'))
-        self.assertLess(page.find('id="pricing"'), page.find('id="earlier"'))
+        self.assertLess(page.find('id="pricing"'), page.find('id="method"'))
         self.assertIn("ali/qwen3.8-max", page)
         self.assertIn("$0.0140", page)
         self.assertIn("$0.0420", page)
@@ -377,15 +384,17 @@ class PricingSectionTests(unittest.TestCase):
         self.assertIn('class="pair-alt"', page)
         self.assertIn("backtest gate", page)
         self.assertIn('data-label="cache hit"', page)  # candidates table
-        # plumbing folds INSIDE the route row's last cell via the compact
-        # "more +" chip (owner 2026-09-07: no separate plumbing row; the
-        # aria-label keeps the accessible name)
+        # plumbing: chip rides in the route row's last cell; on open, the
+        # grid reveals as a SEPARATE full-width sibling tr (owner 2026-09-07
+        # 20:16Z), via CSS :has() — zero JS
         self.assertIn("Show plumbing", page)
         self.assertIn('class="plumb-word">more</span>', page)
-        self.assertIn('<div class="plumb"><details>', page)
-        self.assertNotIn('class="plumb-row"', page)
+        self.assertIn('<span class="plumb"><details>', page)
+        self.assertIn('<tr class="plumb-row">', page)
         self.assertIn("<dt>30d traffic</dt>", page)
         self.assertIn("<dt>30d cost</dt>", page)
+        self.assertIn("<dt>ttft p50</dt>", page)
+        self.assertIn("<dt>tps mean</dt>", page)
         self.assertIn("<dt>failures</dt>", page)
         self.assertIn("<dt>ask source</dt>", page)
         # cost cells explain themselves on hover and tap
@@ -725,6 +734,8 @@ class SpendDashboardTests(unittest.TestCase):
 class ProbeResultsSectionTests(unittest.TestCase):
     PAYLOAD = {
         "generated_at": "2026-08-27T20:00:00+00:00",
+        "perf": {"window_hours": 24,
+                 "models": {"ali/qwen3.8-max": {"reqs": 8908}}},
         "routes": {
             "ali/qwen3.8-max": {
                 "ask_in": 0.014, "ask_out": 0.042, "eff_per_mtok": 0.02,
@@ -844,7 +855,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 0, 93)])
         run["candidates"] = ["cp/cline-pass/qwen3.8-max", "cx/qwen3.8-max"]
         page, _ = self._page(gen, run)
-        seg = page[page.find('id="results"'):page.find('id="earlier"')]
+        seg = page[page.find('id="results"'):page.find('id="method"')]
         self.assertIn('class="tests-bad"', seg)
         self.assertIn('class="chip bad">cp/cline-pass/qwen3.8-max · 0/2', seg)
         self.assertIn('class="tests-none"', seg)      # cx unprobed
@@ -883,7 +894,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
         page, _ = self._page(gen, run)
-        seg = page[page.find('id="results"'):page.find('id="earlier"')]
+        seg = page[page.find('id="results"'):page.find('id="method"')]
         # One merged table: family bands as full-width head rows — no
         # per-family <details> grids anymore.
         self.assertNotIn('class="model-group"', seg)

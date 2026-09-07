@@ -42,6 +42,22 @@ def _effective_probe(run: dict, alias: str, score_ids: list[str]) -> tuple[int, 
     return ok, total, False
 
 
+def _in_use_pill(reqs_24h: int) -> str:
+    """'in use' pill, derived from 24h usage — same rule as the chart.
+
+    Owner 2026-09-07: the old pill was unconditional on every incumbent
+    route. Now in-use requires >=100 billed requests in the newest 24h
+    (board.usage_color's IN_USE_MIN_REQS, fed by the perf block's per-model
+    24h request count — the same number the scatter colors on); routes
+    below the bar show a muted 'light use' pill instead."""
+    if reqs_24h >= 100:
+        return (' <span class="pill in-use" title="In use: 100+ billed '
+                'requests in the newest 24h.">in use</span>')
+    return (
+        f' <span class="pill in-use--light" title="Billed traffic below the '
+        f'in-use bar (100+ reqs/24h): {reqs_24h} in the newest 24h.">light use</span>'
+    )
+
 def _candidate_route_row(
     runs: list[dict],
     route_entries: dict,
@@ -49,6 +65,7 @@ def _candidate_route_row(
     score_ids: list[str],
     *,
     candidate: bool,
+    perf_models: dict | None = None,
 ) -> str:
     """One route row for the candidates tables (incumbent or audition)."""
     latest = runs[-1]
@@ -68,7 +85,9 @@ def _candidate_route_row(
             else rundata.scoring_failed_ids(latest, route, score_ids)
         )
         cache_raw = entry.get("cache_pct")
-    pill = "" if candidate else ' <span class="pill in-use">in use</span>'
+    pill = "" if candidate else _in_use_pill(
+        ((perf_models or {}).get(route) or {}).get("reqs") or 0
+    )
     resolved = _resolved_for(latest, route, source_candidate)
     if probed:
         probe_val = f"{ok}/{total}"
@@ -206,6 +225,7 @@ def probe_results_section(
         return ""
     score_ids = rundata.scoring_ids(registry)
     route_entries = (payload or {}).get("routes") or {}
+    perf_models = ((payload or {}).get("perf") or {}).get("models") or {}
     try:
         verdict_by_fam = {
             v["family"]: v for v in radar.family_verdicts(latest, route_entries, aliases)
@@ -240,7 +260,8 @@ def probe_results_section(
             )
         )
         rows_html = [
-            _candidate_route_row(runs, route_entries, alias, score_ids, candidate=False)
+            _candidate_route_row(runs, route_entries, alias, score_ids,
+                                 candidate=False, perf_models=perf_models)
             for alias in incumbents
         ]
         rows_html += [

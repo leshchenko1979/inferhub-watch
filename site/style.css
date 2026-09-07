@@ -226,13 +226,11 @@ h2 {
 }
 
 .report,
-.history,
 .explanations {
   margin-top: var(--space-7);
 }
 
 .report h2,
-.history h2,
 .explanations>h2 {
   margin: 0 0 var(--space-4);
 }
@@ -400,89 +398,6 @@ td {
   vertical-align: top;
 }
 
-/* ── History timeline (Gatus-style thin bars) ── */
-
-.timeline {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-caption);
-  font-family: var(--mono);
-}
-
-.timeline caption {
-  caption-side: bottom;
-  text-align: left;
-  color: var(--muted);
-  font-size: var(--text-caption);
-  padding: var(--space-3) 0 var(--space-2);
-  text-wrap: pretty;
-}
-
-.timeline tbody th {
-  font-weight: 500;
-  padding: 0.5rem 0.7rem 0.5rem 0;
-  text-align: left;
-  white-space: nowrap;
-  vertical-align: middle;
-}
-
-/* Shrink alias column to content so run bars share the row evenly */
-.timeline th.alias-cell {
-  width: 1%;
-}
-
-.timeline td {
-  padding: 0 2px;
-  text-align: center;
-  vertical-align: middle;
-  border-bottom: 1px solid var(--line);
-  cursor: default;
-  position: relative;
-  background: transparent;
-}
-
-.timeline td::after {
-  content: "";
-  display: inline-block;
-  width: 4px;
-  height: 24px;
-  border-radius: 2px;
-  vertical-align: middle;
-  transition: background 180ms var(--ease);
-}
-
-@media (min-width: 640px) {
-  .timeline td::after {
-    height: 32px;
-  }
-}
-
-.timeline td.ok::after  { background: var(--ok); }
-.timeline td.mid::after { background: var(--mid); }
-.timeline td.bad::after { background: var(--fail); }
-
-.timeline tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-/* Visible time axis (QA: dates were hover-only). Header row of run
-   stamps above the grid; cells keep full stamp + origin in the tip. */
-.timeline tr.run-dates th {
-  font-weight: 400;
-  font-size: 0.62rem;
-  color: var(--muted);
-  text-align: center;
-  padding: 0 2px 0.35rem;
-  white-space: nowrap;
-  border-bottom: 1px solid var(--line);
-}
-
-.timeline tr.run-dates th.axis-label {
-  text-align: left;
-  padding-right: 0.7rem;
-  width: 1%;
-}
-
 .scroll {
   overflow-x: auto;
 }
@@ -561,10 +476,14 @@ td {
   color: var(--ink);
 }
 
-/* Plumbing fold, attached INSIDE each route row's last cell.
-   Owner 2026-09-07: collapsed = small "more +" chip, no separate row. */
+/* Plumbing fold. Owner 2026-09-07 20:16Z: collapsed, a small "more +"
+   chip rides in the route row's last cell; OPEN, the plumbing grid
+   appears as a SEPARATE full-width row of the parent table — the hidden
+   sibling tr.plumb-row right below, revealed by :has() on the route row.
+   Zero JS. */
 .plumb {
-  text-align: right;
+  display: inline-block;
+  margin-left: 0.5rem;
 }
 
 .plumb summary {
@@ -603,6 +522,22 @@ td {
 
 .plumb details[open] summary {
   color: var(--ink);
+}
+
+/* The route row's details is open -> show its sibling plumbing row. */
+.pricing tbody:has(tr:has(.plumb details[open])) tr.plumb-row {
+  display: table-row;
+}
+
+/* Collapsed: the sibling row takes no space at all. */
+.pricing tr.plumb-row {
+  display: none;
+}
+
+.pricing tr.plumb-row > td {
+  padding: 0 0.6rem var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-soft, rgba(127, 127, 127, 0.04));
 }
 
 dl.plumb {
@@ -976,6 +911,14 @@ dl.plumb dd .dim {
   color: var(--ok);
 }
 
+/* Below the in-use bar (100+ reqs/24h): same shape, muted tone. */
+.pill.in-use--light {
+  margin-left: 0.4rem;
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
 .candidates th,
 .candidates td {
   white-space: nowrap;
@@ -1166,9 +1109,13 @@ footer {
     grid-column: 1 / -1;
   }
 
-  /* plumbing fold spans both card columns */
-  .pricing .plumb {
+  /* plumbing sibling row: full-width card under its route card */
+  .pricing tr.plumb-row > td {
     grid-column: 1 / -1;
+  }
+
+  .pricing tbody:has(tr:has(.plumb details[open])) tr.plumb-row {
+    display: block;
   }
 
   .candidates tr > td:nth-of-type(1) { order: 1; }
@@ -1378,7 +1325,34 @@ td.tip-open {
 .scatter svg.mobile .slabel { font-size: 14px; }
 .scatter svg.mobile .st { font-size: 11px; }
 .scatter circle[data-tip] { cursor: pointer; }
-.scatter-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; font-size: var(--text-caption); color: var(--muted); align-items: center; margin-top: 0.4rem; line-height: 12px; }
-.scatter-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
-.scatter-legend svg { flex: none; vertical-align: middle; }
+.scatter-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  font-size: var(--text-caption);
+  color: var(--muted);
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.scatter-legend .lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.scatter-legend .dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.scatter-legend .dot-ok  { background: var(--ok); }
+.scatter-legend .dot-warn { background: var(--warn, #c90); }
+.scatter-legend .dot-mut { background: var(--muted); }
+
+.scatter-legend .dot-s { width: 6px; height: 6px; }
+.scatter-legend .dot-l { width: 12px; height: 12px; }
 .scatter .sleader { stroke: var(--line); stroke-width: 1; }

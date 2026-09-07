@@ -59,20 +59,30 @@ def _probe_only(row: dict, runs: list[dict]) -> bool:
             return False
     return True
 
-def _plumb_row(cells: list[tuple[str, str]]) -> str:
-    """One collapsed plumbing fold attached to a route row's last cell.
+def _plumb_chip() -> str:
+    """The collapsed 'more +' chip riding in the route row's last cell.
 
-    Owner 2026-09-07 ("why waste a separate line on more?"): the fold lives
-    INSIDE the route row — a compact right-aligned 'more +' chip in the IQ
-    per $ cell, expanding into a dl.plumb grid in place. No separate row.
-
-    Keys arrive pre-rendered (callers escape any data-derived text)."""
-    pairs = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in cells)
+    Owner 2026-09-07 20:16Z: on click, the plumbing opens as a SEPARATE
+    full-width row of the parent table — not squeezed into the cell. The
+    chip's <details> lives in the route row; the dl content lives in the
+    sibling tr.plumb-row emitted right after, revealed by CSS :has()
+    (tr:has(details[open]) + tr.plumb-row). Zero JS."""
     return (
-        f'<div class="plumb"><details>'
+        '<span class="plumb"><details>'
         '<summary aria-label="Show plumbing details"><span class="plumb-word">more</span>'
         ' <span class="plumb-mark" aria-hidden="true">+</span></summary>'
-        f'<dl class="plumb">{pairs}</dl></details></div>'
+        "</details></span>"
+    )
+
+def _plumb_row(cells: list[tuple[str, str]]) -> str:
+    """The hidden sibling row that carries the plumbing grid.
+
+    Emitted directly after each route row; CSS keeps it collapsed until the
+    route row's plumb details opens. Keys arrive pre-rendered."""
+    pairs = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in cells)
+    return (
+        '<tr class="plumb-row"><td colspan="5">'
+        f'<dl class="plumb">{pairs}</dl></td></tr>'
     )
 
 def _route_failures(payload: dict | None, route: str, reqs: int) -> str:
@@ -221,7 +231,8 @@ def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
         "&#36;0.02, amber above. "
         "Show plumbing folds each route&#8217;s ask movement "
         "(the color key sits under the table), ask source, ask history, "
-        "cache hit, failures, window traffic and cost, IQ, and retries (when a "
+        "cache hit, failures, window traffic and cost, ttft p50 and tps "
+        "mean (main-traffic speed, newest 24h), IQ, and retries (when a "
         "sweep replayed a route). "
         "Marginal $/M is billed cost over requests since the previous daily "
         "snapshot, dimmed when the route&#8217;s only fresh traffic is sweep "
@@ -336,10 +347,33 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
              f'down = failed again.">{retries}</span>'))
         if (marg := _marginal_cell(row, runs)) is not None:
             plumb_cells.append(marg)
-        plumb = _plumb_row(plumb_cells)
-        # Owner 2026-09-07 ("why waste a separate line on more?"): the chip
-        # rides inside the route row's LAST decision cell — no separate
-        # plumbing row at all. The <details> collapses its own box (zero-JS).
+        # Owner 2026-09-07 20:16Z: ttft/tps live in plumbing now (the
+        # separate main-traffic speed table is gone). Per-MODEL aggregates
+        # from the perf block; route code maps to its model key directly.
+        pm = ((payload.get("perf") or {}).get("models") or {}).get(
+            str(row["route"])
+        ) or {}
+        ttft, tps = pm.get("ttft_p50_ms"), pm.get("tps_mean")
+        ttft_label = (
+            f"{ttft / 1000:.2f}s" if isinstance(ttft, (int, float)) else "&#8212;"
+        )
+        tps_label = f"{tps:.1f}" if isinstance(tps, (int, float)) else "&#8212;"
+        plumb_cells.extend([
+            ("ttft p50",
+             f'<span title="Median time to first token across this model&#8217;s '
+             f'billed requests in the newest '
+             f'{int((payload.get("perf") or {}).get("window_hours") or 24)}h '
+             f'window (p50) &#8212; production traffic included.">{ttft_label}</span>'),
+            ("tps mean",
+             f'<span title="Mean tokens/sec of generation time only (duration '
+             f'minus ttft); rows with a &lt;2s generation window or impossible '
+             f'tps are excluded.">{tps_label}</span>'),
+        ])
+        plumb_cells_row = _plumb_row(plumb_cells)
+        chip = _plumb_chip()
+        # Owner 2026-09-07 20:16Z: chip rides in the route row's LAST
+        # decision cell; the plumbing grid opens as a SEPARATE full-width
+        # sibling <tr> right below (CSS :has(), zero JS).
         body_rows.append(
             "<tr>"
             f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>{cand}'
@@ -354,8 +388,9 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             + '<td class="num" data-label="IQ per $" '
             'data-tip="Intelligence (Artificial Analysis index) divided by the '
             'route&#8217;s ranking $/M &#8212; higher is smarter per dollar.">'
-            f"{iq[1] if iq else '&#8212;'}{plumb}</td>"
+            f"{iq[1] if iq else '&#8212;'}{chip}</td>"
             + "</tr>"
+            + plumb_cells_row
         )
     caption = _pricing_caption(span, use_proj, gate)
     # Delta legend as a visible note (QA: it lived only in a hover title).
@@ -375,7 +410,6 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         body_rows="".join(body_rows),
         after=(
             legend
-            + scatter_section(payload, intel, runs)
             + spend_block(payload, runs)
             + evidence_block(payload, rundata.load_catalog(ROOT), dated)
         ),
@@ -409,16 +443,11 @@ def usage_radius(reqs: int | None, probe_only: bool = False) -> float:
 def _scatter_legend() -> str:
     return (
         '<div class="scatter-legend">'
-        '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--ok)"/></svg>'
-        " in use (&#8805;100 reqs/24h)</span>"
-        '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--warn, #c90)"/></svg>'
-        " probes only</span>"
-        '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--muted)"/></svg>'
-        " little/no traffic</span>"
-        '<span class="legend-size"><svg width="34" height="12">'
-        '<circle cx="6" cy="6" r="3.5" fill="var(--muted)"/>'
-        '<circle cx="20" cy="6" r="6" fill="var(--muted)"/>'
-        "</svg> dot size = 24h requests</span>"
+        '<span class="lg"><i class="dot dot-ok"></i> in use &#8212; 100+ reqs/24h</span>'
+        '<span class="lg"><i class="dot dot-warn"></i> probes only</span>'
+        '<span class="lg"><i class="dot dot-mut"></i> little/no traffic</span>'
+        '<span class="lg lg-size"><i class="dot dot-mut dot-s"></i><i class="dot dot-mut dot-l"></i>'
+        " size = 24h traffic</span>"
         "</div>"
     )
 
@@ -639,69 +668,27 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
         + "</figure>"
     )
 
-def perf_table(payload: dict | None) -> str:
-    """Main-traffic speed sub-table for the evidence layer, or ''.
-
-    Built from the `perf` block probe.pricing aggregates into
-    data/pricing.json — usage-log timings (ttft_ms/duration_ms) over ALL
-    traffic in the newest 24h of the 30d window, production requests
-    included. Absent on snapshots written before this block existed.
-    """
-    if not payload:
-        return ""
-    perf = payload.get("perf") or {}
-    models = perf.get("models") or {}
-    if not models:
-        return ""
-    hours = perf.get("window_hours") or 24
-    rows = []
-    for model, m in models.items():
-        ttft = m.get("ttft_p50_ms")
-        tps = m.get("tps_mean")
-        ttft_label = f"{ttft / 1000:.2f}s" if isinstance(ttft, (int, float)) else "&#8212;"
-        tps_label = f"{tps:.1f}" if isinstance(tps, (int, float)) else "&#8212;"
-        rows.append((int(m.get("reqs") or 0), model, m, ttft_label, tps_label))
-    rows.sort(key=lambda r: (-r[0], r[1]))  # traffic weight first, then name
-    body = "".join(
-        "<tr>"
-        f'<th scope="row"><code>{html.escape(str(model))}</code></th>'
-        f'<td class="num" data-tip="All InferHub requests billed for this model in the newest {hours}h window — production traffic, not just probes.">{reqs}</td>'
-        f'<td class="num" data-tip="Median time to first token across this model&#8217;s billed requests in the window (p50).">{ttft_label}</td>'
-        f'<td class="num" data-tip="Mean tokens/sec of generation time only (duration minus ttft); rows with a &lt;2s generation window or impossible tps are excluded.">{tps_label}</td>'
-        "</tr>"
-        for reqs, model, _m, ttft_label, tps_label in rows
-    )
-    caption = (
-        f"Every request billed in the newest {hours}h — production traffic included, "
-        "not just probes. ttft = median time to first token; tps = mean tokens/sec "
-        "of generation time only (duration minus ttft); dash = no timed requests."
-    )
-    return (
-        '<div class="scroll"><table class="pricing">'
-        f"<caption>{caption}</caption>"
-        "<thead><tr>"
-        '<th scope="col">Route</th>'
-        '<th scope="col" class="num">requests</th>'
-        '<th scope="col" class="num">ttft p50</th>'
-        '<th scope="col" class="num">tps mean</th>'
-        "</tr></thead>"
-        f"<tbody>{body}</tbody>"
-        "</table></div>"
+def perf_table(payload: dict) -> str:
+    """REMOVED 2026-09-07 (owner: 'include ttft and tps there and remove
+    the separate table') — ttft/tps now live as plumbing cells in the main
+    board. Kept as a stub so any external caller fails loudly, not silently."""
+    raise NotImplementedError(
+        "perf_table removed: ttft/tps render as plumbing cells in board.py"
     )
 
 def evidence_block(payload: dict | None, catalog: dict | None,
                    dated: list | None = None) -> str:
-    """The EVIDENCE layer: official-price, reliability, main-traffic speed.
+    """The EVIDENCE layer: official-price, reliability.
 
     Sits at the bottom of #pricing; collapsed by default so the decision
-    surface (verdict + board) stays uncluttered. Renders only when at
-    least one sub-table has data. `dated` snapshots switch the official
-    table's forward columns onto the smoothed projection hit rate.
+    surface (verdict + board) stays uncluttered. `dated` snapshots switch
+    the official table's forward columns onto the smoothed projection hit
+    rate. The main-traffic speed table was removed 2026-09-07 — ttft/tps
+    are plumbing cells on the board now.
     """
     official = official_table(payload, catalog, dated)
     failures = failures_table(payload)
-    perf = perf_table(payload)
-    if not official and not failures and not perf:
+    if not official and not failures:
         return ""
     items = ""
     if official:
@@ -715,12 +702,6 @@ def evidence_block(payload: dict | None, catalog: dict | None,
             '<details class="evidence-item" id="evidence-failures">'
             "<summary>Reliability &#8212; failed requests</summary>"
             f"<div>{failures}</div></details>"
-        )
-    if perf:
-        items += (
-            '<details class="evidence-item" id="evidence-perf">'
-            "<summary>Main-traffic speed &#8212; ttft &amp; tps</summary>"
-            f"<div>{perf}</div></details>"
         )
     return f'<div class="evidence">{items}</div>'
 

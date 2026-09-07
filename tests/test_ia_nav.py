@@ -47,7 +47,7 @@ class DrillDownLinksTest(tw.ProbeResultsSectionTests):
         scoring = gen.rundata.scoring_ids(gen.load_registry())
         run = self._run(scoring, [("cp/cline-pass/qwen3.8-max", 2, 93)])
         page, _ = self._page(gen, run)
-        seg = page[page.find('id="results"'):page.find('id="earlier"')]
+        seg = page[page.find('id="results"'):page.find('id="method"')]
         self.assertIn('class="route-drill"', seg)
         self.assertIn('href="/inferhub-watch/checks/core.html"', seg)
         self.assertIn('href="/inferhub-watch/checks/cache.html"', seg)

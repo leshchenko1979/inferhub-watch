@@ -98,59 +98,6 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
         return chrome_mod.shell("InferHub Watch", tmpl.render("empty.html"))
 
     latest = runs[-1]
-    window = runs[-14:]
-    score_ids = rundata.scoring_ids(registry)
-    n_score = len(score_ids)
-    order = rundata.aliases_safe_first(aliases, latest, score_ids)
-    rule = rundata.scoring_rule(score_ids)
-
-    col_labels = [
-        f"{rundata.run_stamp(run)} {rundata.origin_label(run)}" for run in window
-    ]
-    # Visible time axis (QA: history dates lived only in per-cell hover
-    # tips). Column header carries the stamp (date + clock); the origin
-    # stays in the tip, which is per-run context, not the date itself.
-    header_cells = []
-    for run, col_label in zip(window, col_labels):
-        header_cells.append(
-            f'<th class="run-date" data-tip="{_html_escape(col_label)}" '
-            f'scope="col">{_html_escape(rundata.run_stamp(run))}</th>'
-        )
-    grid_rows = [
-        f'<tr class="run-dates"><th class="axis-label" scope="col">run ↦</th>'
-        f"{''.join(header_cells)}</tr>"
-    ]
-    for alias in order:
-        cells = []
-        for run, col_label in zip(window, col_labels):
-            if not rundata.alias_probed(run, alias):
-                cells.append(
-                    '<td class="absent" data-tip="'
-                    f'{_html_escape(col_label + " · not probed")}"'
-                    ' tabindex="0"></td>'
-                )
-                continue
-            ok, total = rundata.scoring_pass_count(run, alias, score_ids)
-            cls = "ok" if ok == total else ("mid" if ok else "bad")
-            failed = rundata.scoring_failed_ids(run, alias, score_ids)
-            title_parts = [col_label, f"{ok}/{total}"]
-            if failed:
-                miss = ", ".join(rundata.scoring_short(cid) for cid in failed)
-                title_parts.append(f"missed: {miss}")
-            else:
-                title_parts.append("all pass")
-            bar_cost = rundata.alias_run_cost(run, alias)
-            if bar_cost:
-                title_parts.append(f"cost {bar_cost}")
-            title = " · ".join(title_parts)
-            cells.append(
-                f'<td class="{cls}" data-tip="{_html_escape(title)}"'
-                ' tabindex="0"></td>'
-            )
-        resolved = rundata.resolved_for_alias_in_window(window, alias, registry)
-        grid_rows.append(
-            f"<tr>{chrome_mod.alias_heading(alias, resolved)}{''.join(cells)}</tr>"
-        )
 
     explainers = []
     for spec in registry:
@@ -173,13 +120,8 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
     )
     body = tmpl.render(
         "board.html",
-        earlier_title=chrome_mod.section_title("earlier"),
         method_title=chrome_mod.section_title("method"),
-        n_score=str(n_score),
-        score_label="check" if n_score == 1 else "checks",
-        rule=rule,
-        grid_rows="".join(grid_rows),
-        hidden_runs=chrome_mod.hidden_runs_html(len(runs), len(window)),
+        scatter_section=scatter_section(payload, rundata.load_intelligence(ROOT), runs),
         verdict_section=verdict_section(payload),
         pricing_section=pricing_section(payload, runs),
         probe_results_section=probe_results_section(
