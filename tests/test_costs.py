@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import unittest
 
+from typing_extensions import Self
+
 from probe.costs import attribute_costs, parse_ts, run_window
 
 
@@ -161,7 +163,7 @@ class _FakeResp:
     def read(self) -> bytes:
         return self._payload
 
-    def __enter__(self) -> "_FakeResp":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *exc) -> bool:
@@ -197,7 +199,7 @@ class RateLimitRetryTests(unittest.TestCase):
         import json
         from unittest import mock
 
-        import probe.costs as costs
+        from probe import costs
 
         ok_body = {"rows": [{"ts": "2026-08-28T00:00:00Z"}]}
         calls = {"n": 0}
@@ -220,20 +222,19 @@ class RateLimitRetryTests(unittest.TestCase):
         import urllib.error
         from unittest import mock
 
-        import probe.costs as costs
+        from probe import costs
 
         def fake_urlopen(req, timeout=30):
             raise _http_429("1")
 
-        with mock.patch.object(costs.urllib.request, "urlopen", side_effect=fake_urlopen), \
-                mock.patch.object(costs.time, "sleep"):
-            with self.assertRaises(urllib.error.HTTPError):
+        with mock.patch.object(costs.urllib.request, "urlopen", side_effect=fake_urlopen),                  mock.patch.object(costs.time, "sleep"), \
+                self.assertRaises(urllib.error.HTTPError):
                 costs._get_json("https://inferhub.dev/api/usage/logs?page=1", "k")
 
     def test_fetch_log_rows_paces_between_pages(self) -> None:
         from unittest import mock
 
-        import probe.costs as costs
+        from probe import costs
 
         # Two full pages then an empty third, with a known rangeTotal.
         page_bodies = {

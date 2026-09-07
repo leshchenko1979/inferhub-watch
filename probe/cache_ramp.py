@@ -24,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from probe.http import InferHubClient
-from probe.payloads import CORE_HEAD, _PAD, REPORT_ANSWER_TOOLS
+from probe.payloads import _PAD, CORE_HEAD, REPORT_ANSWER_TOOLS
 from probe.registry import atomic_write_text
 from probe.sse import cached_tokens, last_usage, parse_sse
 

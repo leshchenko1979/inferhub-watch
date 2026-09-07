@@ -19,17 +19,7 @@ from probe.sse import (
     usage_pricing_fields,
 )
 
-RAW_STREAM = "\n".join(
-    [
-        ': comment line, ignored',
-        'data: {"id":"1","model":"ali/qwen3.8-max","choices":[{"delta":{"tool_calls":[{"function":{"name":""}}]},"finish_reason":null}]}',
-        '',
-        'data: {not json — dropped, not fatal',
-        'data: {"id":"2","choices":[{"delta":{"tool_calls":[{"function":{"name":"report_answer"}}]},"finish_reason":""}]}',
-        'data: {"id":"3","choices":[{"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":12,"completion_tokens":7}}',
-        'data: [DONE]',
-    ]
-)
+RAW_STREAM = ': comment line, ignored\ndata: {"id":"1","model":"ali/qwen3.8-max","choices":[{"delta":{"tool_calls":[{"function":{"name":""}}]},"finish_reason":null}]}\n\ndata: {not json — dropped, not fatal\ndata: {"id":"2","choices":[{"delta":{"tool_calls":[{"function":{"name":"report_answer"}}]},"finish_reason":""}]}\ndata: {"id":"3","choices":[{"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":12,"completion_tokens":7}}\ndata: [DONE]'
 
 
 class ParseSseTest(unittest.TestCase):

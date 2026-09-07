@@ -7,12 +7,13 @@ alternate, renders the ask-trend spark.
 from __future__ import annotations
 
 import html
+import itertools
 
 import rundata
+from spend import _ask_spark
+
 from probe import basis, official_compare
 from probe.registry import repo_root
-
-from spend import _ask_spark
 
 ROOT = repo_root()
 
@@ -64,7 +65,7 @@ def verdict_section(payload: dict | None) -> str:
     # Ask trend: consecutive strictly-cheaper snapshots from the newest end.
     series = rundata.ask_series(dated, route, payload)
     downs = 0
-    for (_, a0, o0), (_, a1, o1) in zip(series, series[1:]):
+    for (_, a0, o0), (_, a1, o1) in itertools.pairwise(series):
         if a1 + o1 < a0 + o0:
             downs += 1
         else:

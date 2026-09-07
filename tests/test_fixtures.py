@@ -12,7 +12,6 @@ import importlib.util
 import json
 import sys
 import unittest
-from pathlib import Path
 from unittest import mock
 
 from probe.registry import repo_root
@@ -20,7 +19,6 @@ from probe.registry import repo_root
 ROOT = repo_root()
 sys.path.insert(0, str(ROOT / "site"))
 
-import rundata  # noqa: E402
 
 
 def _load_generate():

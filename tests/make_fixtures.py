@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from probe.registry import load_aliases, repo_root  # noqa: E402
+from probe.registry import load_aliases, repo_root
 
 FIXTURES = repo_root() / "tests" / "fixtures"
 PINNED_GENERATED_AT = "2026-09-07T09:12:37+00:00"
@@ -47,7 +47,7 @@ def main() -> None:
     (FIXTURES / "pricing.json").write_text(json.dumps(pricing, indent=2) + "\n")
 
     runs_dir = root / "data" / "runs"
-    latest = sorted(runs_dir.glob("*.json"))[-1]
+    latest = max(runs_dir.glob("*.json"))
     run = json.loads(latest.read_text())
     aliases_set = set(aliases)
     run["cells"] = [c for c in run.get("cells") or []

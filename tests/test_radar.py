@@ -6,13 +6,14 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import ClassVar
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "site"))
 
-from probe import radar  # noqa: E402
+import generate
 
-import generate  # noqa: E402
+from probe import radar
 
 ALIASES = ["ali/qwen3.8-max"]
 PRICING_ROUTES = {
@@ -116,7 +117,7 @@ class VerdictTests(unittest.TestCase):
 class DatedOnlyVerdictTests(unittest.TestCase):
     """A plain tail of a dated family is never a challenger."""
 
-    INCUMBENT = {"eff_per_mtok": 0.009, "cache_pct": 0.0, "tok_in": 900, "tok_out": 100}
+    INCUMBENT: ClassVar[dict] = {"eff_per_mtok": 0.009, "cache_pct": 0.0, "tok_in": 900, "tok_out": 100}
 
     def _run(self, candidate_alias: str) -> dict:
         cells = [{"alias": "ali/deepseek-v4-flash-0731", "check_id": "core", "status": "pass"}]
@@ -359,16 +360,16 @@ class NotifyTests(unittest.TestCase):
 
     def test_notify_alerts_calls_subprocess_once(self) -> None:
         env = {radar.NOTIFY_SESSION_ENV: "abc-123"}
-        with mock.patch.dict(os.environ, env, clear=True):
-            with mock.patch.object(radar.subprocess, "run") as run:
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(radar.subprocess, "run") as run:
                 run.return_value = mock.Mock(returncode=0)
                 radar.notify_alerts([NOTIFY_VERDICT])
         self.assertEqual(run.call_count, 1)
 
     def test_notify_alerts_swallows_errors(self) -> None:
         env = {radar.NOTIFY_SESSION_ENV: "abc-123"}
-        with mock.patch.dict(os.environ, env, clear=True):
-            with mock.patch.object(radar.subprocess, "run", side_effect=OSError("boom")):
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(radar.subprocess, "run", side_effect=OSError("boom")):
                 radar.notify_alerts([NOTIFY_VERDICT])  # must not raise
 
 

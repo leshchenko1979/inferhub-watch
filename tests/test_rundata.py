@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
-
-import sys
 from pathlib import Path
+from typing import ClassVar
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "site"))
 
-import rundata  # noqa: E402
+import rundata
 
 
 class RundataBoardTests(unittest.TestCase):
@@ -259,7 +259,7 @@ class SpendDashboardTests(unittest.TestCase):
 
 
 class CandidatesHelpersTests(unittest.TestCase):
-    SCORE = ["stream_tools", "cache_tools", "ru_mojibake"]
+    SCORE: ClassVar[list] = ["stream_tools", "cache_tools", "ru_mojibake"]
 
     def _cell(self, alias, cid, status="pass", candidate=True, evidence=None):
         cell = {

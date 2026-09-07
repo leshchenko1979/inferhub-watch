@@ -8,6 +8,7 @@ from typing import Any
 
 from probe.payloads import URL, USER_AGENT
 
+
 class InferHubClient:
     def __init__(self, api_key: str, timeout: int = 90) -> None:
         self.api_key = api_key

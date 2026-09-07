@@ -29,6 +29,7 @@ from probe.sse import (
     usage_pricing_fields,
 )
 
+
 def stream_perf(
     ttft_ms: float | None, elapsed_ms: float, usage: dict
 ) -> tuple[float | None, float | None]:
@@ -90,7 +91,7 @@ def run(client: InferHubClient, alias: str) -> dict:
             tps=tps,
             evidence=evidence,
         )
-    if stats["empty_finish_chunks"]:
+    if stats["empty_finish_chunks"] and stats["last_finish_reason"] in ("", None):
         # Owner recalibration 2026-09-07 ("cbcn/glm-5.3-flash works fine in
         # reality"): empty-string finish_reason on INTERMEDIATE chunks is
         # tolerated evidence, not a failure — the route streams clean answers
@@ -98,8 +99,7 @@ def run(client: InferHubClient, alias: str) -> dict:
         # a stream whose last finish_reason is "" (or never carries a real
         # terminal reason) is the broken case. Mirrors the empty-tool-name
         # tolerance above; the counts stay in evidence.
-        if stats["last_finish_reason"] == "" or stats["last_finish_reason"] is None:
-            return result(
+        return result(
                 check_id="core",
                 alias=alias,
                 status="fail",

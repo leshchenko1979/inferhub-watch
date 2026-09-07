@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import json
 import math
-import tomllib
 from pathlib import Path
 
 from probe import market, pricing, registry
-from probe.registry import repo_root
 
 # Plausible ceiling for a single-request streamed tps spot sample. Above
 # this, the probe cell's timing describes something other than generation
@@ -144,7 +142,7 @@ def stream_perf_of(run: dict, route: str) -> tuple[float | None, float | None]:
     )
 
 
-def ttft_tps_labels(ttft_ms: float | int | None, tps: float | int | None,
+def ttft_tps_labels(ttft_ms: float | None, tps: float | None,
                     dash: str = "&#8212;") -> tuple[str, str]:
     """(ttft label, tps label) with the single shared precision - used by
     the probes table's per-route cells and the board's plumbing row alike,

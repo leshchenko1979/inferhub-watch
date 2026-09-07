@@ -5,6 +5,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from typing import ClassVar
 from unittest import mock
 
 from probe import daily_report
@@ -127,7 +128,7 @@ class BuildReportTest(unittest.TestCase):
         self.addCleanup(self._tmp.cleanup)
         _snap(self.root, "2026-09-03", {"ali/kimi-k3": _entry(7.0, 21.0)})
         _snap(self.root, "2026-09-04", {"ali/kimi-k3": _entry(5.0, 21.0)})
-        rows = [_row(cached=500, cost=0.10)]
+        [_row(cached=500, cost=0.10)]
 
     def test_report_has_all_sections_and_no_key(self):
         rows = [_row(cached=500, cost=0.10)]
@@ -244,7 +245,7 @@ class BoardingCandidatesTest(unittest.TestCase):
         return {"cb/qwen3.8-max": {"ttft_p50_ms": 2000.0},
                 "ali/qwen3.8-max": {"ttft_p50_ms": 2263.0}}
 
-    ALIASES = ["ali/qwen3.8-max"]
+    ALIASES: ClassVar[list] = ["ali/qwen3.8-max"]
 
     def test_all_four_gates_met_flags_candidate(self):
         snaps = [self._routes() for _ in range(3)]

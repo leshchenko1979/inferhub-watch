@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import probe.pricing as pricing
+from probe import pricing
 
 
 def _row(ts="2026-08-27T10:00:00Z", model="cp/xai/grok-4.6", **kw):
@@ -214,7 +214,7 @@ class SnapshotTests(unittest.TestCase):
     def test_snapshot_merges_logs_and_catalog(self) -> None:
         rows = [_row(model="cp/xai/grok-4.6", prompt_tokens=100, completion_tokens=0,
                      cached_tokens=0, cost_consumer_usdc="0.0001")]
-        with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")) as log_mock, \
+        with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
                 mock.patch.object(pricing, "fetch_catalog",
                                   return_value={"zai/glm-5.3": (0.045, 0.15)}):
             payload = pricing.snapshot("k", ["cp/xai/grok-4.6", "zai/glm-5.3"])

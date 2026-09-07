@@ -6,9 +6,8 @@ No real probe spend — every test drives a stub module with a scripted run().""
 from __future__ import annotations
 
 import types
-from unittest import mock
-
 import unittest
+from unittest import mock
 
 
 def _load_run():
@@ -45,8 +44,8 @@ class RetryOnceTests(unittest.TestCase):
             return _cell("pass")
 
         stub = types.SimpleNamespace(run=scripted)
-        with mock.patch.object(run_mod, "load_check_module", return_value=stub):
-            with mock.patch.object(run_mod.time, "sleep") as snooze:
+        with mock.patch.object(run_mod, "load_check_module", return_value=stub), \
+                mock.patch.object(run_mod.time, "sleep") as snooze:
                 cells, errors = run_mod.collect_cells(
                     object(), ["a"], [{"id": "core"}]
                 )
@@ -67,8 +66,8 @@ class RetryOnceTests(unittest.TestCase):
             return _cell("pass")
 
         stub = types.SimpleNamespace(run=scripted)
-        with mock.patch.object(run_mod, "load_check_module", return_value=stub):
-            with mock.patch.object(run_mod.time, "sleep"):
+        with mock.patch.object(run_mod, "load_check_module", return_value=stub), \
+                mock.patch.object(run_mod.time, "sleep"):
                 cells, _ = run_mod.collect_cells(object(), ["a"], [{"id": "core"}])
         self.assertEqual(calls["n"], 2)
         self.assertEqual(cells[0]["status"], "pass")
@@ -81,8 +80,8 @@ class RetryOnceTests(unittest.TestCase):
             raise TimeoutError("read operation timed out")
 
         stub = types.SimpleNamespace(run=scripted)
-        with mock.patch.object(run_mod, "load_check_module", return_value=stub):
-            with mock.patch.object(run_mod.time, "sleep") as snooze:
+        with mock.patch.object(run_mod, "load_check_module", return_value=stub), \
+                mock.patch.object(run_mod.time, "sleep") as snooze:
                 cells, errors = run_mod.collect_cells(
                     object(), ["a"], [{"id": "core"}, {"id": "cache"}]
                 )
@@ -104,8 +103,8 @@ class RetryOnceTests(unittest.TestCase):
             return _cell("fail")
 
         stub = types.SimpleNamespace(run=scripted)
-        with mock.patch.object(run_mod, "load_check_module", return_value=stub):
-            with mock.patch.object(run_mod.time, "sleep") as snooze:
+        with mock.patch.object(run_mod, "load_check_module", return_value=stub), \
+                mock.patch.object(run_mod.time, "sleep") as snooze:
                 cells, _ = run_mod.collect_cells(object(), ["a"], [{"id": "core"}])
         self.assertEqual(calls["n"], 1)
         snooze.assert_not_called()
@@ -121,8 +120,8 @@ class RetryOnceTests(unittest.TestCase):
             return _cell("error", http_status=400)
 
         stub = types.SimpleNamespace(run=scripted)
-        with mock.patch.object(run_mod, "load_check_module", return_value=stub):
-            with mock.patch.object(run_mod.time, "sleep") as snooze:
+        with mock.patch.object(run_mod, "load_check_module", return_value=stub), \
+                mock.patch.object(run_mod.time, "sleep") as snooze:
                 cells, _ = run_mod.collect_cells(object(), ["a"], [{"id": "core"}])
         self.assertEqual(calls["n"], 1)
         snooze.assert_not_called()
@@ -135,9 +134,9 @@ class RetryOnceTests(unittest.TestCase):
             raise RuntimeError("insufficient_balance for key")
 
         stub = types.SimpleNamespace(run=scripted)
-        with mock.patch.object(run_mod, "load_check_module", return_value=stub):
-            with mock.patch.object(run_mod.time, "sleep") as snooze:
-                with self.assertRaises(run_mod.BalanceTooLow):
+        with mock.patch.object(run_mod, "load_check_module", return_value=stub), \
+                mock.patch.object(run_mod.time, "sleep") as snooze, \
+                self.assertRaises(run_mod.BalanceTooLow):
                     run_mod.collect_cells(object(), ["a"], [{"id": "core"}])
         snooze.assert_not_called()
 
@@ -151,9 +150,9 @@ class RetryOnceTests(unittest.TestCase):
             return cell
 
         stub = types.SimpleNamespace(run=scripted2)
-        with mock.patch.object(run_mod, "load_check_module", return_value=stub):
-            with mock.patch.object(run_mod.time, "sleep"):
-                with self.assertRaises(run_mod.BalanceTooLow):
+        with mock.patch.object(run_mod, "load_check_module", return_value=stub), \
+                mock.patch.object(run_mod.time, "sleep"), \
+                self.assertRaises(run_mod.BalanceTooLow):
                     run_mod.collect_cells(object(), ["a"], [{"id": "core"}])
 
 

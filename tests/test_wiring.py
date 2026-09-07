@@ -3,19 +3,19 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import sys
 import tempfile
 import types
 import unittest
 from pathlib import Path
+from typing import ClassVar
 from unittest import mock
 
 from probe.registry import load_registry, repo_root
 
-import sys
-
 sys.path.insert(0, str(repo_root() / "site"))
 
-import rundata  # noqa: E402
+import rundata
 
 
 def _load_generate():
@@ -90,7 +90,7 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn("Latest results", html)
         self.assertNotIn("No alias is safe to use this run.", html)
         self.assertIn("platform.openai.com", html)
-        thead, _, after_head = html.partition("</thead>")
+        thead, _, _after_head = html.partition("</thead>")
         self.assertNotIn("checks/core.html", thead)
         self.assertNotIn("checks/core.html", rest[rest.find('id="method"') :])
         self.assertNotIn("OpenCrabs", html)
@@ -285,7 +285,7 @@ class WiringTests(unittest.TestCase):
 
 
 class PricingSectionTests(unittest.TestCase):
-    PAYLOAD = {
+    PAYLOAD: ClassVar[dict] = {
         "generated_at": "2026-08-27T20:00:00+00:00",
         "range": "30d",
         "requests_scanned": 5700,
@@ -437,14 +437,14 @@ class ProbeOnlyMarginalTests(unittest.TestCase):
     route falls inside a sweep window that probed it — real money,
     unrepresentative workload."""
 
-    MARGINAL = {
+    MARGINAL: ClassVar[dict] = {
         "marginal_per_mtok": 0.006,
         "marginal_reqs": 2,
         "marginal_since": "2026-09-03T10:50:43+00:00",
         "marginal_ts": ["2026-09-03T10:45:50Z", "2026-09-04T10:41:00Z"],
         "marginal_ts_truncated": False,
     }
-    RUNS = [
+    RUNS: ClassVar[list] = [
         {"started_at": "2026-09-03T10:45:00Z", "finished_at": "2026-09-03T10:46:00Z",
          "aliases": ["ali/qwen3.8-max"]},
         {"started_at": "2026-09-04T10:40:54Z", "finished_at": "2026-09-04T10:41:30Z",
@@ -540,8 +540,8 @@ class BalanceAbortTests(unittest.TestCase):
             "summary": 'HTTP 402: {"error":{"message":"balance too low"}}',
         }
         stub = types.SimpleNamespace(run=lambda client, alias: dict(cell))
-        with mock.patch.object(run_mod, "load_check_module", return_value=stub):
-            with self.assertRaises(run_mod.BalanceTooLow):
+        with mock.patch.object(run_mod, "load_check_module", return_value=stub), \
+                self.assertRaises(run_mod.BalanceTooLow):
                 run_mod.collect_cells(object(), ["a"], [{"id": "core"}])
 
     def test_collect_cells_raises_on_balance_exception(self) -> None:
@@ -551,8 +551,8 @@ class BalanceAbortTests(unittest.TestCase):
             raise RuntimeError("insufficient_balance for key")
 
         stub = types.SimpleNamespace(run=boom)
-        with mock.patch.object(run_mod, "load_check_module", return_value=stub):
-            with self.assertRaises(run_mod.BalanceTooLow):
+        with mock.patch.object(run_mod, "load_check_module", return_value=stub), \
+                self.assertRaises(run_mod.BalanceTooLow):
                 run_mod.collect_cells(object(), ["a"], [{"id": "core"}])
 
     def test_collect_cells_tags_model_and_fail_fast_skip(self) -> None:
@@ -649,7 +649,7 @@ class BalanceAbortTests(unittest.TestCase):
 
 
 class SpendDashboardTests(unittest.TestCase):
-    PAYLOAD = {
+    PAYLOAD: ClassVar[dict] = {
         "generated_at": "2026-08-27T20:00:00+00:00",
         "range": "30d",
         "requests_scanned": 100,
@@ -673,7 +673,7 @@ class SpendDashboardTests(unittest.TestCase):
             },
         },
     }
-    PRIOR = {
+    PRIOR: ClassVar[dict] = {
         "generated_at": "2026-08-26T06:00:00+00:00",
         "routes": {
             "ali/qwen3.8-max": {"ask_in": 0.020, "ask_out": 0.042},
@@ -736,7 +736,7 @@ class SpendDashboardTests(unittest.TestCase):
 
 
 class ProbeResultsSectionTests(unittest.TestCase):
-    PAYLOAD = {
+    PAYLOAD: ClassVar[dict] = {
         "generated_at": "2026-08-27T20:00:00+00:00",
         "perf": {"window_hours": 24,
                  "models": {"ali/qwen3.8-max": {"reqs": 8908}}},
@@ -887,7 +887,7 @@ class ProbeResultsSectionTests(unittest.TestCase):
         self.assertIn("ali/qwen3.8-max", page)
         self.assertIn('href="#results"', nav)
         # A run with no cells at all still omits the section entirely.
-        empty, empty_nav = self._page(
+        empty, _empty_nav = self._page(
             gen, {"started_at": "2026-08-27T22:00:00", "origin": "local", "cells": []}
         )
         self.assertNotIn('id="results"', empty)

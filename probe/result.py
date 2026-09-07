@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+
 def http_preview(status: int, raw: str, limit: int = 180) -> str:
     return f"HTTP {status}: {raw[:limit].replace(chr(10), ' ')}"
 

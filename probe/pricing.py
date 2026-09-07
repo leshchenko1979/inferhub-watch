@@ -26,8 +26,8 @@ import sys
 import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
-from statistics import median, mean
 from pathlib import Path
+from statistics import mean, median
 
 from probe.costs import MANAGEMENT, PAGE_SIZE, USER_AGENT, fetch_log_rows
 from probe.registry import atomic_write_text, load_aliases, repo_root
@@ -540,7 +540,7 @@ def _log_rows(key: str) -> tuple[list[dict], str]:
     payload so a reader can tell which basis produced the numbers.
     """
     try:
-        from probe.pgstore import load_env, _connect, rows_since, latest_ts
+        from probe.pgstore import _connect, latest_ts, load_env, rows_since
         env = load_env()
         if env.get("PGPASSWORD"):
             conn = _connect(env)
@@ -582,7 +582,7 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
     days_source = source
     if source == "api" and len(rows) >= MAX_PAGES * PAGE_SIZE - PAGE_SIZE:
         try:
-            from probe.pgstore import load_env, _connect, rows_since, latest_ts
+            from probe.pgstore import _connect, latest_ts, load_env, rows_since
             env = load_env()
             if env.get("PGPASSWORD"):
                 conn = _connect(env)
@@ -702,7 +702,7 @@ ATTEMPTS = 3
 RETRY_BACKOFF_S = 30
 
 
-def main() -> int:  # noqa: BLE001 — pricing must never break the cron
+def main() -> int:
     key = os.environ.get("INFERHUB_API_KEY", "").strip()
     if not key:
         print("INFERHUB_API_KEY is required", file=sys.stderr)

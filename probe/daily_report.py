@@ -19,14 +19,22 @@ from __future__ import annotations
 import json
 import os
 import sys
-import tomllib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import tomllib
+
 from probe.costs import fetch_log_rows
-from probe.market import (QUALITY_FLOOR, _family_iq, _family_ttft,
-                          _perf_block, _route_iq, board_families,
-                          family, incumbent_bar)
+from probe.market import (
+    QUALITY_FLOOR,
+    _family_iq,
+    _family_ttft,
+    _perf_block,
+    _route_iq,
+    board_families,
+    family,
+    incumbent_bar,
+)
 from probe.pricing import _float, bump_usage, failure_stats, rate_label
 from probe.registry import repo_root
 
@@ -93,7 +101,7 @@ def price_movements(root: Path | None = None) -> list[dict]:
     snaps = _latest_snapshots(root)
     if len(snaps) < 2:
         return []
-    (_, old), (new_day, new) = snaps
+    (_, old), (_new_day, new) = snaps
     moves: list[dict] = []
     for alias in sorted(new.get("routes") or {}):
         prev = (old.get("routes") or {}).get(alias) or {}
@@ -136,8 +144,10 @@ def usage_section(stats: dict[str, dict], rows: list[dict]) -> list[str]:
     total_reqs = sum(s["reqs"] for s in stats.values())
     total_failed = sum(s["failed"] for s in stats.values())
     lines = [
-        f"**Last 24h** — {total_reqs} reqs · {_ask(total_cost)} USDC "
-        f"· {total_failed} failed",
+        (
+            f"**Last 24h** — {total_reqs} reqs · {_ask(total_cost)} USDC "
+            f"· {total_failed} failed"
+        ),
     ]
     if not stats:
         return lines + ["No traffic in the window."]

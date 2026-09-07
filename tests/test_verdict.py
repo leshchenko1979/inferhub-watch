@@ -46,7 +46,7 @@ class VerdictTest(unittest.TestCase):
     def _patched(self, payload_rows):
         import rundata
 
-        payload = {"range": "30d", "requests_scanned": 100,
+        {"range": "30d", "requests_scanned": 100,
                    "routes": {r["route"]: r for r in payload_rows}}
         return mock.patch.object(rundata, "pricing_rows", lambda p: payload_rows), \
             mock.patch.object(rundata, "load_intelligence", lambda root: _intel()), \

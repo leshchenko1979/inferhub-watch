@@ -3,9 +3,10 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-import tomllib
 from pathlib import Path
 from types import ModuleType
+
+import tomllib
 
 
 def repo_root() -> Path:

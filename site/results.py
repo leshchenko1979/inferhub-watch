@@ -10,13 +10,13 @@ import html
 import sys
 
 import rundata
-from probe import market, radar
-from probe.publishers import publisher_label
-from probe.registry import repo_root
-
 from board import IN_USE_MIN_REQS
 from chrome import _viz_cell, check_href, section_title
 from rundata import run_groups
+
+from probe import market, radar
+from probe.publishers import publisher_label
+from probe.registry import repo_root
 
 ROOT = repo_root()
 

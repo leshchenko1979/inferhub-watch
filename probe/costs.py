@@ -15,7 +15,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 MANAGEMENT = "https://inferhub.dev/api"
 PAGE_SIZE = 100

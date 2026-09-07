@@ -12,12 +12,11 @@ import html
 import math
 
 import rundata
-from probe import basis, official_compare, pricing
-
-from probe.registry import repo_root
-
 from chrome import _viz_cell, section_title
 from spend import DELTA_TIP, _ask_spark, ask_delta_bits, spend_block
+
+from probe import basis, official_compare, pricing
+from probe.registry import repo_root
 
 ROOT = repo_root()
 
@@ -292,34 +291,34 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         series = rundata.ask_series(dated, str(row["route"]), payload)
         plumb_cells = [
             ("&#916; ask in / out",
-             f'<span title="{DELTA_TIP}">'
-             f'{ask_delta_bits(payload, prior, str(row["route"]))}</span>'),
+             (f'<span title="{DELTA_TIP}">'
+             f'{ask_delta_bits(payload, prior, str(row["route"]))}</span>')),
             ("ask source",
-             f'<span title="Where the ask price comes from: billed ask is the '
-             f'rate actually charged on this route&#8217;s fresh traffic; floor '
-             f'ask (*) is the catalog minimum shown when a route has no billed '
-             f'traffic yet.">billed ask</span>' if logged else
-             f'<span title="Where the ask price comes from: billed ask is the '
-             f'rate actually charged on this route&#8217;s fresh traffic; floor '
-             f'ask (*) is the catalog minimum shown when a route has no billed '
-             f'traffic yet.">floor ask</span>'),
+             '<span title="Where the ask price comes from: billed ask is the '
+             'rate actually charged on this route&#8217;s fresh traffic; floor '
+             'ask (*) is the catalog minimum shown when a route has no billed '
+             'traffic yet.">billed ask</span>' if logged else
+             '<span title="Where the ask price comes from: billed ask is the '
+             'rate actually charged on this route&#8217;s fresh traffic; floor '
+             'ask (*) is the catalog minimum shown when a route has no billed '
+             'traffic yet.">floor ask</span>'),
             ("cache hit",
-             f'<span title="Share of prompt tokens served from the provider&#8217;s '
+             (f'<span title="Share of prompt tokens served from the provider&#8217;s '
              f'prompt cache in the window &#8212; cached tokens are billed at the '
              f'cache discount, so high cache hit = cheaper effective rate.">'
-             f'{rundata.cache_label(row.get("cache_pct")) or "n/a"}</span>'),
+             f'{rundata.cache_label(row.get("cache_pct")) or "n/a"}</span>')),
             ("failures",
-             f'<span class="plumb-fail" title="Failed requests / total requests, with HTTP status '
+             (f'<span class="plumb-fail" title="Failed requests / total requests, with HTTP status '
              f'counts. Failures carry no tokens and no cost — the gateway '
              f'accepted the request and the upstream dropped it.">'
-             f'{_route_failures(payload, str(row["route"]), reqs)}</span>'),
+             f'{_route_failures(payload, str(row["route"]), reqs)}</span>')),
             (f"{span} traffic",
-             f'<span title="Requests and tokens billed on this route over the '
+             (f'<span title="Requests and tokens billed on this route over the '
              f'{span} window (failed requests excluded from tokens).">'
-             f"{reqs} req · {toks} tok</span>"),
+             f"{reqs} req · {toks} tok</span>")),
             (f"{span} cost",
-             f'<span title="Total billed cost on this route over the {span} '
-             f'window.">{rundata.cost_label(row.get("cost_usdc")) or "n/a"}</span>'),
+             (f'<span title="Total billed cost on this route over the {span} '
+             f'window.">{rundata.cost_label(row.get("cost_usdc")) or "n/a"}</span>')),
         ]
         spark = _ask_spark(series)
         if spark:
@@ -329,14 +328,14 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
              .replace("> <svg", "><svg")))
         if iq:
             plumb_cells.append(("IQ",
-             f'<span title="Artificial Analysis Intelligence Index for this '
+             (f'<span title="Artificial Analysis Intelligence Index for this '
              f'route (composite of 9 public evals, artificialanalysis.ai, '
-             f'effort max) &#8212; quality independent of price.">{iq[0]}</span>'))
+             f'effort max) &#8212; quality independent of price.">{iq[0]}</span>')))
         if retries := _route_retries(runs, str(row["route"])):
             plumb_cells.append(("retries",
-             f'<span title="Sweep evidence: the first probe attempt failed and '
+             (f'<span title="Sweep evidence: the first probe attempt failed and '
              f'a replay was needed. Recovered = second attempt passed; still '
-             f'down = failed again.">{retries}</span>'))
+             f'down = failed again.">{retries}</span>')))
         if (marg := _marginal_cell(row, runs)) is not None:
             plumb_cells.append(marg)
         # Owner 2026-09-07 20:16Z: ttft/tps live in plumbing now (the
@@ -349,14 +348,14 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         ttft_label, tps_label = rundata.ttft_tps_labels(ttft, tps)
         plumb_cells.extend([
             ("ttft p50",
-             f'<span title="Median time to first token across this model&#8217;s '
+             (f'<span title="Median time to first token across this model&#8217;s '
              f'billed requests in the newest '
              f'{int((payload.get("perf") or {}).get("window_hours") or 24)}h '
-             f'window (p50) &#8212; production traffic included.">{ttft_label}</span>'),
+             f'window (p50) &#8212; production traffic included.">{ttft_label}</span>')),
             ("tps mean",
-             f'<span title="Mean tokens/sec of generation time only (duration '
+             (f'<span title="Mean tokens/sec of generation time only (duration '
              f'minus ttft); rows with a &lt;2s generation window or impossible '
-             f'tps are excluded.">{tps_label}</span>'),
+             f'tps are excluded.">{tps_label}</span>')),
         ])
         plumb_cells_row = _plumb_row(plumb_cells)
         chip = _plumb_chip()
@@ -557,28 +556,29 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
             x0 = (cx + 10) if label_right else (cx - 10 - len(short) * 6)
             x1 = x0 + len(short) * 6
 
-            def _hits_dot(y: float) -> bool:
+            def _hits_dot(y: float, _cx=cx, _cy=cy, _x0=x0, _x1=x1) -> bool:
                 # Dot obstructed when its center is inside the glyph band
                 # and its center+r crosses THIS label's span (x0..x1).
                 # Own dot excluded by exact coords (it always borders the
-                # label).
+                # label). Loop vars bound at def time (B023) — the closures
+                # are defined and called within this same iteration.
                 for ox, oy, orr in dot_obs:
-                    if ox == cx and oy == cy:
+                    if ox == _cx and oy == _cy:
                         continue
                     # Glyph band around the baseline: ascenders ~9px above,
                     # descenders ~3px below (11px label font).
                     if not (y - 9 - orr <= oy <= y + 3 + orr):
                         continue
-                    if ox + orr >= x0 and ox - orr <= x1:
+                    if ox + orr >= _x0 and ox - orr <= _x1:
                         return True
                 return False
 
-            def _row_taken(y: float) -> bool:
+            def _row_taken(y: float, _x0=x0, _x1=x1) -> bool:
                 # A previously placed label blocks this row only when the
                 # baselines are close AND the x-spans overlap (same baseline
                 # at opposite chart ends does NOT collide).
                 return any(
-                    abs(y - oy) < label_step * 0.9 and ox0 < x1 and ox1 > x0
+                    abs(y - oy) < label_step * 0.9 and ox0 < _x1 and ox1 > _x0
                     for oy, ox0, ox1 in occupied
                 )
 

@@ -8,9 +8,11 @@ import unittest
 from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import ClassVar
 from unittest import mock
 
-from probe import market, run as probe_run
+from probe import market
+from probe import run as probe_run
 
 NOW = datetime(2026, 8, 28, 6, 0, 0, tzinfo=timezone.utc)
 
@@ -536,8 +538,8 @@ class CandidateSweepTests(unittest.TestCase):
         def raising(client, aliases, registry):
             raise probe_run.BalanceTooLow("a/x: balance too low")
 
-        with mock.patch.object(probe_run, "collect_cells", side_effect=raising):
-            with self.assertRaises(probe_run.BalanceTooLow):
+        with mock.patch.object(probe_run, "collect_cells", side_effect=raising), \
+                self.assertRaises(probe_run.BalanceTooLow):
                 probe_run.run_candidate_sweep(object(), [("a/x", "m1")], [])
 
 
@@ -645,12 +647,12 @@ class ScreenTests(unittest.TestCase):
 
     def test_quality_floor_passes_wash(self) -> None:
         with mock.patch.object(market, "_route_iq", lambda r: 45.0 if r == ScreenTests.ROUTE else 46.0):
-            picked, why = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
+            picked, _why = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
         self.assertTrue(picked)
 
     def test_quality_floor_unknown_iq_passes(self) -> None:
         with mock.patch.object(market, "_route_iq", lambda r: None):
-            picked, why = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
+            picked, _why = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
         self.assertTrue(picked)
 
     def test_speed_screen_skips_slouch(self) -> None:
@@ -663,7 +665,7 @@ class ScreenTests(unittest.TestCase):
 
     def test_speed_screen_passes_equal_footed(self) -> None:
         with mock.patch.object(market, "_route_ttft",
-                               lambda r: 4000.0 if r == ScreenTests.ROUTE else 4000.0):
+                               lambda r: 4000.0):
             picked, _ = market._classify(self._row(0.003), 0.005, {}, ctx=self._ctx())
         self.assertTrue(picked)
 
@@ -691,7 +693,7 @@ class ScreenTests(unittest.TestCase):
 class DryRunTopNTest(unittest.TestCase):
     """Routes ranked past TOP_N must print the cutoff marker, not a law one."""
 
-    OVERFLOW_CATALOG = {
+    OVERFLOW_CATALOG: ClassVar[dict] = {
         "cb/qwen3.8-max": (0.001, 0.003),     # predicted 0.00094
         "cx/qwen3.8-max": (0.002, 0.004),     # predicted 0.00138
         "cz2/qwen3.8-max": (0.0025, 0.005),   # predicted 0.00219 — third

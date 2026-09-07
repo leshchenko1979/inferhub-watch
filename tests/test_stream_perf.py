@@ -24,7 +24,7 @@ class StreamPerfTest(unittest.TestCase):
         self.assertIsNone(tps)
 
     def test_zero_completion_tokens(self) -> None:
-        ttft, tps = stream_perf(500.0, 3000.0, {"completion_tokens": 0})
+        _ttft, tps = stream_perf(500.0, 3000.0, {"completion_tokens": 0})
         self.assertIsNone(tps)
 
     def test_degenerate_window(self) -> None:
@@ -52,6 +52,7 @@ if __name__ == "__main__":
     unittest.main()
 
 from probe.pricing import perf_stats
+
 
 class PerfStatsTest(unittest.TestCase):
     def _row(self, ts, ttft, dur, out, model="m/a"):

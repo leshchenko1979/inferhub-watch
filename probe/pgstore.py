@@ -12,7 +12,6 @@ credentials in /root/.inferhub_pg.env (chmod 600, gitignored host file).
 """
 from __future__ import annotations
 
-import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -75,7 +74,7 @@ def ensure_schema(conn) -> None:
     conn.commit()
 
 
-_ROW_RE = re.compile(r"^[a-z0-9-]{10,}$", re.I)
+_ROW_RE = re.compile(r"^[a-z0-9-]{10,}$", re.IGNORECASE)
 
 
 def row_fields(row: dict) -> tuple | None:

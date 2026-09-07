@@ -30,9 +30,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from probe.pricing import fetch_catalog, parse_ts
-from probe.registry import (_cached_read, _load_models_toml, aa_slug,
-                            atomic_write_text, intelligence_models,
-                            load_aliases, repo_root)
+from probe.registry import (
+    _cached_read,
+    _load_models_toml,
+    aa_slug,
+    atomic_write_text,
+    intelligence_models,
+    load_aliases,
+    repo_root,
+)
 
 PROVEN_TTL = timedelta(days=7)
 TOP_N = 2

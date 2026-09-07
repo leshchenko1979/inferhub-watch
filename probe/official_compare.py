@@ -21,6 +21,8 @@ Cache rules:
 
 from __future__ import annotations
 
+import itertools
+
 from probe.catalog import CACHE_RATE
 from probe.market import family
 
@@ -210,7 +212,7 @@ def projection_gate(dated: list) -> dict:
     """
     n = within = 0
     if isinstance(dated, list):
-        for older, newer in zip(dated, dated[1:]):
+        for older, newer in itertools.pairwise(dated):
             if not isinstance(older[1], dict) or not isinstance(newer[1], dict):
                 continue
             routes_old = older[1].get("routes") or {}

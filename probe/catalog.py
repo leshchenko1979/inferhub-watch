@@ -75,14 +75,15 @@ def write_snapshot(models: dict[str, dict], root: Path | None = None) -> Path:
     return path
 
 
-def main() -> int:  # noqa: BLE001 - catalog must never break the cron
+def main() -> int:
     key = os.environ.get("INFERHUB_API_KEY") or ""
     if not key:
         print("catalog: INFERHUB_API_KEY not set, skipping")
         return 0
     try:
         models = fetch_models(key)
-    except Exception as exc:  # keep yesterday's snapshot on any failure
+    except Exception as exc:  # noqa: BLE001 — deliberate: ANY fetch failure
+        # must keep yesterday's snapshot rather than crash the sweep
         print(f"catalog: fetch failed ({exc}); keeping previous snapshot")
         return 0
     if not models:

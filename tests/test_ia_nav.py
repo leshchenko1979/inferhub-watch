@@ -1,12 +1,11 @@
 """Task-3 render tests: family anchors in nav, drill-down links,
 past-runs hidden note, mobile-fold CSS block (IA overhaul)."""
 import importlib.util
-import pathlib
+import sys
 import unittest
 
 from probe.registry import repo_root
 
-import sys
 sys.path.insert(0, str(repo_root() / "site"))
 
 ROOT = repo_root()

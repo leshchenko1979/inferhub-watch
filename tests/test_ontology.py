@@ -45,7 +45,7 @@ class SiteCopyTermsTest(unittest.TestCase):
         # inside code (HTML attributes, class names) — the user-visible
         # strings must say failure.
         text = self.load()
-        for m in re.finditer(r'"([^"]*\berror\w*\b[^"]*)"', text, re.I):
+        for m in re.finditer(r'"([^"]*\berror\w*\b[^"]*)"', text, re.IGNORECASE):
             s = m.group(1)
             # permitted: non-copy technical strings
             if s.startswith("test") or "cache miss" in s:

@@ -28,7 +28,7 @@ from probe.sse import (
 
 def run(client: InferHubClient, alias: str) -> dict:
     payload = core_payload(alias, include_usage=True)
-    status, raw, ms, ttft = client.post(payload)
+    status, raw, ms, _ttft = client.post(payload)
     usage_requested = True
     if status == 400:
         # Some routes 400 unknown params (the max_tokens precedent). Drop
@@ -36,7 +36,7 @@ def run(client: InferHubClient, alias: str) -> dict:
         # behaviour, never a worse one.
         payload = core_payload(alias)
         usage_requested = False
-        status, raw, ms, ttft = client.post(payload)
+        status, raw, ms, _ttft = client.post(payload)
     if status != 200:
         return result(
             check_id="cache",

@@ -15,7 +15,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from probe import intelligence  # noqa: E402
+from probe import intelligence
 
 
 def _load_generate():
@@ -65,9 +65,9 @@ class FetchModelsTest(unittest.TestCase):
 
 class SlugMapTest(unittest.TestCase):
     def test_every_board_route_has_a_slug(self):
-        from probe.registry import load_aliases
-
         import tomllib
+
+        from probe.registry import load_aliases
 
         data = tomllib.loads((REPO / "models.toml").read_text())
         aa = data.get("aa") or {}

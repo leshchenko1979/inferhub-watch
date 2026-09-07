@@ -1,6 +1,7 @@
 """Tests for probe/official_compare.py - official-price comparison math."""
 
 import unittest
+from typing import ClassVar
 from unittest import mock
 
 from probe.official_compare import (
@@ -298,7 +299,7 @@ class BoardIqSortTest(unittest.TestCase):
         from probe.registry import repo_root
 
         _sys.path.insert(0, str(repo_root() / "site"))
-        import rundata  # noqa: E402
+        import rundata
 
         cls.rundata = rundata
         path = repo_root() / "site" / "generate.py"
@@ -454,6 +455,7 @@ class ScatterSectionTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         import importlib.util
+
         from probe.registry import repo_root
         path = repo_root() / "site" / "generate.py"
         spec = importlib.util.spec_from_file_location("watch_generate_scatter", path)
@@ -461,7 +463,7 @@ class ScatterSectionTest(unittest.TestCase):
         cls.mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.mod)
 
-    INTEL = {"models": {"glm-5-3-flash": {"iq": 46.2}, "kimi-k3": {"iq": 50.2},
+    INTEL: ClassVar[dict] = {"models": {"glm-5-3-flash": {"iq": 46.2}, "kimi-k3": {"iq": 50.2},
                         "kimi-k2": {"iq": 44.0}}}
 
     def _payload(self) -> dict:

@@ -12,7 +12,8 @@ from pathlib import Path
 
 import rundata
 import tmpl
-from probe.registry import load_aliases, repo_root  # noqa: F401 — re-exported
+
+from probe.registry import load_aliases, repo_root
 
 ROOT = repo_root()
 SITE_DIR = Path(__file__).resolve().parent

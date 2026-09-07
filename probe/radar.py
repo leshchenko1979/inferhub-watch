@@ -17,8 +17,7 @@ import sys
 from pathlib import Path
 
 from probe import market
-from probe.registry import atomic_write_text
-from probe.registry import load_aliases, repo_root
+from probe.registry import atomic_write_text, load_aliases, repo_root
 
 MARGIN_ALERT_PCT = 15.0
 LEDGER_NAME = ".radar-ledger.json"
@@ -222,7 +221,7 @@ def notify_alerts(due: list[dict]) -> None:
     if cmd is None:
         return
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=False)
         if proc.returncode != 0:
             print(f"radar: notify failed ({proc.returncode}): {proc.stderr.strip()}")
     except (OSError, subprocess.SubprocessError) as exc:

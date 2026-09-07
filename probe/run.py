@@ -5,7 +5,6 @@ import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from probe import market
 from probe.http import InferHubClient
@@ -37,7 +36,7 @@ def _attempt(
     instead of blowing up the loop; a balance abort still raises."""
     try:
         return module.run(client, alias), None
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         if balance_too_low(str(exc)):
             raise BalanceTooLow(f"{alias}/{check_id}: {exc}") from exc
         return None, exc

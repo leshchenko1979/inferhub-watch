@@ -32,18 +32,18 @@ sys.path.insert(0, str(ROOT))
 if str(_SITE) not in sys.path:
     sys.path.insert(0, str(_SITE))
 
-import mdhtml  # noqa: E402
-import tmpl  # noqa: E402
-import freshness as fresh  # noqa: E402
-import rundata  # noqa: E402
+import board as board_mod
+import chrome as chrome_mod
+import freshness as fresh
+import mdhtml
+import results as results_mod
+import rundata
+import spend as spend_mod
+import ticket as ticket_mod
+import tmpl
 
-import board as board_mod  # noqa: E402
-import chrome as chrome_mod  # noqa: E402
-import results as results_mod  # noqa: E402
-import spend as spend_mod  # noqa: E402
-import ticket as ticket_mod  # noqa: E402
-from probe.registry import load_registry  # noqa: E402
-from probe.registry import load_aliases as _load_aliases  # noqa: E402
+from probe.registry import load_aliases as _load_aliases
+from probe.registry import load_registry
 
 # ── test-facade re-exports (the render-pinning tests' module surface) ──
 base_href = chrome_mod.base_href

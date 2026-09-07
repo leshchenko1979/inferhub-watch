@@ -114,7 +114,8 @@ class WiringTests(unittest.TestCase):
         self.assertEqual(gen.main(), 0)
 
     def test_main_fails_when_freshness_fail_and_stale(self) -> None:
-        import json, tempfile
+        import json
+        import tempfile
         from unittest import mock
         gen = self._load_gen()
         with tempfile.TemporaryDirectory() as tmp:
