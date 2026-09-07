@@ -59,22 +59,20 @@ def _probe_only(row: dict, runs: list[dict]) -> bool:
             return False
     return True
 
-def _plumb_row(cells: list[tuple[str, str]], colspan: int = 3) -> str:
-    """One collapsed plumbing row under a board route: <details><dl>.
+def _plumb_row(cells: list[tuple[str, str]]) -> str:
+    """One collapsed plumbing fold attached to a route row's last cell.
 
-    Owner 2026-09-07 ("do we need show plumbing on separate lines? why not
-    a small 'more' chip with an expansion mark?"): the summary is a compact
-    right-aligned 'more +' chip, not a full-width text line; the collapsed
-    row shrinks to chip height. A <details> can't toggle a DIFFERENT table
-    row without JS, so the chip lives on the plumbing row itself.
+    Owner 2026-09-07 ("why waste a separate line on more?"): the fold lives
+    INSIDE the route row — a compact right-aligned 'more +' chip in the IQ
+    per $ cell, expanding into a dl.plumb grid in place. No separate row.
 
     Keys arrive pre-rendered (callers escape any data-derived text)."""
     pairs = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in cells)
     return (
-        f'<tr class="plumb-row"><td colspan="{colspan}"><details>'
+        f'<div class="plumb"><details>'
         '<summary aria-label="Show plumbing details"><span class="plumb-word">more</span>'
         ' <span class="plumb-mark" aria-hidden="true">+</span></summary>'
-        f'<dl class="plumb">{pairs}</dl></details></td></tr>'
+        f'<dl class="plumb">{pairs}</dl></details></div>'
     )
 
 def _route_failures(payload: dict | None, route: str, reqs: int) -> str:
@@ -289,23 +287,6 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         pair, data_label, data_tip = _pair_cell(eff_label, proj_label, use_proj)
         iq = _iq_value(str(row["route"]), ranking_basis, intel)
         series = rundata.ask_series(dated, str(row["route"]), payload)
-        body_rows.append(
-            "<tr>"
-            f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>{cand}'
-            f'<span class="route-ask">ask {ask_in} / {ask_out} per M{mark}</span></th>'
-            + _viz_cell(
-                pair,
-                rundata.log_bar_pct(ranking_basis, bar_lo, bar_hi),
-                rundata.rate_color_class(ranking_basis),
-                data_label=data_label,
-                data_tip=data_tip,
-            )
-            + '<td class="num" data-label="IQ per $" '
-            'data-tip="Intelligence (Artificial Analysis index) divided by the '
-            'route&#8217;s ranking $/M &#8212; higher is smarter per dollar.">'
-            f"{iq[1] if iq else '&#8212;'}</td>"
-            + "</tr>"
-        )
         plumb_cells = [
             ("&#916; ask in / out",
              f'<span title="{DELTA_TIP}">'
@@ -339,7 +320,10 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         ]
         spark = _ask_spark(series)
         if spark:
-            plumb_cells.append(("ask history", spark))
+            plumb_cells.append(("ask history",
+             f'<span title="Ask $/M history from committed probes: in/out on '
+             f'the first and latest day, sparkline in between."> {spark}</span>'
+             .replace("> <svg", "><svg")))
         if iq:
             plumb_cells.append(("IQ",
              f'<span title="Artificial Analysis Intelligence Index for this '
@@ -352,7 +336,27 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
              f'down = failed again.">{retries}</span>'))
         if (marg := _marginal_cell(row, runs)) is not None:
             plumb_cells.append(marg)
-        body_rows.append(_plumb_row(plumb_cells))
+        plumb = _plumb_row(plumb_cells)
+        # Owner 2026-09-07 ("why waste a separate line on more?"): the chip
+        # rides inside the route row's LAST decision cell — no separate
+        # plumbing row at all. The <details> collapses its own box (zero-JS).
+        body_rows.append(
+            "<tr>"
+            f'<th scope="row"><code>{html.escape(str(row["route"]))}</code>{cand}'
+            f'<span class="route-ask">ask {ask_in} / {ask_out} per M{mark}</span></th>'
+            + _viz_cell(
+                pair,
+                rundata.log_bar_pct(ranking_basis, bar_lo, bar_hi),
+                rundata.rate_color_class(ranking_basis),
+                data_label=data_label,
+                data_tip=data_tip,
+            )
+            + '<td class="num" data-label="IQ per $" '
+            'data-tip="Intelligence (Artificial Analysis index) divided by the '
+            'route&#8217;s ranking $/M &#8212; higher is smarter per dollar.">'
+            f"{iq[1] if iq else '&#8212;'}{plumb}</td>"
+            + "</tr>"
+        )
     caption = _pricing_caption(span, use_proj, gate)
     # Delta legend as a visible note (QA: it lived only in a hover title).
     legend = (

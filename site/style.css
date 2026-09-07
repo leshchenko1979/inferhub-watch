@@ -343,25 +343,33 @@ h2 {
   padding: 0 0 var(--space-5);
 }
 
-.check-brief h2 {
+/* Owner 2026-09-07 ("explanation text blocks are all formatted
+   differently"): ALL explanatory prose on the page shares one treatment —
+   the .section-note recipe (muted, var(--text-ui), 62ch measure). Briefs
+   (h4 + p/li), readout lists, and section notes are typographically
+   identical; only structural markup differs. */
+.check-brief h4 {
   font-family: var(--mono);
   font-size: var(--text-ui);
   font-weight: 500;
   letter-spacing: 0;
-  color: var(--primary);
-  margin: var(--space-5) 0 var(--space-3);
+  color: var(--ink);
+  margin: var(--space-4) 0 var(--space-2);
 }
 
 .check-brief p,
 .check-brief li {
   font-family: var(--sans);
-  font-size: 0.95rem;
   color: var(--muted);
+  font-size: var(--text-ui);
+  line-height: 1.5;
+  max-width: 62ch;
+  margin: 0 0 var(--space-3);
   text-wrap: pretty;
 }
 
 .check-brief ul {
-  margin: 0.2rem 0 0.6rem;
+  margin: 0 0 var(--space-3);
   padding-left: 1.1rem;
 }
 
@@ -553,15 +561,13 @@ td {
   color: var(--ink);
 }
 
-/* Collapsed plumbing row under each board route.
-   Owner 2026-09-07: collapsed state is a small right-aligned "more +" chip
-   (min-height dropped 44→24px); expands in place. */
-.plumb-row td {
-  padding: 0;
+/* Plumbing fold, attached INSIDE each route row's last cell.
+   Owner 2026-09-07: collapsed = small "more +" chip, no separate row. */
+.plumb {
   text-align: right;
 }
 
-.plumb-row summary {
+.plumb summary {
   cursor: pointer;
   list-style: none;
   min-height: 24px;
@@ -575,27 +581,27 @@ td {
   background: transparent;
 }
 
-.plumb-row summary:hover {
+.plumb summary:hover {
   color: var(--ink);
   background: var(--bg-soft, rgba(127, 127, 127, 0.08));
 }
 
-.plumb-row summary::-webkit-details-marker {
+.plumb summary::-webkit-details-marker {
   display: none;
 }
 
-.plumb-row .plumb-mark {
+.plumb .plumb-mark {
   display: inline-block;
   font-weight: 600;
   min-width: 11px;
   text-align: center;
 }
 
-.plumb-row details[open] summary .plumb-word {
+.plumb details[open] summary .plumb-word {
   display: none;
 }
 
-.plumb-row details[open] summary {
+.plumb details[open] summary {
   color: var(--ink);
 }
 
@@ -1160,8 +1166,8 @@ footer {
     grid-column: 1 / -1;
   }
 
-  /* plumbing folds full-width under its route card */
-  .plumb-row td {
+  /* plumbing fold spans both card columns */
+  .pricing .plumb {
     grid-column: 1 / -1;
   }
 
