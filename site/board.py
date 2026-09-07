@@ -154,16 +154,6 @@ def _iq_sort_key(intel: dict, dated: list | None, payload: dict,
                 iqps = None
         return (eff_val, -(iqps if iqps is not None else float("-inf")))
     return key
-    def key(row: dict) -> float:
-        slug = rundata.aa_slug(str(row["route"]))
-        entry = (intel.get("models") or {}).get(slug) if slug else None
-        iq = entry.get("iq") if entry else None
-        eff = _board_basis(row, dated, payload, use_proj)
-        try:
-            return iq / eff if iq is not None and eff else float("-inf")
-        except ZeroDivisionError:
-            return float("-inf")
-    return key
 
 def _pair_cell(eff_label: str, proj_label: str | None,
                use_proj: bool) -> tuple[str, str, str]:
@@ -293,7 +283,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         # Decision row: two figures a scanner reads — the rate pair and
         # IQ per $. Everything else (ask movement, history, cache,
         # traffic, cost, failures, source) folds into the plumbing row.
-        proj = _proj_eff(dated, payload, str(row["route"]))
+        proj = basis.projected(payload, str(row["route"]), dated)
         ranking_basis = _board_basis(row, dated, payload, use_proj)
         eff_label = rundata.rate_label(row.get("eff_per_mtok"), fixed=4) or "n/a"
         proj_label = rundata.rate_label(proj, fixed=4) if proj is not None else None
@@ -464,6 +454,7 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
     """
     if not payload or not intel:
         return ""
+    runs = runs or []
     perf = ((payload.get("perf") or {}).get("models")) or {}
     hours = (payload.get("perf") or {}).get("window_hours") or 24
     points = []
@@ -480,7 +471,6 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
         if not isinstance(eff, (int, float)) or eff <= 0 or not isinstance(iq, (int, float)):
             skipped += 1
             continue
-        runs = runs or []
         ponly = _probe_only(row, runs)
         points.append((route, float(eff), iq,
                        int((perf.get(route) or {}).get("reqs") or 0), basis_tag,
@@ -694,7 +684,3 @@ def _iq_cells(route: str, eff: float | None, intel: dict | None) -> str:
         f'<td class="num" data-tip="{tip_iqd}">{iq_per_dollar}</td>'
     )
 
-def _proj_eff(dated: list, payload: dict, route: str) -> float | None:
-    """The forward-looking $/M for one route — delegates to probe.basis
-    (P1a single money-basis owner). None without hit evidence or asks."""
-    return basis.projected(payload, route, dated)

@@ -47,6 +47,13 @@ def base_href() -> str:
     return raw or ""
 
 
+def check_href(fname: str, nested: bool = False) -> str:
+    """URL for a check page, resolving the PAGES_BASE-vs-relative fallback
+    once (was re-implemented at every drill-down call site, review R6)."""
+    base = base_href()
+    return f"{base}/checks/{fname}" if base else f"../checks/{fname}" if nested else f"checks/{fname}"
+
+
 def results_available(runs: list[dict] | None = None) -> bool:
     """True when the latest run renders any model group (board or audition).
     Callers holding already-loaded runs pass them in; the default re-loads

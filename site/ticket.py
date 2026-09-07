@@ -17,11 +17,6 @@ from spend import _ask_spark
 ROOT = repo_root()
 
 
-def _proj_eff(dated: list, payload: dict, route: str) -> float | None:
-    """The forward-looking $/M for one route — delegates to probe.basis
-    (P1a single money-basis owner). None without hit evidence or asks."""
-    return basis.projected(payload, route, dated)
-
 def verdict_section(payload: dict | None) -> str:
     """The dispatch ticket at the top of the board, or ''.
 
@@ -46,7 +41,7 @@ def verdict_section(payload: dict | None) -> str:
         iq = entry.get("iq") if entry else None
         eff = row.get("eff_per_mtok")
         if use_proj:
-            proj = _proj_eff(dated, payload, str(row["route"]))
+            proj = basis.projected(payload, str(row["route"]), dated)
             if proj is not None:
                 eff = proj
         try:
@@ -87,7 +82,7 @@ def verdict_section(payload: dict | None) -> str:
     if hit is not None:
         why.append(f"{hit:.0f}% cached")
     if use_proj:
-        proj = _proj_eff(dated, payload, route)
+        proj = basis.projected(payload, route, dated)
         if proj is not None:
             label = rundata.rate_label(proj, fixed=4) or "n/a"
             why.append(f"projects {label} $/M now")

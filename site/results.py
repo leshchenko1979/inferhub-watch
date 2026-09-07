@@ -15,7 +15,7 @@ from probe.publishers import publisher_label
 from probe.registry import repo_root
 
 from board import IN_USE_MIN_REQS
-from chrome import _viz_cell, base_href, section_title
+from chrome import _viz_cell, check_href, section_title
 from rundata import run_groups
 
 ROOT = repo_root()
@@ -119,13 +119,8 @@ def _candidate_route_row(
     ttft_label, tps_label = rundata.ttft_tps_labels(ttft_ms, tps)
     perf_tip = "First-token latency and tokens/sec from the latest core probe (one streamed request; dash = pre-perf run)."
     # Drill-down: each route links to the per-check pages (Level-3 IA).
-    base = base_href()
-    if base:
-        core_href = f"{base}/checks/core.html"
-        cache_href = f"{base}/checks/cache.html"
-    else:
-        core_href = "../checks/core.html"
-        cache_href = "../checks/cache.html"
+    core_href = check_href("core.html", nested=True)
+    cache_href = check_href("cache.html", nested=True)
     drill = (
         f'<span class="route-drill">'
         f'<a href="{core_href}" title="Open the core check page — request JSON and pass/fail rule">core</a>'
