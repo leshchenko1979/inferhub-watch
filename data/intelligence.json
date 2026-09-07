@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-07T09:12:38Z",
+ "generated_at": "2026-09-07T16:14:49Z",
  "source": "artificialanalysis.ai",
  "endpoint": "https://artificialanalysis.ai/api/v2/data/llms/models",
  "models": {
@@ -61,7 +61,7 @@
   },
   "gemini-3-8-flash-low": {
    "name": "Gemini 3.8 Flash (low)",
-   "iq": 42.4,
+   "iq": 41,
    "coding": 73.5,
    "aa_in": 0.75,
    "aa_out": 3.75
@@ -89,14 +89,21 @@
   },
   "quasar-438b": {
    "name": "Quasar 438B (max, based on GLM-5.2)",
-   "iq": 33.9,
+   "iq": 34.2,
    "coding": 61.2,
    "aa_in": 0.6,
    "aa_out": 1.8
   },
+  "minicpm5-2b": {
+   "name": "MiniCPM5-2B",
+   "iq": 15,
+   "coding": 14.5,
+   "aa_in": 0,
+   "aa_out": 0
+  },
   "gpt-oss-20b": {
    "name": "gpt-oss-20b (high)",
-   "iq": 9.1,
+   "iq": 10.8,
    "coding": 20.7,
    "aa_in": 0.06,
    "aa_out": 0.19
@@ -327,7 +334,7 @@
   },
   "llama-4-maverick": {
    "name": "Llama 4 Maverick",
-   "iq": 8.5,
+   "iq": 10.3,
    "coding": 16.3,
    "aa_in": 0.26,
    "aa_out": 0.91
@@ -593,14 +600,14 @@
   },
   "claude-fable-5-1-high": {
    "name": "Claude Fable 5.1 (Adaptive Reasoning, High Effort, Default Fallback)",
-   "iq": 51.7,
+   "iq": 54.5,
    "coding": 79.1,
    "aa_in": 10,
    "aa_out": 50
   },
   "claude-fable-5-1-low": {
    "name": "Claude Fable 5.1 (Adaptive Reasoning, Low Effort, Default Fallback)",
-   "iq": 47.8,
+   "iq": 50.9,
    "coding": 75.2,
    "aa_in": 10,
    "aa_out": 50
@@ -614,14 +621,14 @@
   },
   "claude-fable-5-1-medium": {
    "name": "Claude Fable 5.1 (Adaptive Reasoning, Medium Effort, Default Fallback)",
-   "iq": 49.9,
+   "iq": 52.8,
    "coding": 77.1,
    "aa_in": 10,
    "aa_out": 50
   },
   "claude-fable-5-1-xhigh": {
    "name": "Claude Fable 5.1 (Adaptive Reasoning, Xhigh Effort, Default Fallback)",
-   "iq": 53.8,
+   "iq": 56.2,
    "coding": 80.7,
    "aa_in": 10,
    "aa_out": 50
@@ -684,7 +691,7 @@
   },
   "devstral-small-2": {
    "name": "Devstral Small 2",
-   "iq": 11.2,
+   "iq": 11.7,
    "coding": 29.3,
    "aa_in": 0,
    "aa_out": 0
@@ -733,7 +740,7 @@
   },
   "deepseek-v4-pro-0424": {
    "name": "DeepSeek V4 Pro (Reasoning, Max Effort)",
-   "iq": 35.8,
+   "iq": 34.5,
    "coding": 59.4,
    "aa_in": 0.435,
    "aa_out": 0.87
@@ -768,7 +775,7 @@
   },
   "deepseek-v4-flash-vision": {
    "name": "DeepSeek V4 Flash Vision (Reasoning, Max Effort)",
-   "iq": 41.5,
+   "iq": 40.7,
    "coding": 65,
    "aa_in": 0.44,
    "aa_out": 1.32
@@ -810,7 +817,7 @@
   },
   "grok-4-6-xhigh": {
    "name": "Grok 4.6 (xhigh)",
-   "iq": 49.3,
+   "iq": 49.9,
    "coding": 75.9,
    "aa_in": 2,
    "aa_out": 6
@@ -824,7 +831,7 @@
   },
   "grok-4-6-low": {
    "name": "Grok 4.6 (low)",
-   "iq": 41.8,
+   "iq": 41.6,
    "coding": 66.3,
    "aa_in": 2,
    "aa_out": 6
@@ -838,7 +845,7 @@
   },
   "grok-4-6-medium": {
    "name": "Grok 4.6 (medium)",
-   "iq": 48.4,
+   "iq": 48.8,
    "coding": 74.4,
    "aa_in": 2,
    "aa_out": 6
@@ -1027,7 +1034,7 @@
   },
   "solar-pro-3": {
    "name": "Solar Pro 3",
-   "iq": 8.5,
+   "iq": 9.4,
    "coding": 16.2,
    "aa_in": 0.15,
    "aa_out": 0.6
@@ -1062,7 +1069,7 @@
   },
   "nvidia-nemotron-3-ultra-550b-a55b": {
    "name": "Nemotron 3 Ultra 550B A55B (Reasoning)",
-   "iq": 29.6,
+   "iq": 29.3,
    "coding": 49.3,
    "aa_in": 0.6,
    "aa_out": 2.6
@@ -1160,7 +1167,7 @@
   },
   "kimi-k2-7-code": {
    "name": "Kimi K2.7 Code",
-   "iq": 33.9,
+   "iq": 32.7,
    "coding": 60.8,
    "aa_in": 0.95,
    "aa_out": 4
@@ -1181,7 +1188,7 @@
   },
   "kimi-k3-low": {
    "name": "Kimi K3 (low)",
-   "iq": 38.8,
+   "iq": 37.1,
    "coding": 72,
    "aa_in": 3,
    "aa_out": 15
@@ -1461,7 +1468,7 @@
   },
   "mimo-v2-5-0424": {
    "name": "MiMo-V2.5",
-   "iq": 29.5,
+   "iq": 28.2,
    "coding": 56.8,
    "aa_in": 0.14,
    "aa_out": 0.28
@@ -1538,7 +1545,7 @@
   },
   "hy3": {
    "name": "Hy3",
-   "iq": 33.2,
+   "iq": 32.4,
    "coding": 58.8,
    "aa_in": 0.136,
    "aa_out": 0.554
@@ -1685,7 +1692,7 @@
   },
   "trinity-large-thinking": {
    "name": "Trinity Large Thinking",
-   "iq": 12,
+   "iq": 13.1,
    "coding": 25.8,
    "aa_in": 0.25,
    "aa_out": 0.9
@@ -1734,7 +1741,7 @@
   },
   "inkling-small": {
    "name": "Inkling Small",
-   "iq": 32.3,
+   "iq": 32.2,
    "coding": 52.9,
    "aa_in": 0.3,
    "aa_out": 1.2
@@ -1762,7 +1769,7 @@
   },
   "glm-5-2": {
    "name": "GLM-5.2 (max)",
-   "iq": 42.5,
+   "iq": 42.1,
    "coding": 68.8,
    "aa_in": 1.4,
    "aa_out": 4.4
@@ -1909,7 +1916,7 @@
   },
   "qwen3-coder-next": {
    "name": "Qwen3 Coder Next",
-   "iq": 14.3,
+   "iq": 14.1,
    "coding": 36.2,
    "aa_in": 0.35,
    "aa_out": 1.2
@@ -1944,7 +1951,7 @@
   },
   "qwen3-7-plus": {
    "name": "Qwen3.7 Plus",
-   "iq": 30.8,
+   "iq": 31.9,
    "coding": 55.9,
    "aa_in": 0.4,
    "aa_out": 1.6
@@ -2105,7 +2112,7 @@
   },
   "celeris-1": {
    "name": "Celeris-1",
-   "iq": 6.3,
+   "iq": 7.6,
    "coding": 14.4,
    "aa_in": 0.2,
    "aa_out": 0.7
@@ -2196,7 +2203,7 @@
   },
   "gpt-5-5-medium": {
    "name": "GPT-5.5 (medium)",
-   "iq": 41.6,
+   "iq": 41.2,
    "coding": 71.5,
    "aa_in": 5,
    "aa_out": 30
@@ -2581,7 +2588,7 @@
   },
   "muse-spark-1-1": {
    "name": "Muse Spark 1.1 (xhigh)",
-   "iq": 43.3,
+   "iq": 41.2,
    "coding": 71.3,
    "aa_in": 1.25,
    "aa_out": 4.25
@@ -2693,7 +2700,7 @@
   },
   "gemini-3-1-flash-lite-preview": {
    "name": "Gemini 3.1 Flash-Lite",
-   "iq": 18.7,
+   "iq": 19.3,
    "coding": 34.7,
    "aa_in": 0.25,
    "aa_out": 1.5
@@ -2980,7 +2987,7 @@
   },
   "claude-opus-4-8": {
    "name": "Claude Opus 4.8 (Adaptive Reasoning, Max Effort)",
-   "iq": 46.4,
+   "iq": 47.8,
    "coding": 74.3,
    "aa_in": 5,
    "aa_out": 25
@@ -2994,7 +3001,7 @@
   },
   "claude-4-5-sonnet-thinking": {
    "name": "Claude 4.5 Sonnet (Reasoning)",
-   "iq": 29,
+   "iq": 27.3,
    "coding": 52.1,
    "aa_in": 3,
    "aa_out": 15
@@ -3190,7 +3197,7 @@
   },
   "mistral-small-3-1": {
    "name": "Mistral Small 3.1",
-   "iq": 8.6,
+   "iq": 10.3,
    "coding": 26.3,
    "aa_in": 0.1,
    "aa_out": 0.3
@@ -3253,7 +3260,7 @@
   },
   "deepseek-v3": {
    "name": "DeepSeek V3 (Dec '24)",
-   "iq": 8.3,
+   "iq": 10.4,
    "coding": 23,
    "aa_in": 0.36,
    "aa_out": 0.89
@@ -3302,14 +3309,14 @@
   },
   "deepseek-v4-flash-0420-high": {
    "name": "DeepSeek V4 Flash (Reasoning, High Effort)",
-   "iq": 30.4,
+   "iq": 30.2,
    "coding": 52,
    "aa_in": 0.13,
    "aa_out": 0.28
   },
   "deepseek-v4-flash-0420": {
    "name": "DeepSeek V4 Flash (Reasoning, Max Effort)",
-   "iq": 33.1,
+   "iq": 30.7,
    "coding": 56.2,
    "aa_in": 0.13,
    "aa_out": 0.28
@@ -3505,7 +3512,7 @@
   },
   "grok-4-3": {
    "name": "Grok 4.3 (high)",
-   "iq": 29.3,
+   "iq": 29.9,
    "coding": 42.2,
    "aa_in": 1.25,
    "aa_out": 2.5
@@ -4142,7 +4149,7 @@
   },
   "qwen3-7-max": {
    "name": "Qwen3.7 Max",
-   "iq": 37,
+   "iq": 36.6,
    "coding": 66,
    "aa_in": 2.5,
    "aa_out": 7.5
@@ -4205,14 +4212,14 @@
   },
   "qwen3-32b-instruct-reasoning": {
    "name": "Qwen3 32B (Reasoning)",
-   "iq": 5.7,
+   "iq": 8,
    "coding": 15.3,
    "aa_in": 0.16,
    "aa_out": 0.64
   },
   "qwen3-14b-instruct-reasoning": {
    "name": "Qwen3 14B (Reasoning)",
-   "iq": 4.8,
+   "iq": 7.1,
    "coding": 13.8,
    "aa_in": 0.35,
    "aa_out": 4.2
