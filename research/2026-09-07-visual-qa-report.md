@@ -71,3 +71,31 @@ entirely on mobile: the signature scatter and the explainer prose assume a 1440p
 5. m1/m2/m3/m6/m7/m8 — polish batch.
 
 *Report by 3 subagent assessments, synthesized + source-verified by ops session; no fixes applied (owner: report first).*
+
+## Addendum — late first-batch receipts (verified first-hand, 2026-09-07)
+
+The restart believed dead, three first-batch agents completed late. Their findings, cross-checked against source by the parent before inclusion:
+
+### New MAJORs (source-confirmed)
+
+- **MAJOR — family anchors hidden under sticky header.** CSS `style.css:154` targets `tr.fam-head[id^="fam-"]`, but `results.py:279` emits `class="fam-head"` on the `<tr>` while the `id="fam-…"` sits on the child `<th>` — the compound selector never matches, so fam rows get no `scroll-margin-top` (sections get it and land correctly; fam rows land at top 0, under the 150px header). Fix: extend the selector to also match `th[id^="fam-"]`, or add scroll-margin to `[id^="fam-"]` generally.
+- **MAJOR — `&#215;` double-escape debris in Failures codes cells.** `board.py:667,685` build `&#215;` entity strings in Python; a second escape downstream turns them into `&amp;#215;`, rendering the literal text `&#215;` in 5 cells (4 in failures codes, 1 elsewhere). Fix: emit the literal `×` character and let the escaper run once.
+
+### Additional findings adopted (from assessments A/B + late visual-QA)
+
+- MINOR: scatter last x-tick `$0.0795` clips to `$0.079` at the SVG edge (desktop + mobile).
+- MINOR: sparklines have no baseline rule — near-flat series float.
+- MINOR: 375px — 182/459 tap targets <40px (viz bars, links), mitigated but below WCAG 2.5.8; table.pricing scrolls in its own wrapper (contained, page clean).
+- MINOR (A): run-history grid has no visible time axis — dates only in per-cell tooltips; newest-end ambiguous (A's P1, schedule first among minors).
+- MINOR (A): ticket sparkline in/out lines visually identical — docstring promises two-tone, both emit `s-line`.
+- MINOR (A): sparkline tooltips are 316-char data walls (11 raw floats, no $, no in/out labels).
+- MINOR (A): 1,426-char pricing caption is the sole definition site for load-bearing terms — fold into a "Reading guide" details.
+- DESIGN (A): teal/amber carry triple duty (usage / price direction / price magnitude) on one screen — one legend line or shape differentiation would split the load.
+- NITS: official-table last column flush right; `$0.000040` justified 6-dec exception; two `gpt-5.6-sol` dots nearly coincide; mobile probe-meta wraps mid-timestamp; Alternate line orphans `$`; freshness tooltip leaks `pricing.json` filename.
+- DETECTOR (B): style source passes the AI-slop rule set 10/11 (2 uppercase+letter-spacing eyebrows flagged — intentional marks); reduced-motion + z-index scale clean; fonts loaded; 0 imgs without alt; 0 non-focusable clickables.
+
+### Cross-assessment convergence
+
+M1/M2 (scatter axis contradiction + mobile illegibility) were found independently by both the critique pair and the visual-QA pass — highest-confidence findings. The late pass separately confirmed price formatting is now uniformly 4-dec across the whole DOM, and no page-level overflow at any breakpoint.
+
+**Late-batch verdict stands with the main report: NEEDS-WORK, fixes untouched (judge-only).**
