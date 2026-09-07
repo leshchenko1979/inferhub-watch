@@ -85,7 +85,7 @@ def _candidate_route_row(
             else rundata.scoring_failed_ids(latest, route, score_ids)
         )
         cache_raw = entry.get("cache_pct")
-    pill = "" if candidate else _in_use_pill(
+    pill = _in_use_pill(
         ((perf_models or {}).get(route) or {}).get("reqs") or 0
     )
     resolved = _resolved_for(latest, route, source_candidate)
@@ -265,7 +265,8 @@ def probe_results_section(
             for alias in incumbents
         ]
         rows_html += [
-            _candidate_route_row(runs, route_entries, route, score_ids, candidate=True)
+            _candidate_route_row(runs, route_entries, route, score_ids,
+                                 candidate=True, perf_models=perf_models)
             for route, *_ in ranked
         ]
         if not rows_html:

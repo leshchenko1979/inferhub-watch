@@ -524,8 +524,8 @@ td {
   color: var(--ink);
 }
 
-/* The route row's details is open -> show its sibling plumbing row. */
-.pricing tbody:has(tr:has(.plumb details[open])) tr.plumb-row {
+/* The route row whose details is open reveals ONLY its own sibling row. */
+.pricing tr:has(.plumb details[open]) + tr.plumb-row {
   display: table-row;
 }
 
@@ -1114,7 +1114,7 @@ footer {
     grid-column: 1 / -1;
   }
 
-  .pricing tbody:has(tr:has(.plumb details[open])) tr.plumb-row {
+  .pricing tr:has(.plumb details[open]) + tr.plumb-row {
     display: block;
   }
 
