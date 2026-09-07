@@ -64,7 +64,13 @@
     var left = r.left + r.width / 2 - tw / 2;
     left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
     var top = r.top - th - 8;
-    if (top < 8) top = r.bottom + 8;
+    // Reserve the sticky header: a tooltip placed above a target sitting
+    // under the header is invisible (header z-index wins). 160px header.
+    var headerH = 160;
+    if (top < headerH + 8) top = r.bottom + 8;
+    // Placing below can still push off-viewport bottom on tiny screens —
+    // then clamp back above the header line as last resort.
+    if (top + th > window.innerHeight - 8) top = Math.max(headerH + 8, r.top - th - 8);
     tip.style.left = left + window.scrollX + "px";
     tip.style.top = top + window.scrollY + "px";
   }
@@ -110,7 +116,16 @@
       else show(cell);
     });
     cell.addEventListener("click", function (e) {
-      if (touchToggled) { touchToggled = false; return; }
+      if (touchToggled) {
+        touchToggled = false;
+        // The tap path already stopped propagation at pointerup, but the
+        // synthetic click STILL bubbles to document (pointerup's stopProp
+        // does not cancel the click). Suppressing here without stopping
+        // propagation let the document-level closer kill the tooltip the
+        // moment it opened — mobile tap-toggle was dead. Stop it.
+        e.stopPropagation();
+        return;
+      }
       e.stopPropagation();
       if (current === cell && !tip.hidden) hide();
       else show(cell);

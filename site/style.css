@@ -149,8 +149,9 @@ footer {
 #results,
 #pricing,
 #earlier,
-#method {
-  scroll-margin-top: calc(var(--space-8) * 2 + var(--space-3));
+#method,
+tr.fam-head[id^="fam-"] {
+  scroll-margin-top: 160px;
 }
 
 .probe-meta {

@@ -939,12 +939,25 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
                 f'<text x="{PAD_L - 6}" y="{gy + 3:.1f}" class="st" text-anchor="end">{v}</text>'
             )
     dots = ""
+    # Label-collision pass (QA finding: cx/cb pairs at identical y printed
+    # on top of each other). Track occupied y rows; nudge a colliding label
+    # down/up by rows of ~13px until free, both sides, so every name reads.
+    occupied: list[float] = []
+    LABEL_STEP = 13.0
     for route, eff, iq, reqs, basis, ponly in points:
         cx, cy = sx(eff), sy(iq)
         # Label right of the dot; flip left when it would clip the frame.
         label_right = cx < W - PAD_R - 130
         lx = cx + 10 if label_right else cx - 10
         anchor = "start" if label_right else "end"
+        ly = cy + 3
+        guard = 0
+        while any(abs(ly - oy) < LABEL_STEP * 0.9 for oy in occupied) and guard < 6:
+            guard += 1
+            ly = cy + 3 + guard * LABEL_STEP * (1 if guard % 2 else -1)
+            if ly < PAD_T + 8 or ly > H - PAD_B - 4:
+                ly = cy + 3  # reset and try the other direction next round
+        occupied.append(ly)
         tip = (
             f"{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis}) &#183; "
             f"IQ {iq:.1f} &#183; {reqs} reqs/{hours}h"
@@ -954,7 +967,7 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
             f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="6" fill="{usage_color(reqs, ponly)}" '
             f'data-tip="{tip}" '
             f'aria-label="{html.escape(route)}"/>'
-            f'<text x="{lx:.1f}" y="{cy + 3:.1f}" class="slabel" text-anchor="{anchor}" '
+            f'<text x="{lx:.1f}" y="{ly:.1f}" class="slabel" text-anchor="{anchor}" '
             f'data-tip="{tip}">{html.escape(route)}</text>'
         )
     caption = (
