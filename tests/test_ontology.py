@@ -52,21 +52,26 @@ class SiteCopyTermsTest(unittest.TestCase):
                 continue
             self.fail(f"banned 'error' noun in site copy: {s!r}")
 
-    def test_failures_table_uses_ontology_labels(self) -> None:
+    def test_retired_failures_table_stays_gone(self) -> None:
+        # owner 2026-09-07: the failures table was removed (plumbing row
+        # carries per-route failures) — the retirement must stick.
         text = self.load()
-        self.assertIn("def failures_table(", text)
-        self.assertNotIn("errors_table(", text)
-        self.assertIn('payload.get("failures")', text)
+        self.assertNotIn("def failures_table(", text)
+        self.assertNotIn("def official_table(", text)
+        self.assertNotIn("def perf_table(", text)
+        self.assertNotIn("def evidence_block(", text)
 
     def test_floor_ask_legend_present(self) -> None:
         text = self.load()
         self.assertIn("floor ask &#8212; catalog minimum, no billed traffic yet", text)
         self.assertNotIn("catalog list price", text)
 
-    def test_projection_line_uses_here_vs_official(self) -> None:
+    def test_projection_pair_uses_now_vs_30d(self) -> None:
+        # owner 2026-09-07: the official comparison table is gone; the
+        # two-era pairing copy lives in the rate cell's tip.
         text = self.load()
-        self.assertIn("here vs", text)
-        self.assertIn("at official rates", text)
+        self.assertIn("current billed asks", text)
+        self.assertIn("realized window", text)
 
     def test_pricing_key_is_failures(self) -> None:
         pricing = (ROOT / "probe" / "pricing.py").read_text()

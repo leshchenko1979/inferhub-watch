@@ -6,7 +6,7 @@ section modules, each owning one reader-facing surface:
 - chrome.py    page shell, nav, shared table-cell builders
 - spend.py     spend dashboard (sparkline, MTD/today/probe, ask deltas)
 - ticket.py    verdict ticket (dispatch recommendation)
-- board.py     cost board + scatter chart + evidence layer
+- board.py     cost board + scatter chart
 - results.py   merged probe-results table (incumbents + audition routes)
 
 This file is the thin composition root: loads data, calls the sections in
@@ -62,10 +62,6 @@ _ask_spark = spend_mod._ask_spark
 verdict_section = ticket_mod.verdict_section
 pricing_section = board_mod.pricing_section
 scatter_section = board_mod.scatter_section
-perf_table = board_mod.perf_table
-evidence_block = board_mod.evidence_block
-official_table = board_mod.official_table
-failures_table = board_mod.failures_table
 usage_color = board_mod.usage_color
 usage_radius = board_mod.usage_radius
 _iq_cells = board_mod._iq_cells

@@ -285,55 +285,6 @@ class ComparisonRowsTest(unittest.TestCase):
         self.assertEqual(window["ali/qwen3.8-max"]["hit_conf"], "ok")
 
 
-class OfficialTableRenderTest(unittest.TestCase):
-    """official_table() renders rows, projection, drift note; gaps handled."""
-
-    @classmethod
-    def setUpClass(cls):
-        import importlib.util
-
-        from probe.registry import repo_root
-
-        path = repo_root() / "site" / "generate.py"
-        spec = importlib.util.spec_from_file_location("watch_generate_official", path)
-        assert spec and spec.loader
-        cls.mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cls.mod)
-
-    def _pricing(self, **extra):
-        return {"range": "30d", "requests_scanned": 100,
-                "routes": {"ali/qwen3.8-max": _with_cached(QWEN), **extra}}
-
-    def test_rows_ratio_and_projection_render(self):
-        out = self.mod.official_table(self._pricing(), {"models": {"ali/qwen3.8-max": QWEN_OFFICIAL}})
-        self.assertIn("ali/qwen3.8-max", out)
-        self.assertIn("&times;", out)
-        self.assertIn("official costs", out)  # projection line
-        self.assertIn("current rates", out)
-
-    def test_gap_row_shows_note(self):
-        pricing = self._pricing(**{"ocg/mystery-model": dict(_with_cached(QWEN), reqs=50)})
-        out = self.mod.official_table(pricing, {"models": {"ali/qwen3.8-max": QWEN_OFFICIAL}})
-        self.assertIn("not in catalog", out)
-
-    def test_drift_note_renders(self):
-        flagged = dict(_with_cached(QWEN), hit_ask_ratio=0.13)
-        out = self.mod.official_table(
-            {"range": "30d", "routes": {"ali/qwen3.8-max": flagged}},
-            {"models": {"ali/qwen3.8-max": QWEN_OFFICIAL}},
-        )
-        self.assertIn("Cache-rule drift", out)
-
-    def test_no_catalog_or_no_quoted_rows_gives_empty(self):
-        self.assertEqual(self.mod.official_table(self._pricing(), None), "")
-        self.assertEqual(self.mod.official_table(None, {"models": {}}), "")
-        thin = self.mod.official_table(
-            {"routes": {"zai/glm-5.3-flash": dict(_with_cached(QWEN), reqs=1)}},
-            {"models": {"ali/qwen3.8-max": QWEN_OFFICIAL}},
-        )
-        self.assertEqual(thin, "")
-
-
 class BoardIqSortTest(unittest.TestCase):
     """Board rows sort by realized $/M ascending (IA law: the board answers
     "what is this costing me"); ties break by IQ per $ descending; routes
@@ -472,23 +423,6 @@ class CandMarkRenderTest(BoardIqSortTest):
         payload = {"routes": {"c/ghost": {"ask_in": 1.0, "ask_out": 3.0,
                                           "candidate": True, "reqs": 5}}}
         self.assertEqual(self.rundata.pricing_rows(payload), [])
-
-    def test_official_and_spend_cells_carry_tips(self):
-        # official-price rows: every metric cell tappable on touch
-        payload = {"range": "30d", "requests_scanned": 100, "routes": {
-            "ali/qwen3.8-max": {"ask_in": 0.01, "ask_out": 0.02, "reqs": 10,
-                                "eff_per_mtok": 0.012, "source": "usage-logs",
-                                "cache_pct": 50.0, "tok_in": 1_000_000,
-                                "tok_out": 100_000},
-        }}
-        catalog = {"models": {"ali/qwen3.8-max": QWEN_OFFICIAL}}
-        rd, mod = self.rundata, self.mod
-        with mock.patch.object(rd, "load_intelligence", return_value={"models": {}}), \
-            mock.patch.object(rd, "ask_series", return_value=[]):
-            out = mod.official_table(payload, catalog, [])
-        body = out[out.index("<code>ali/qwen3.8-max</code>"):]
-        body = body[:body.index("</tr>")]
-        self.assertEqual(body.count("data-tip="), 3)
 
     def test_perf_ttft_tps_render_as_plumbing_cells(self):
         # perf table removed (owner 2026-09-07): ttft p50 / tps mean render as
