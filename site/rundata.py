@@ -533,3 +533,48 @@ def month_day_label(date: str) -> str:
         return f"{months[int(parts[1]) - 1]} {int(parts[2])}"
     except (IndexError, ValueError):
         return ""
+
+
+def run_groups(run: dict) -> list[dict]:
+    """Model groups [{model, routes}] from a run's sweep.
+
+    Every probed family appears — board-only families (no audition routes)
+    with an empty route list — so the section renders the in-use verdict
+    even when the market shortlist found nothing cheaper.
+
+    Cells are the primary source (order = first appearance). Routes listed
+    in the run's shortlist without cells — a sweep aborted early — still
+    get a row under their own family, so they render as unprobed instead
+    of disappearing.
+
+    (Moved here from generate.py in the P2b section-module carve: it is
+    run-data shaping, not rendering.)
+    """
+    order: list[str] = []
+    routes_by_model: dict[str, list[str]] = {}
+
+    def add(model: str, alias: str) -> None:
+        if not model or not alias:
+            return
+        if model not in routes_by_model:
+            routes_by_model[model] = []
+            order.append(model)
+        if alias not in routes_by_model[model]:
+            routes_by_model[model].append(alias)
+
+    for cell in run.get("cells") or []:
+        # Families come from EVERY probed cell — board cells included — so a
+        # board-only family (no shortlist candidates this run) still renders
+        # a group. Board cells in older runs carry no model key; fall back to
+        # the alias's family ("ali/qwen3.8-max" -> "qwen3.8-max").
+        alias = str(cell.get("alias") or "")
+        model = cell.get("model") or market.family(alias)
+        if model and model not in routes_by_model:
+            routes_by_model[model] = []
+            order.append(model)
+    for cell in candidate_cells(run):
+        add(cell.get("model") or "", cell.get("alias") or "")
+    for route in run.get("candidates") or []:
+        route = str(route)
+        add(market.family(route), route)
+    return [{"model": model, "routes": routes_by_model[model]} for model in order]

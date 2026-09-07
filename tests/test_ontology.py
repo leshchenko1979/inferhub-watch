@@ -9,7 +9,11 @@ import re
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-GENERATE = ROOT / "site" / "generate.py"
+# P2b carve: the site copy lives in the section modules now; generate.py is
+# the composition root. The copy law scans all of them.
+SITE_MODULES = [ROOT / "site" / n for n in (
+    "generate.py", "chrome.py", "spend.py", "ticket.py", "board.py", "results.py",
+)]
 ONTOLOGY = ROOT / "ONTOLOGY.md"
 
 
@@ -33,7 +37,7 @@ class OntologyFileTest(unittest.TestCase):
 
 class SiteCopyTermsTest(unittest.TestCase):
     def load(self) -> str:
-        return GENERATE.read_text()
+        return "\n".join(p.read_text() for p in SITE_MODULES)
 
     def test_no_banned_error_noun_in_copy(self) -> None:
         # "failure" is the ontology noun; "error(s)" is banned in site copy.
