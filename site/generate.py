@@ -17,6 +17,7 @@ if str(_SITE) not in sys.path:
 import mdhtml  # noqa: E402
 import rundata  # noqa: E402
 import tmpl  # noqa: E402
+import freshness as fresh  # noqa: E402
 from probe.publishers import publisher_label  # noqa: E402
 from probe.registry import load_aliases, load_registry  # noqa: E402
 
@@ -1609,12 +1610,12 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
     started = html.escape(started_raw.replace("T", " ") + " UTC")
     run_cost = rundata.run_total_cost(latest)
     cost_bit = f' · run cost <span class="run-cost">{run_cost}</span>' if run_cost else ""
+    payload = rundata.load_pricing(ROOT)
     header_meta = (
-        f'<p class="probe-meta">Last probe: '
+        f'<p class="probe-meta">{fresh.chip_html(payload)} · Last probe: '
         f'<time datetime="{html.escape(started_raw)}">{started}</time>'
         f"{cost_bit}</p>"
     )
-    payload = rundata.load_pricing(ROOT)
     body = tmpl.render(
         "board.html",
         earlier_title=section_title("earlier"),
@@ -1653,13 +1654,22 @@ def check_page(spec: dict) -> str:
 
 def main() -> int:
     dist = ROOT / "site" / "dist"
+    aliases = load_aliases()
+    registry = load_registry()
+    runs = load_runs()
+    # P0b freshness gate: warn always, fail the pages job when the data the
+    # site is about to publish is stale beyond STALE_HOURS (env-gated so the
+    # validate job and local builds still succeed on old fixtures). The gate
+    # runs BEFORE any dist work — a red gate must not publish anything.
+    payload = rundata.load_pricing(ROOT)
+    fail_stale = os.environ.get("FRESHNESS_FAIL", "") == "1"
+    rc = fresh.gate(payload, fail_stale=fail_stale)
+    if rc:
+        return rc
     if dist.exists():
         shutil.rmtree(dist)
     dist.mkdir(parents=True)
     shutil.copy(ROOT / "site" / "style.css", dist / "style.css")
-    aliases = load_aliases()
-    registry = load_registry()
-    runs = load_runs()
     (dist / "index.html").write_text(index_html(runs, aliases, registry))
     checks_dir = dist / "checks"
     checks_dir.mkdir()

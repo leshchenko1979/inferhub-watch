@@ -211,6 +211,16 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2) + "\n")
     print(out)
+    # P0b: a run where every cell failed is an outage, not data — the run
+    # file is still written (evidence), but CI must go red.
+    board_cells = [c for c in payload.get("cells") or []]
+    if board_cells and all(c.get("status") == "error" for c in board_cells):
+        print(
+            f"::error::all {len(board_cells)} probe cells failed — "
+            "probe run is evidence-only, data not trustworthy",
+            file=sys.stderr,
+        )
+        return 4
     return 0
 
 

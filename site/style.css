@@ -165,6 +165,18 @@ tr.fam-head[id^="fam-"] {
   color: var(--ink);
 }
 
+.freshness-chip {
+  font-weight: 600;
+}
+
+.freshness-chip.fresh {
+  color: var(--teal, #2a9d8f);
+}
+
+.freshness-chip.stale {
+  color: #d1495b;
+}
+
 footer,
 .crumb,
 .origin,
