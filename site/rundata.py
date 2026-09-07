@@ -8,6 +8,11 @@ from pathlib import Path
 from probe import market, pricing, registry
 from probe.registry import repo_root
 
+# Plausible ceiling for a single-request streamed tps spot sample. Above
+# this, the probe cell's timing describes something other than generation
+# (see stream_perf_of) — render dash instead of the artifact.
+TPS_CAP = 500.0
+
 
 def load_runs(root: Path) -> list[dict]:
     files = sorted((root / "data" / "runs").glob("*.json"))
@@ -124,6 +129,15 @@ def stream_perf_of(run: dict, route: str) -> tuple[float | None, float | None]:
     )
     ttft = cell.get("ttft_ms")
     tps = cell.get("tps")
+    # Same guard as the main-traffic perf_stats law (probe/pricing.py): a
+    # generation window under ~2s with non-trivial output means the timing
+    # fields don't describe streaming generation — division there yields
+    # absurd tps (128,779 seen live on zai). Probe cells carry no generation
+    # window, so cap the spot sample: a plausible sustained rate for a
+    # single streamed request stays under TPS_CAP; anything above is an
+    # artifact, rendered as dash rather than poisoning the table.
+    if isinstance(tps, (int, float)) and (tps <= 0 or tps >= TPS_CAP):
+        tps = None
     return (
         ttft if isinstance(ttft, (int, float)) else None,
         tps if isinstance(tps, (int, float)) else None,

@@ -399,3 +399,34 @@ class RegistryCacheInvalidationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.assertEqual(registry.intelligence_models(root), {})
+
+class StreamPerfTpsGuardTest(unittest.TestCase):
+    """Probe-cell tps guard: artifacts render dash, not 128,779."""
+
+    def _run_with_core_tps(self, tps):
+        return {"cells": [{"alias": "zai/glm-5.3-flash", "check_id": "core", "status": "pass", "ttft_ms": 4900.0, "tps": tps}]}
+
+    def test_plausible_tps_passes_through(self) -> None:
+        ttft, tps = rundata.stream_perf_of(self._run_with_core_tps(57.0), "zai/glm-5.3-flash")
+        self.assertEqual(ttft, 4900.0)
+        self.assertEqual(tps, 57.0)
+
+    def test_absurd_tps_renders_none(self) -> None:
+        _, tps = rundata.stream_perf_of(self._run_with_core_tps(128779.0), "zai/glm-5.3-flash")
+        self.assertIsNone(tps)
+
+    def test_cap_boundary_is_exclusive(self) -> None:
+        _, tps = rundata.stream_perf_of(self._run_with_core_tps(rundata.TPS_CAP), "zai/glm-5.3-flash")
+        self.assertIsNone(tps)
+        _, ok = rundata.stream_perf_of(self._run_with_core_tps(rundata.TPS_CAP - 1), "zai/glm-5.3-flash")
+        self.assertEqual(ok, rundata.TPS_CAP - 1)
+
+    def test_zero_and_negative_tps_render_none(self) -> None:
+        for bad in (0, -5.0):
+            _, tps = rundata.stream_perf_of(self._run_with_core_tps(bad), "zai/glm-5.3-flash")
+            self.assertIsNone(tps)
+
+    def test_missing_cell_still_none(self) -> None:
+        ttft, tps = rundata.stream_perf_of({"cells": []}, "zai/glm-5.3-flash")
+        self.assertIsNone(ttft)
+        self.assertIsNone(tps)

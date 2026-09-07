@@ -833,34 +833,40 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         "</tr></thead>"
         f"<tbody>{''.join(body_rows)}</tbody>"
         "</table></div>"
-        + scatter_section(payload, intel)
+        + scatter_section(payload, intel, runs)
         + spend_block(payload, runs)
         + evidence_block(payload, rundata.load_catalog(ROOT), dated)
         + "</section>"
     )
 
 
-def usage_color(reqs: int | None) -> str:
-    """Point color, binary in-use law (owner order 2026-09-07): teal =
-    billed traffic in the window, gray = none. No light bucket — a mid
-    bucket implied a precision the noise doesn't support."""
+def usage_color(reqs: int | None, probe_only: bool = False) -> str:
+    """Point color (owner orders 2026-09-07): teal = in use (real billed
+    traffic in the window — probe-only routes do NOT count as in use),
+    amber = probes only (the only fresh traffic is sweep probes: the
+    marginal price is real money but an unrepresentative cache-cold
+    workload), gray = no traffic at all."""
+    if probe_only:
+        return "var(--warn, #c90)"
     if not reqs or reqs <= 0:
         return "var(--muted)"
     return "var(--ok)"
 
 
-def _scatter_legend(reqs_max: int) -> str:
+def _scatter_legend() -> str:
     return (
         '<div class="scatter-legend">'
         '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--ok)"/></svg>'
-        " in use (billed reqs/24h)</span>"
+        " in use (real traffic/24h)</span>"
+        '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--warn, #c90)"/></svg>'
+        " probes only</span>"
         '<span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--muted)"/></svg>'
         " not in use</span>"
         "</div>"
     )
 
 
-def scatter_section(payload: dict | None, intel: dict | None) -> str:
+def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] | None = None) -> str:
     """Price vs IQ scatter (inline SVG, zero-dependency) or ''.
 
     X = MARGINAL $/M (the recent billed rate — owner order: "price =
@@ -891,8 +897,11 @@ def scatter_section(payload: dict | None, intel: dict | None) -> str:
         if not isinstance(eff, (int, float)) or eff <= 0 or not isinstance(iq, (int, float)):
             skipped += 1
             continue
+        runs = runs or []
+        ponly = _probe_only(row, runs)
         points.append((route, float(eff), iq,
-                       int((perf.get(route) or {}).get("reqs") or 0), basis))
+                       int((perf.get(route) or {}).get("reqs") or 0), basis,
+                       ponly))
     if len(points) < 2:
         return ""
     # Frame: log-x over the realized price range, y over IQ.
@@ -930,20 +939,23 @@ def scatter_section(payload: dict | None, intel: dict | None) -> str:
                 f'<text x="{PAD_L - 6}" y="{gy + 3:.1f}" class="st" text-anchor="end">{v}</text>'
             )
     dots = ""
-    for route, eff, iq, reqs, basis in points:
+    for route, eff, iq, reqs, basis, ponly in points:
         cx, cy = sx(eff), sy(iq)
         # Label right of the dot; flip left when it would clip the frame.
         label_right = cx < W - PAD_R - 130
         lx = cx + 10 if label_right else cx - 10
         anchor = "start" if label_right else "end"
+        tip = (
+            f"{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis}) &#183; "
+            f"IQ {iq:.1f} &#183; {reqs} reqs/{hours}h"
+            + (" &#183; probes only" if ponly else "")
+        )
         dots += (
-            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="6" fill="{usage_color(reqs)}" '
-            f'data-tip="{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis}) &#183; '
-            f'IQ {iq:.1f} &#183; {reqs} reqs/{hours}h" '
+            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="6" fill="{usage_color(reqs, ponly)}" '
+            f'data-tip="{tip}" '
             f'aria-label="{html.escape(route)}"/>'
             f'<text x="{lx:.1f}" y="{cy + 3:.1f}" class="slabel" text-anchor="{anchor}" '
-            f'data-tip="{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis}) &#183; '
-            f'IQ {iq:.1f} &#183; {reqs} reqs/{hours}h">{html.escape(route)}</text>'
+            f'data-tip="{tip}">{html.escape(route)}</text>'
         )
     caption = (
         "Marginal $/M vs AA IQ, in use = billed traffic in the newest "
@@ -958,7 +970,7 @@ def scatter_section(payload: dict | None, intel: dict | None) -> str:
         f"{''.join(grid)}{dots}"
         '<text x="50%" y="12" class="st" text-anchor="middle">AA IQ</text>'
         "</svg>"
-        f"{_scatter_legend(max(p[3] for p in points))}"
+        f"{_scatter_legend()}"
         "</figure>"
     )
 

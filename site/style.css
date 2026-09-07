@@ -13,6 +13,7 @@
   --mid: var(--amber);
   --ok: var(--teal);
   --ok-dim: oklch(0.74 0.11 172 / 0.1);
+  --warn: oklch(0.75 0.13 70);
   --line: oklch(0.3 0.03 255);
   --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;

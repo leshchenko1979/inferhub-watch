@@ -571,6 +571,29 @@ class ScatterSectionTest(unittest.TestCase):
         self.assertEqual("var(--muted)", f(None))
         self.assertEqual("var(--muted)", f(0))
 
+    def test_probe_only_traffic_is_not_in_use(self) -> None:
+        # Owner order 2026-09-07: probes-only routes render amber, not teal.
+        f = self.mod.usage_color
+        self.assertEqual("var(--warn, #c90)", f(2500, probe_only=True))
+        self.assertEqual("var(--warn, #c90)", f(3, probe_only=True))
+        # Real traffic with probe_only=False stays teal.
+        self.assertEqual("var(--ok)", f(2500, probe_only=False))
+
+    def test_probe_only_dot_renders_amber_with_tip_note(self) -> None:
+        runs = [{"started_at": "2026-09-07T09:00:00+00:00",
+                 "finished_at": "2026-09-07T09:10:00+00:00",
+                 "aliases": ["zai/glm-5.3-flash"]}]
+        payload = self._payload()
+        # zai's only traffic is inside the sweep window above -> probes only.
+        payload["perf"]["models"]["zai/glm-5.3-flash"] = {"reqs": 2500}
+        route_row = payload["routes"]["zai/glm-5.3-flash"]
+        route_row["marginal_reqs"] = 2
+        route_row["marginal_ts"] = ["2026-09-07T09:02:00Z", "2026-09-07T09:08:00Z"]
+        route_row["marginal_ts_truncated"] = False
+        svg = self.mod.scatter_section(payload, self.INTEL, runs)
+        self.assertIn("var(--warn, #c90)", svg)
+        self.assertIn("probes only", svg)  # tip note on the dot + legend
+
     def test_dots_carry_model_name_labels(self) -> None:
         svg = self._svg()
         self.assertEqual(svg.count('class="slabel"'), 3)
