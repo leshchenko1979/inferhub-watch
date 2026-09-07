@@ -214,18 +214,18 @@ class SnapshotTests(unittest.TestCase):
     def test_snapshot_merges_logs_and_catalog(self) -> None:
         rows = [_row(model="cp/xai/grok-4.6", prompt_tokens=100, completion_tokens=0,
                      cached_tokens=0, cost_consumer_usdc="0.0001")]
-        with mock.patch.object(pricing, "fetch_log_rows", return_value=rows) as log_mock, \
+        with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")) as log_mock, \
                 mock.patch.object(pricing, "fetch_catalog",
                                   return_value={"zai/glm-5.3": (0.045, 0.15)}):
             payload = pricing.snapshot("k", ["cp/xai/grok-4.6", "zai/glm-5.3"])
-        self.assertEqual(log_mock.call_args.kwargs["max_pages"], pricing.MAX_PAGES)
+        self.assertEqual(payload["row_source"], "test")
         self.assertEqual(payload["routes"]["cp/xai/grok-4.6"]["source"], "usage-logs")
         self.assertEqual(payload["routes"]["zai/glm-5.3"]["source"], "catalog")
         self.assertEqual(payload["requests_scanned"], 1)
 
     def test_snapshot_includes_days_series(self) -> None:
         rows = [_row(ts="2026-08-26T10:00:00Z"), _row(ts="2026-08-27T10:00:00Z")]
-        with mock.patch.object(pricing, "fetch_log_rows", return_value=rows), \
+        with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
                 mock.patch.object(pricing, "fetch_catalog", return_value={}):
             payload = pricing.snapshot("k", ["cp/xai/grok-4.6"])
         self.assertEqual(
@@ -400,7 +400,7 @@ class MarginalStatsTests(unittest.TestCase):
         ]
         # cutoff selection is covered by PriorSnapshotCutoffTests; here the
         # cutoff is pinned so the test never depends on repo snapshot state
-        with mock.patch.object(pricing, "fetch_log_rows", return_value=rows), \
+        with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
                 mock.patch.object(pricing, "fetch_catalog", return_value={}), \
                 mock.patch.object(pricing, "prior_snapshot_cutoff",
                                   return_value="2026-08-31T06:00:00+00:00"):
@@ -425,7 +425,7 @@ class MarginalStatsTests(unittest.TestCase):
 
     def test_no_prior_snapshot_omits_marginal_keys(self) -> None:
         rows = [_row(ts="2026-09-01T12:00:00Z")]
-        with mock.patch.object(pricing, "fetch_log_rows", return_value=rows), \
+        with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
                 mock.patch.object(pricing, "fetch_catalog", return_value={}), \
                 mock.patch.object(pricing, "prior_snapshot_cutoff", return_value=None):
             payload = pricing.snapshot("k", ["cp/xai/grok-4.6"])

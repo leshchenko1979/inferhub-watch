@@ -470,10 +470,46 @@ def perf_stats(rows: list[dict], window_hours: int = 24) -> dict:
         out_models[model] = entry
     return {"window_hours": window_hours, "models": dict(sorted(out_models.items(), key=lambda kv: -kv[1]["reqs"]))}
 
+def _log_rows(key: str) -> tuple[list[dict], str]:
+    """(rows, source) — pgstore first (full 30d), Management API fallback.
+
+    pgstore serves the newest 30d of cached rows; the API path keeps the old
+    12k-row-capped behavior for when the tunnel/DB is down. Marked in the
+    payload so a reader can tell which basis produced the numbers.
+    """
+    try:
+        from probe.pgstore import load_env, _connect, rows_since, latest_ts
+        env = load_env()
+        if env.get("PGPASSWORD"):
+            conn = _connect(env)
+            try:
+                lt = latest_ts(conn)
+                if lt is not None:
+                    from datetime import timedelta
+                    rows = rows_since(lt - timedelta(days=30), conn=conn)
+                    if rows:
+                        return rows, "pgstore"
+            finally:
+                conn.close()
+    except Exception as exc:  # noqa: BLE001 — fallback is the contract
+        print(f"warning: pgstore unavailable ({exc}); using Management API",
+              file=sys.stderr)
+    return fetch_log_rows(key, range_="30d",
+                          max_pages=MAX_PAGES, pace_s=0.25), "api"
+
+
 def snapshot(key: str, aliases: list[str], range_: str = RANGE,
              candidates: list[str] | None = None) -> dict:
-    """Build the full pricing payload; candidate routes are flagged as such."""
-    rows = fetch_log_rows(key, range_=range_, max_pages=MAX_PAGES, pace_s=0.25)
+    """Build the full pricing payload; candidate routes are flagged as such.
+
+    Row source: the Postgres usage-log cache (probe/pgstore) when reachable,
+    falling back to the paginated Management API (capped at 12k rows) when
+    the tunnel/DB is unavailable. The cache carries the full 30d window.
+    """
+    rows, source = _log_rows(key)
+    if not rows:
+        raise RuntimeError("no usage rows from any source (pgstore + API)")
+    print(f"pricing rows: {len(rows)} from {source}")
     stats = aggregate_rows(rows)
     catalog = fetch_catalog(key)
     cutoff = prior_snapshot_cutoff()
@@ -504,6 +540,7 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "range": range_,
+        "row_source": source,
         "requests_scanned": len(rows),
         "days": daily_series(rows),
         "failures": failure_stats(rows),
