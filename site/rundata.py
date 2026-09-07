@@ -144,6 +144,17 @@ def stream_perf_of(run: dict, route: str) -> tuple[float | None, float | None]:
     )
 
 
+def ttft_tps_labels(ttft_ms: float | int | None, tps: float | int | None,
+                    dash: str = "&#8212;") -> tuple[str, str]:
+    """(ttft label, tps label) with the single shared precision - used by
+    the probes table's per-route cells and the board's plumbing row alike,
+    so the same metric never shows two different roundings (review R2).
+    Precision: ttft seconds to 2dp, tps to 1dp; dash without a sample."""
+    ttft_label = f"{ttft_ms / 1000:.2f}s" if isinstance(ttft_ms, (int, float)) else dash
+    tps_label = f"{tps:.1f}" if isinstance(tps, (int, float)) else dash
+    return ttft_label, tps_label
+
+
 def route_window_record(
     runs: list[dict], route: str, check_ids: list[str], candidate: bool
 ) -> tuple[int, int]:

@@ -356,10 +356,7 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             str(row["route"])
         ) or {}
         ttft, tps = pm.get("ttft_p50_ms"), pm.get("tps_mean")
-        ttft_label = (
-            f"{ttft / 1000:.2f}s" if isinstance(ttft, (int, float)) else "&#8212;"
-        )
-        tps_label = f"{tps:.1f}" if isinstance(tps, (int, float)) else "&#8212;"
+        ttft_label, tps_label = rundata.ttft_tps_labels(ttft, tps)
         plumb_cells.extend([
             ("ttft p50",
              f'<span title="Median time to first token across this model&#8217;s '
@@ -445,7 +442,7 @@ def usage_radius(reqs: int | None, probe_only: bool = False) -> float:
 def _scatter_legend() -> str:
     return (
         '<div class="scatter-legend">'
-        '<span class="lg"><i class="dot dot-ok"></i> in use &#8212; 100+ reqs/24h</span>'
+        f'<span class="lg"><i class="dot dot-ok"></i> in use &#8212; {IN_USE_MIN_REQS}+ reqs/24h</span>'
         '<span class="lg"><i class="dot dot-warn"></i> probes only</span>'
         '<span class="lg"><i class="dot dot-mut"></i> little/no traffic</span>'
         '<span class="lg lg-size"><i class="dot dot-mut dot-s"></i><i class="dot dot-mut dot-l"></i>'

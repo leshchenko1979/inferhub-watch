@@ -14,6 +14,7 @@ from probe import market, radar
 from probe.publishers import publisher_label
 from probe.registry import repo_root
 
+from board import IN_USE_MIN_REQS
 from chrome import _viz_cell, base_href, section_title
 from rundata import run_groups
 
@@ -46,16 +47,16 @@ def _in_use_pill(reqs_24h: int) -> str:
     """'in use' pill, derived from 24h usage — same rule as the chart.
 
     Owner 2026-09-07: the old pill was unconditional on every incumbent
-    route. Now in-use requires >=100 billed requests in the newest 24h
-    (board.usage_color's IN_USE_MIN_REQS, fed by the perf block's per-model
-    24h request count — the same number the scatter colors on); routes
-    below the bar show a muted 'light use' pill instead."""
-    if reqs_24h >= 100:
-        return (' <span class="pill in-use" title="In use: 100+ billed '
+    route. Now in-use requires >=IN_USE_MIN_REQS billed requests in the
+    newest 24h (board.usage_color's threshold, fed by the perf block's
+    per-model 24h request count — the same number the scatter colors on);
+    routes below the bar show a muted 'light use' pill instead."""
+    if reqs_24h >= IN_USE_MIN_REQS:
+        return (f' <span class="pill in-use" title="In use: {IN_USE_MIN_REQS}+ billed '
                 'requests in the newest 24h.">in use</span>')
     return (
         f' <span class="pill in-use--light" title="Billed traffic below the '
-        f'in-use bar (100+ reqs/24h): {reqs_24h} in the newest 24h.">light use</span>'
+        f'in-use bar ({IN_USE_MIN_REQS}+ reqs/24h): {reqs_24h} in the newest 24h.">light use</span>'
     )
 
 def _candidate_route_row(
@@ -115,8 +116,7 @@ def _candidate_route_row(
     passed, seen = rundata.route_window_record(runs, route, score_ids, candidate)
     window = f"{passed}/{seen}" if seen else "&#8212;"
     ttft_ms, tps = rundata.stream_perf_of(latest, route)
-    ttft_label = f"{ttft_ms / 1000:.1f}s" if ttft_ms is not None else "&#8212;"
-    tps_label = f"{tps:.0f}" if tps is not None else "&#8212;"
+    ttft_label, tps_label = rundata.ttft_tps_labels(ttft_ms, tps)
     perf_tip = "First-token latency and tokens/sec from the latest core probe (one streamed request; dash = pre-perf run)."
     # Drill-down: each route links to the per-check pages (Level-3 IA).
     base = base_href()
