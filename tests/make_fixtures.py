@@ -32,6 +32,18 @@ def main() -> None:
     pricing["routes"] = slim_routes
     # days: keep the last 5, they drive the spend sparkline contract
     pricing["days"] = (pricing.get("days") or [])[-5:]
+    # W6 slimming parity: committed data may still predate the slimming;
+    # fixtures always carry the post-W6 shape (flag in, raw ts list out).
+    from probe.pricing import _probe_only_buildtime, _probe_windows_from_runs
+    windows = _probe_windows_from_runs(root)
+    for route, entry in slim_routes.items():
+        ts = entry.pop("marginal_ts", None)
+        if ts is None:
+            continue
+        reqs = int(entry.get("marginal_reqs") or 0)
+        truncated = bool(entry.get("marginal_ts_truncated"))
+        entry["probe_only"] = _probe_only_buildtime(
+            ts, reqs, truncated, windows, route)
     (FIXTURES / "pricing.json").write_text(json.dumps(pricing, indent=2) + "\n")
 
     runs_dir = root / "data" / "runs"

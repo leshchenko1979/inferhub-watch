@@ -25,12 +25,19 @@ def _probe_only(row: dict, runs: list[dict]) -> bool:
     """True when every marginal request for this route falls inside a sweep
     window that probed it — the route's only fresh traffic is probes, so
     the marginal $/M is real money but an unrepresentative (cache-cold,
-    tiny-prompt) workload. Needs the full ts list: a truncated list (or a
-    single ts outside every window) means working traffic exists.
+    tiny-prompt) workload.
+
+    W6 slimming: snapshots built after the slimming carry the precomputed
+    `probe_only` flag and no ts list; use it when present. Older snapshots
+    (and test fixtures) still carry the raw ts list, so the original
+    analysis stays as fallback: a truncated list (or a single ts outside
+    every window) means working traffic exists.
 
     Timestamps are compared as datetimes, never as strings: usage-log
     stamps end in Z while run-window stamps end in +00:00, and lexical
     order between the two formats is wrong (Z sorts above '+')."""
+    if "probe_only" in row:
+        return bool(row["probe_only"])
     reqs = int(row.get("marginal_reqs") or 0)
     ts_list = row.get("marginal_ts") or []
     if not reqs or row.get("marginal_ts_truncated") or len(ts_list) < reqs:

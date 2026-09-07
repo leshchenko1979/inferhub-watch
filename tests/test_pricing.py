@@ -409,8 +409,12 @@ class MarginalStatsTests(unittest.TestCase):
         self.assertEqual(entry["marginal_per_mtok"], 2.0)
         self.assertEqual(entry["marginal_reqs"], 1)
         self.assertEqual(entry["marginal_since"], "2026-08-31T06:00:00+00:00")
-        self.assertEqual(entry["marginal_ts"], ["2026-09-01T12:00:00Z"])
+        # W6 slimming: the raw ts list stays out of the snapshot; only the
+        # classification flag ships (False here — the ts predates any run
+        # window, so working traffic exists).
+        self.assertNotIn("marginal_ts", entry)
         self.assertFalse(entry["marginal_ts_truncated"])
+        self.assertFalse(entry["probe_only"])
 
     def test_marginal_ts_capped_and_flagged(self) -> None:
         # > MARGINAL_TS_CAP rows: ts list caps, truncated flag goes up —

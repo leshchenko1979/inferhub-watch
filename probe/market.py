@@ -31,7 +31,8 @@ from pathlib import Path
 
 from probe.pricing import fetch_catalog, parse_ts
 from probe.registry import (_cached_read, _load_models_toml, aa_slug,
-                            intelligence_models, load_aliases, repo_root)
+                            atomic_write_text, intelligence_models,
+                            load_aliases, repo_root)
 
 PROVEN_TTL = timedelta(days=7)
 TOP_N = 2
@@ -145,8 +146,7 @@ def record_proven(run_payload: dict, root: Path | None = None) -> Path:
         if status != "error":
             entry["last_probe"] = stamp
     path = root / "data" / "proven.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(proven, indent=2, sort_keys=True) + "\n")
+    atomic_write_text(path, json.dumps(proven, indent=2, sort_keys=True) + "\n")
     return path
 
 

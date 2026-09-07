@@ -11,7 +11,7 @@ enforced by `tests/test_ontology.py`.
 | **Route** | One `publisher/model` pair (`ali/kimi-k3`) — the atomic unit. Every probe, ask, hit rate, and failure count belongs to exactly one route | `route` key in pricing rows; board rows keyed by it |
 | **Publisher** | The prefix before `/` in a route (`ali`, `cx`, `cbcn`, `zai`) | `probe/market.py::family` conventions; `publishers` section |
 | **Probe** | One *billed* measurement request against a route — costs real money. Dispatched by the sweep or on explicit owner OK only | `probe/` package; `probe/payloads.py` |
-| **Sweep** | The scheduled full run (06:00Z): probe every route, pull the usage-log window, regenerate all data files | `.github/workflows/watch.yml` |
+| **Sweep** | The scheduled full run (02:00Z): probe every route, pull the usage-log window, regenerate all data files | `.github/workflows/watch.yml` |
 | **Board** | The main pricing table — one row per traffic-carrying route; rows sort by **realized $/M ascending** (cheapest first — the board answers "what is this costing me"), ties break by **IQ per $** descending, routes without a realized figure last | `site/generate.py::pricing_section`, `#pricing` |
 | **Verdict** | The decision ticket at the top of the page: the best IQ-per-$ route right now (billed ask beats floor ask when picking), why it wins (ask streak, cache share), and the runner-up as the alternate. Never hardcoded — recomputed every sweep | `site/generate.py::verdict_section`, `#verdict` |
 | **Plumbing** | The per-route detail row folded under the board decision columns (cache hit, traffic, window cost, failures, ask source). Open on demand via "Show plumbing"; the decision surface stays five columns | `site/generate.py::_plumb_row`, `tr.plumb-row` |

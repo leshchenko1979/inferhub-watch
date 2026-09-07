@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from probe.http import InferHubClient
 from probe.payloads import CORE_HEAD, _PAD, REPORT_ANSWER_TOOLS
+from probe.registry import atomic_write_text
 from probe.sse import cached_tokens, last_usage, parse_sse
 
 ALIASES = [
@@ -100,7 +101,7 @@ def main() -> None:
             time.sleep(1.0)
         results[alias] = rows
     out = Path(__file__).resolve().parent.parent / "data" / "cache_ramp_20260905.json"
-    out.write_text(json.dumps(results, indent=1, ensure_ascii=False))
+    atomic_write_text(out, json.dumps(results, indent=1, ensure_ascii=False))
     print(f"saved {out}")
 
 

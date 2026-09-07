@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import time
 import urllib.request
@@ -29,7 +30,7 @@ from statistics import median, mean
 from pathlib import Path
 
 from probe.costs import MANAGEMENT, USER_AGENT, fetch_log_rows
-from probe.registry import load_aliases, repo_root
+from probe.registry import atomic_write_text, load_aliases, repo_root
 
 CATALOG_TIMEOUT = 30
 RANGE = "30d"
@@ -388,6 +389,67 @@ MARGINAL_TS_CAP = 400  # per-route ts list cap; beyond this the route is
 # traffic-heavy by definition and never probe-only
 
 
+def _probe_windows_from_runs(root: Path) -> list[tuple]:
+    """Sweep windows (start, end, aliases) rebuilt from data/runs/*.json.
+
+    Canon run filenames embed started_at exactly (YYYY-MM-DDTHHMMSSZ), so
+    the window pair is parsed from the name without loading every file;
+    aliases need one read. Probe windows live in the run files, not the
+    usage log, so this is the only way the pricing build can classify
+    probe-only traffic (W6 snapshot slimming).
+    """
+    windows: list[tuple] = []
+    for path in sorted((root / "data" / "runs").glob("*.json")):
+        m = re.match(r"^(\d{4}-\d{2}-\d{2})T(\d{2})(\d{2})(\d{2})Z\.json$",
+                     path.name)
+        if not m:
+            continue
+        started = f"{m.group(1)}T{m.group(2)}:{m.group(3)}:{m.group(4)}+00:00"
+        try:
+            run = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        finished = str(run.get("finished_at") or "")
+        if not finished:
+            continue
+        windows.append((started, finished, list(run.get("aliases") or [])))
+    return windows
+
+
+def _probe_only_buildtime(ts: list[str], reqs: int, truncated: bool,
+                          windows: list[tuple], route: str) -> bool:
+    """True when every marginal request for a route falls inside a sweep
+    window that probed it — the render-side `_probe_only` rule, computed
+    at build time so snapshots don't carry the raw ts lists. Mirrors
+    site/board.py: unknown data (no windows, truncated list) is never
+    probe-only."""
+    if truncated or not reqs or len(ts) < reqs or not windows:
+        return False
+
+    def _parse(stamp: str):
+        m = re.match(r"^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})"
+                     r"(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$", str(stamp or ""))
+        if not m:
+            return None
+        try:
+            return datetime.fromisoformat(f"{m.group(1)}T{m.group(2)}+00:00")
+        except ValueError:
+            return None
+
+    for stamp in ts:
+        parsed = _parse(stamp)
+        if parsed is None:
+            return False
+        if not any(
+            route in aliases and (s := _parse(started)) is not None
+            and (e := _parse(finished)) is not None and s <= parsed <= e
+            for started, finished, aliases in windows
+        ):
+            return False
+    return True
+
+
+
 def marginal_stats(rows: list[dict], cutoff: str | None) -> dict[str, dict]:
     """Per model: traffic + cost over usage rows strictly after the cutoff.
 
@@ -515,6 +577,7 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
     cutoff = prior_snapshot_cutoff()
     marginal = marginal_stats(rows, cutoff)
     cand = set(candidates or [])
+    probe_windows = _probe_windows_from_runs(repo_root())
 
     from probe.official_compare import cache_rule_stats
 
@@ -533,8 +596,14 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
             entry["marginal_per_mtok"] = round(m["cost"] / toks * 1e6, 4)
             entry["marginal_reqs"] = m["reqs"]
             entry["marginal_since"] = cutoff
-            entry["marginal_ts"] = m["ts"]
+            # W6 slimming: the raw ts list stays out of the snapshot —
+            # probe-only traffic is classified HERE, at build time (the
+            # run windows are on disk), and only the boolean ships.
             entry["marginal_ts_truncated"] = m["reqs"] > len(m["ts"])
+            entry["probe_only"] = _probe_only_buildtime(
+                m["ts"], m["reqs"], entry["marginal_ts_truncated"],
+                probe_windows, alias,
+            )
         return entry
 
     return {
@@ -594,11 +663,9 @@ def write_outputs(payload: dict, root: Path | None = None) -> tuple[Path, Path]:
     root = root or repo_root()
     text = json.dumps(payload, indent=2) + "\n"
     latest = root / "data" / "pricing.json"
-    latest.parent.mkdir(parents=True, exist_ok=True)
-    latest.write_text(text)
+    atomic_write_text(latest, text)
     dated = root / "data" / "pricing" / f"{datetime.now(timezone.utc):%Y-%m-%d}.json"
-    dated.parent.mkdir(parents=True, exist_ok=True)
-    dated.write_text(text)
+    atomic_write_text(dated, text)
     return latest, dated
 
 

@@ -34,15 +34,27 @@ SECTIONS = (
     ("method", "How we test"),
 )
 
+_BOARD_JS: list[str] = []
+
+def _board_js() -> str:
+    """board.js source, read once per process (rendered into every board
+    page shell; re-reading per call was a per-render disk hit)."""
+    if not _BOARD_JS:
+        _BOARD_JS.append((SITE_DIR / "templates" / "board.js").read_text())
+    return _BOARD_JS[0]
+
 
 def base_href() -> str:
     raw = os.environ.get("PAGES_BASE", "/inferhub-watch").rstrip("/")
     return raw or ""
 
 
-def results_available() -> bool:
-    """True when the latest run renders any model group (board or audition)."""
-    runs = rundata.load_runs(ROOT)
+def results_available(runs: list[dict] | None = None) -> bool:
+    """True when the latest run renders any model group (board or audition).
+    Callers holding already-loaded runs pass them in; the default re-loads
+    from disk (one-off callers, tests)."""
+    if runs is None:
+        runs = rundata.load_runs(ROOT)
     if not runs:
         return False
     return bool(rundata.run_groups(runs[-1]))
@@ -57,12 +69,17 @@ def alias_heading(alias: str, resolved: str) -> str:
     )
 
 
-def board_nav() -> str:
+def board_nav(runs: list[dict] | None = None) -> str:
+    """Section + family nav for the board page. Callers holding
+    already-loaded runs pass them in (avoids a third disk read per render);
+    default loads from disk (tests, one-off callers)."""
+    if runs is None:
+        runs = rundata.load_runs(ROOT)
     items = []
     for sid, title in SECTIONS:
         if sid == "pricing" and not rundata.load_pricing(ROOT):
             continue
-        if sid == "results" and not results_available():
+        if sid == "results" and not results_available(runs):
             continue
         items.append(
             f'<li><a href="#{html.escape(sid)}">{html.escape(title)}</a></li>'
@@ -70,7 +87,7 @@ def board_nav() -> str:
     # Family anchors: jump straight to a family band inside #results.
     families = []
     aliases = load_aliases()
-    for run in reversed(rundata.load_runs(ROOT)[-1:]):
+    for run in reversed(runs[-1:]):
         for group in rundata.run_groups(run):
             if rundata.incumbent_aliases(aliases, group["model"]) or group["routes"]:
                 families.append(group["model"])
@@ -118,8 +135,7 @@ def shell(
     )
     script = ""
     if page_class == "board":
-        js = (SITE_DIR / "templates" / "board.js").read_text()
-        script = f"<script>\n{js}</script>"
+        script = f"<script>\n{_board_js()}</script>"
     return tmpl.render(
         "shell.html",
         title=html.escape(title),

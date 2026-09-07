@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 from probe import market
+from probe.registry import atomic_write_text
 from probe.registry import load_aliases, repo_root
 
 MARGIN_ALERT_PCT = 15.0
@@ -49,7 +50,7 @@ def load_ledger(root: Path | None = None) -> dict:
 def save_ledger(ledger: dict, root: Path | None = None) -> Path:
     root = root or repo_root()
     path = root / LEDGER_NAME
-    path.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+    atomic_write_text(path, json.dumps(ledger, indent=2, sort_keys=True) + "\n")
     return path
 
 

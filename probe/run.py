@@ -11,6 +11,7 @@ from probe import market
 from probe.http import InferHubClient
 from probe.payloads import URL
 from probe.registry import (
+    atomic_write_text,
     load_aliases,
     load_check_module,
     load_registry,
@@ -208,8 +209,7 @@ def main() -> int:
     stamp = started.strftime("%Y-%m-%dT%H%M%SZ")
     payload = run_payload
     out = repo_root() / "data" / "runs" / f"{stamp}.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(payload, indent=2) + "\n")
+    atomic_write_text(out, json.dumps(payload, indent=2) + "\n")
     print(out)
     # P0b: a run where every cell failed is an outage, not data — the run
     # file is still written (evidence), but CI must go red.

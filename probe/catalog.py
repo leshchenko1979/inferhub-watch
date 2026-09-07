@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from probe.costs import MANAGEMENT, _get_json
-from probe.registry import repo_root
+from probe.registry import atomic_write_text, repo_root
 
 CACHE_RATE = 0.1  # cached input ask = 10% of input ask (row-verified, all eras)
 
@@ -71,7 +71,7 @@ def write_snapshot(models: dict[str, dict], root: Path | None = None) -> Path:
         "cache_rate": CACHE_RATE,
         "models": models,
     }
-    path.write_text(json.dumps(payload, indent=2) + "\n")
+    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
     return path
 
 

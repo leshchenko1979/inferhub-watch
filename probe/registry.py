@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import tomllib
 from pathlib import Path
 from types import ModuleType
@@ -9,6 +10,15 @@ from types import ModuleType
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
+
+def atomic_write_text(path: Path, text: str) -> None:
+    """Write text via tmp-file + rename: a reader never sees a half-written
+    JSON file (the 02:00Z cron regenerates data while pages are being read).
+    Parent dirs are created as needed."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
 
 
 # mtime-keyed content cache: key = (path, mtime_ns, size), so a file

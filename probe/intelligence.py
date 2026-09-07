@@ -23,7 +23,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-from probe.registry import repo_root
+from probe.registry import atomic_write_text, repo_root
 
 AA_URL = "https://artificialanalysis.ai/api/v2/data/llms/models"
 USER_AGENT = "inferhub-watch/1.0"
@@ -75,7 +75,7 @@ def write_snapshot(models: dict[str, dict], root: Path | None = None) -> Path:
         "models": models,
     }
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(payload, indent=1) + "\n")
+    atomic_write_text(out, json.dumps(payload, indent=1) + "\n")
     return out
 
 

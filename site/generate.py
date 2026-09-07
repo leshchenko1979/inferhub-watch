@@ -181,7 +181,7 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
         body,
         page_class="board",
         with_footer=False,
-        page_nav=chrome_mod.board_nav(),
+        page_nav=chrome_mod.board_nav(runs),
         header_meta=header_meta,
     )
 
