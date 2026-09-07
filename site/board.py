@@ -67,7 +67,7 @@ def _route_failures(payload: dict | None, route: str, reqs: int) -> str:
     """Per-route failure line for the plumbing row, '' without stats."""
     if not payload:
         return ""
-    stats = (payload.get("failures") or payload.get("errors") or {}).get("by_model") or {}  # noqa: legacy key until the 2026-09-02 sweep writes "failures"
+    stats = (payload.get("failures") or {}).get("by_model") or {}
     entry = stats.get(route)
     if not entry:
         return "0 in window"
@@ -650,9 +650,7 @@ def failures_table(payload: dict | None) -> str:
     """
     if not payload:
         return ""
-    # Legacy "errors" key until the 2026-09-02 sweep renames it — same
-    # fallback _route_failures uses; remove both after the sweep lands.
-    failures = payload.get("failures") or payload.get("errors") or {}
+    failures = payload.get("failures") or {}
     total = int(failures.get("total") or 0)
     failed = int(failures.get("failed") or 0)
     if not total:

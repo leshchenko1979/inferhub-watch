@@ -30,31 +30,35 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from probe.pricing import fetch_catalog, parse_ts
-from probe.registry import (_cached_read, aa_slug, intelligence_models,
-                            load_aliases, repo_root)
+from probe.registry import (_cached_read, _load_models_toml, aa_slug,
+                            intelligence_models, load_aliases, repo_root)
 
 PROVEN_TTL = timedelta(days=7)
 TOP_N = 2
+
+# Radar policy lives in models.toml ([market] thresholds) — P2c moved it
+# out of this module so tuning is a config edit, not a code change. The
+# values below are the committed defaults, loaded from the toml at import;
+# tests import the module attributes, so they stay as the module surface.
 # Non-cost candidate screens (owner review 2026-09-06): a slot is only
 # worth probing when the predicted saving is real, quality holds, and the
 # route is not a known slouch. Unknown data skips a screen, never blocks.
-MIN_ADVANTAGE = 0.80   # predicted must be >=20% under the incumbent bar
-QUALITY_FLOOR = 0.90   # candidate iq >= 0.9x the family incumbent's
-SPEED_MULTIPLE = 3.0   # skip when prior ttft > 3x the incumbent's
-FALLBACK_W_IN = 0.75
+_POLICY = _load_models_toml().get("market") or {}
+MIN_ADVANTAGE = _POLICY.get("min_advantage", 0.80)   # predicted must be >=20% under the incumbent bar
+QUALITY_FLOOR = _POLICY.get("quality_floor", 0.90)   # candidate iq >= 0.9x the family incumbent's
+SPEED_MULTIPLE = _POLICY.get("speed_multiple", 3.0)  # skip when prior ttft > 3x the incumbent's
+FALLBACK_W_IN = _POLICY.get("fallback_w_in", 0.75)
 
 
-# Dated snapshots of a board model rank inside the family whose price bar
-# they compete against: deepseek-v4-flash-0731 vs deepseek-v4-flash,
-# deepseek-v4-pro-0813 vs deepseek-v4-pro. The board itself may carry the
-# dated tail (ali/deepseek-v4-flash-0731) — the map keeps the pinned
-# snapshot inside its family. glm-5.3-flash is deliberately NOT mapped:
-# the owner runs it as its own family, apart from glm-5.3. A tail absent
-# from the map keeps its own family.
-FAMILY_ALIASES = {
+# Family-alias map lives in models.toml ([family_aliases]) — dated
+# snapshots of a board model rank inside the family whose price bar they
+# compete against. glm-5.3-flash is deliberately NOT mapped: the owner
+# runs it as its own family, apart from glm-5.3. A tail absent from the
+# map keeps its own family.
+FAMILY_ALIASES = dict(_load_models_toml().get("family_aliases") or {
     "deepseek-v4-flash-0731": "deepseek-v4-flash",
     "deepseek-v4-pro-0813": "deepseek-v4-pro",
-}
+})
 
 
 def family(route: str) -> str:

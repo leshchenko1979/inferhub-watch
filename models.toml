@@ -23,3 +23,16 @@ aliases = [
 "cx/gpt-5.6-luna" = "gpt-5-6-luna"
 "ali/tie-high-iq" = "tie-high-iq"
 "ali/tie-low-iq" = "tie-low-iq"
+
+# Radar tuning thresholds (P2c: policy lives in config, not code).
+[market]
+min_advantage = 0.80   # predicted must be >=20% under the incumbent bar
+quality_floor = 0.90   # candidate iq >= 0.9x the family incumbent's
+speed_multiple = 3.0   # skip when prior ttft > 3x the incumbent's
+fallback_w_in = 0.75   # input-token weight when no billed mix is known
+
+# Dated-snapshot tails -> board family they rank inside (P2c: from
+# market.py). glm-5.3-flash deliberately absent — its own family.
+[family_aliases]
+"deepseek-v4-flash-0731" = "deepseek-v4-flash"
+"deepseek-v4-pro-0813" = "deepseek-v4-pro"
