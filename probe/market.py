@@ -147,7 +147,11 @@ def record_proven(run_payload: dict, root: Path | None = None) -> Path:
 
 
 def incumbent_bar(routes: dict, incumbents: list[str]) -> tuple[float | None, dict]:
-    """(cheapest billed eff $/M, that entry) among the family's board aliases."""
+    """(cheapest billed eff $/M, that entry) among the family's board aliases.
+
+    Price pick = probe.basis.realized semantics (P1a single money-basis
+    owner); this wrapper keeps the (bar, entry) shape family_context needs.
+    """
     best: float | None = None
     best_entry: dict = {}
     for alias in incumbents:

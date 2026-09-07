@@ -18,6 +18,7 @@ import mdhtml  # noqa: E402
 import rundata  # noqa: E402
 import tmpl  # noqa: E402
 import freshness as fresh  # noqa: E402
+from probe import basis  # noqa: E402
 from probe.publishers import publisher_label  # noqa: E402
 from probe.registry import load_aliases, load_registry  # noqa: E402
 
@@ -425,14 +426,9 @@ def _iq_cells(route: str, eff: float | None, intel: dict | None) -> str:
 
 
 def _proj_eff(dated: list, payload: dict, route: str) -> float | None:
-    """The forward-looking $/M for one route: current billed asks priced
-    at the smoothed projection hit rate. None without hit evidence or
-    asks - callers fall back to the realized eff."""
-    stats = (payload.get("routes") or {}).get(route) or {}
-    hit, _conf = official_compare.projection_hit(
-        dated, route, stats, payload.get("routes") or {}
-    )
-    return official_compare.inferhub_eff(stats, hit=hit)
+    """The forward-looking $/M for one route — delegates to probe.basis
+    (P1a single money-basis owner). None without hit evidence or asks."""
+    return basis.projected(payload, route, dated)
 
 
 def verdict_section(payload: dict | None) -> str:
@@ -618,14 +614,10 @@ def _route_retries(runs: list[dict], route: str) -> str:
 
 def _board_basis(row: dict, dated: list | None, payload: dict,
                  use_proj: bool) -> float | None:
-    """The $/M the board ranks a route on: realized 30d effective, or the
-    projection once the backtest gate says the forward view predicts the
-    next snapshot within tolerance (projection_gate - recomputed per render)."""
-    if use_proj:
-        proj = _proj_eff(dated, payload, str(row["route"]))
-        if proj is not None:
-            return proj
-    return row.get("eff_per_mtok")
+    """The $/M the board ranks a route on — delegates to probe.basis
+    (P1a single money-basis owner)."""
+    return basis.board_basis(payload, str(row["route"]), dated or [],
+                             use_proj=use_proj)
 
 
 def _iq_sort_key(intel: dict, dated: list | None, payload: dict,
@@ -777,11 +769,11 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         # IQ per $. Everything else (ask movement, history, cache,
         # traffic, cost, failures, source) folds into the plumbing row.
         proj = _proj_eff(dated, payload, str(row["route"]))
-        basis = _board_basis(row, dated, payload, use_proj)
+        ranking_basis = _board_basis(row, dated, payload, use_proj)
         eff_label = rundata.rate_label(row.get("eff_per_mtok"), fixed=4) or "n/a"
         proj_label = rundata.rate_label(proj, fixed=4) if proj is not None else None
         pair, data_label, data_tip = _pair_cell(eff_label, proj_label, use_proj)
-        iq = _iq_value(str(row["route"]), basis, intel)
+        iq = _iq_value(str(row["route"]), ranking_basis, intel)
         series = rundata.ask_series(dated, str(row["route"]), payload)
         body_rows.append(
             "<tr>"
@@ -789,8 +781,8 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             f'<span class="route-ask">ask {ask_in} / {ask_out} per M{mark}</span></th>'
             + _viz_cell(
                 pair,
-                rundata.log_bar_pct(basis, 0.001, 10.0),
-                rundata.rate_color_class(basis),
+                rundata.log_bar_pct(ranking_basis, 0.001, 10.0),
+                rundata.rate_color_class(ranking_basis),
                 data_label=data_label,
                 data_tip=data_tip,
             )
@@ -887,11 +879,10 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
     skipped = 0
     for row in rundata.pricing_rows(payload):
         route = str(row["route"])
-        eff = row.get("marginal_per_mtok")
-        basis = "marginal"
-        if not isinstance(eff, (int, float)) or eff <= 0:
-            eff = row.get("eff_per_mtok")
-            basis = "eff"
+        # X price + basis tag from probe.basis (P1a single money-basis owner).
+        price, tag = basis.chart_price(payload, route)
+        eff = price
+        basis_tag = tag
         slug = rundata.aa_slug(route)
         entry = (intel.get("models") or {}).get(slug) if slug else None
         iq = entry.get("iq") if isinstance(entry, dict) else None
@@ -901,7 +892,7 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
         runs = runs or []
         ponly = _probe_only(row, runs)
         points.append((route, float(eff), iq,
-                       int((perf.get(route) or {}).get("reqs") or 0), basis,
+                       int((perf.get(route) or {}).get("reqs") or 0), basis_tag,
                        ponly))
     if len(points) < 2:
         return ""
@@ -945,7 +936,7 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
     # down/up by rows of ~13px until free, both sides, so every name reads.
     occupied: list[float] = []
     LABEL_STEP = 13.0
-    for route, eff, iq, reqs, basis, ponly in points:
+    for route, eff, iq, reqs, basis_tag, ponly in points:
         cx, cy = sx(eff), sy(iq)
         # Label right of the dot; flip left when it would clip the frame.
         label_right = cx < W - PAD_R - 130
@@ -960,7 +951,7 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
                 ly = cy + 3  # reset and try the other direction next round
         occupied.append(ly)
         tip = (
-            f"{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis}) &#183; "
+            f"{html.escape(route)} &#8212; {rundata.rate_label(eff, fixed=4)} $/M ({basis_tag}) &#183; "
             f"IQ {iq:.1f} &#183; {reqs} reqs/{hours}h"
             + (" &#183; probes only" if ponly else "")
         )
