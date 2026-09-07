@@ -168,7 +168,30 @@ class CoreCheckTests(unittest.TestCase):
         out = self.check.run(_Fake(_sse(chunks)), "zai/glm-5.3")
         self.assertEqual(out["status"], "fail")
         self.assertIn("finish_reason", out["summary"])
-        self.assertIn("terminal", out["summary"])
+        self.assertIn("never terminates", out["summary"])
+
+    def test_intermediate_empty_finish_reason_tolerated(self) -> None:
+        # Owner recalibration 2026-09-07 ("cbcn/glm-5.3-flash works fine in
+        # reality"): glm-5.3-flash streams 21 mid-stream finish_reason:""
+        # events yet ends cleanly with "tool_calls" — intermediate "" is
+        # evidence, not failure. Only a never-terminating stream fails.
+        chunks = [
+            {"choices": [{"delta": {"content": "x"}, "finish_reason": ""}]},
+            {"choices": [{"delta": {"content": ANSWER}, "finish_reason": ""}]},
+            {
+                "choices": [
+                    {"delta": {"tool_calls": [{"index": 0, "id": "c1",
+                     "function": {"name": "report_answer",
+                                  "arguments": json.dumps({"answer": ANSWER})}}]},
+                     "finish_reason": "tool_calls"}
+                ]
+            },
+        ]
+        out = self.check.run(_Fake(_sse(chunks)), "cbcn/glm-5.3-flash")
+        self.assertEqual(out["status"], "pass")
+        evidence = out["evidence"]
+        self.assertGreater(evidence["empty_finish_chunks"], 0)
+        self.assertEqual(evidence["last_finish_reason"], "tool_calls")
 
     def test_empty_name_deltas_tolerated_oc_parity(self) -> None:
         # OC parity: the accumulator skips name "" deltas (first non-empty

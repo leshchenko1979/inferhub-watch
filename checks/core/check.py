@@ -91,28 +91,30 @@ def run(client: InferHubClient, alias: str) -> dict:
             evidence=evidence,
         )
     if stats["empty_finish_chunks"]:
-        # Empty-string finish_reason is TERMINAL to the consuming runtime's
-        # accumulator: it flushes the tool call mid-stream (json_repair("")
-        # -> {}), then the drained map re-accumulates the argument tail and
-        # flushes again — empty/duplicated tool runs. Empty-string tool NAMES
-        # are tolerated (the consumer skips them; the first non-empty name
-        # sticks), so they are kept in evidence only and never fail the check.
-        return result(
-            check_id="core",
-            alias=alias,
-            status="fail",
-            summary=(
-                f'{stats["empty_finish_chunks"]} event(s) set finish_reason to "" — '
-                "the consumer treats that as terminal and flushes tool calls "
-                "mid-stream (empty/duplicated runs)."
-            ),
-            resolved_model=resolved,
-            http_status=status,
-            latency_ms=ms,
-            ttft_ms=ttft_ms,
-            tps=tps,
-            evidence=evidence,
-        )
+        # Owner recalibration 2026-09-07 ("cbcn/glm-5.3-flash works fine in
+        # reality"): empty-string finish_reason on INTERMEDIATE chunks is
+        # tolerated evidence, not a failure — the route streams clean answers
+        # and terminates properly. What matters to a consumer is the ENDING:
+        # a stream whose last finish_reason is "" (or never carries a real
+        # terminal reason) is the broken case. Mirrors the empty-tool-name
+        # tolerance above; the counts stay in evidence.
+        if stats["last_finish_reason"] == "" or stats["last_finish_reason"] is None:
+            return result(
+                check_id="core",
+                alias=alias,
+                status="fail",
+                summary=(
+                    f'{stats["empty_finish_chunks"]} event(s) set finish_reason to "" and the '
+                    "stream never terminates with a real reason — the consumer cannot tell "
+                    "where the tool call ends."
+                ),
+                resolved_model=resolved,
+                http_status=status,
+                latency_ms=ms,
+                ttft_ms=ttft_ms,
+                tps=tps,
+                evidence=evidence,
+            )
     if not stats["names"]:
         return result(
             check_id="core",

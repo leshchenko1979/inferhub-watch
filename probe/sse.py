@@ -4,8 +4,10 @@ All functions here are pure: they take parsed JSON chunks (or raw SSE text,
 for parse_sse) and return plain data. Two deliberate deviations from the
 textbook OpenAI spec, scored to the consuming runtime's actual behaviour:
 
-* empty-string ``finish_reason`` — counted by inspect_stream and treated as
-  TERMINAL by the core check (the consumer's accumulator flushes on it);
+* empty-string ``finish_reason`` — counted by inspect_stream; INTERMEDIATE
+  "" reasons are tolerated evidence (owner recalibration 2026-09-07:
+  glm-5.3-flash emits them mid-stream yet works fine); only a stream whose
+  LAST finish_reason is "" (never terminally ends) fails the core check.
 * empty-string tool names — counted as tolerated evidence only (the consumer
   skips them, first non-empty name sticks).
 """
