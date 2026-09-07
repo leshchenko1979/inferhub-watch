@@ -243,6 +243,704 @@ h2 {
   text-wrap: pretty;
 }
 
+.explanations {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
+  max-width: 62ch;
+}
+
+.explanations>h2 {
+  color: var(--ink);
+}
+
+.explanations h3 {
+  font-size: var(--text-body);
+  font-weight: 500;
+  color: var(--primary);
+  margin: var(--space-6) 0 var(--space-3);
+}
+
+.explanations h3:first-of-type {
+  margin-top: var(--space-4);
+}
+
+.explanations p {
+  font-family: var(--sans);
+  color: var(--muted);
+  text-wrap: pretty;
+  margin: 0 0 var(--space-5);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.readout {
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.readout li {
+  font-family: var(--sans);
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.readout strong {
+  font-family: var(--mono);
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.explainers {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.explainers details {
+  scroll-margin-top: calc(var(--space-8) + var(--space-7));
+}
+
+.explainers summary {
+  font-family: var(--mono);
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0.45rem 0;
+  min-height: 44px;
+}
+
+.check-brief {
+  padding: 0 0 var(--space-5);
+}
+
+/* Owner 2026-09-07 ("explanation text blocks are all formatted
+   differently"): ALL explanatory prose on the page shares one treatment —
+   the .section-note recipe (muted, var(--text-ui), 62ch measure). Briefs
+   (h4 + p/li), readout lists, and section notes are typographically
+   identical; only structural markup differs. */
+.check-brief h4 {
+  font-family: var(--mono);
+  font-size: var(--text-ui);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.check-brief p,
+.check-brief li {
+  font-family: var(--sans);
+  color: var(--muted);
+  font-size: var(--text-ui);
+  line-height: 1.5;
+  max-width: 62ch;
+  margin: 0 0 var(--space-3);
+  text-wrap: pretty;
+}
+
+.check-brief ul {
+  margin: 0 0 var(--space-3);
+  padding-left: 1.1rem;
+}
+
+.check-brief pre,
+.explainer pre {
+  overflow-x: auto;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: var(--text-ui);
+  line-height: 1.4;
+}
+
+caption {
+  caption-side: bottom;
+  text-align: left;
+  color: var(--muted);
+  font-size: var(--text-caption);
+  padding: var(--space-3) 0 var(--space-2);
+  text-wrap: pretty;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.65rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+/* ── Verdict ticket: the dispatch-card signature ── */
+
+.ticket {
+  margin: 0 0 var(--space-7);
+  padding: var(--space-5) var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.ticket-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5) var(--space-8);
+}
+
+.ticket-line {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-ui);
+  color: var(--muted);
+}
+
+.ticket-route {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-title);
+}
+
+.ticket-route code {
+  font-size: inherit;
+}
+
+.ticket-big {
+  margin: 0 0 var(--space-3);
+  font-family: var(--mono);
+  font-size: 2.6rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.ticket-unit {
+  font-size: var(--text-ui);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.ticket-why {
+  margin: 0;
+  font-size: var(--text-ui);
+  color: var(--muted);
+}
+
+.ticket-why .tick-down { color: var(--teal); }
+
+.ticket-spark .ask-spark {
+  width: 300px;
+  height: auto;
+}
+
+.ticket-spark .s-line { stroke-width: 1.8; }
+
+.ticket-alt {
+  margin: var(--space-5) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--line);
+  font-size: var(--text-ui);
+  color: var(--muted);
+}
+
+.ticket-alt code {
+  color: var(--ink);
+}
+
+/* ── Plumbing 'more' affordance ──
+   Owner 2026-09-07 21:xxZ: the chip gets its OWN last cell in the route
+   row ('more' must not share the iq/$ line); the + mark is gone — OPEN,
+   the word swaps to 'less'; the plumbing grid appears as a SEPARATE
+   full-width row of the parent table — the hidden sibling tr.plumb-row
+   right below, revealed by :has() on the route row. Zero JS. */
+.plumb-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.plumb {
+  display: inline-block;
+}
+
+.plumb summary {
+  cursor: pointer;
+  list-style: none;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-caption);
+  color: var(--muted);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.plumb summary:hover {
+  color: var(--ink);
+  background: var(--bg-soft, rgba(127, 127, 127, 0.08));
+}
+
+.plumb summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Open: the word itself flips to 'less' — no +/- glyph. The ::after
+   carries the new word; the base word is hidden by collapsing its size. */
+.plumb details[open] summary .plumb-word {
+  font-size: 0;
+}
+
+.plumb details[open] summary .plumb-word::after {
+  content: "less";
+  font-size: var(--text-caption);
+}
+
+.plumb details[open] summary {
+  color: var(--ink);
+}
+
+/* The route row whose details is open reveals ONLY its own sibling row. */
+.pricing tr:has(.plumb details[open]) + tr.plumb-row {
+  display: table-row;
+}
+
+/* Collapsed: the sibling row takes no space at all. */
+.pricing tr.plumb-row {
+  display: none;
+}
+
+.pricing tr.plumb-row > td {
+  padding: 0 0.6rem var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-soft, rgba(127, 127, 127, 0.04));
+}
+
+dl.plumb {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-4) var(--space-6);
+  margin: 0;
+  padding: var(--space-2) 0 var(--space-5);
+}
+
+dl.plumb dt {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+dl.plumb dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Owner 2026-09-07: failure lines (codes × counts) wrap instead of
+   clipping past the card edge. */
+dl.plumb dd .plumb-fail {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+dl.plumb dd .dim {
+  opacity: 0.55;
+}
+
+/* ── Cost per M tokens ── */
+
+/* Screen-reader-only label (pricing 4th col header). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pricing {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-caption);
+  font-family: var(--mono);
+}
+
+.pricing caption {
+  caption-side: bottom;
+  text-align: left;
+  color: var(--muted);
+  font-size: var(--text-caption);
+  padding: var(--space-3) 0 var(--space-2);
+  text-wrap: pretty;
+}
+
+.pricing th,
+.pricing td {
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.pricing .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pricing tbody th {
+  font-weight: 500;
+}
+
+/* Tablet band: nowrap still applies above 720px and the official-price
+   table overflows its container (~826px in a ~736px box at 768px);
+   let pricing cells wrap there like they do on mobile. */
+@media (min-width: 721px) and (max-width: 900px) {
+  .pricing th,
+  .pricing td {
+    white-space: normal;
+  }
+}
+
+.route-ask {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-caption);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* ask-history sparkline under the route ask */
+.ask-spark {
+  display: block;
+  margin-top: 3px;
+}
+
+.ask-spark .s-line {
+  fill: none;
+  stroke: var(--mid);
+  stroke-width: 1.2;
+}
+
+/* QA: in and out were the same stroke — indistinguishable. Out (the
+   pricier one) renders amber; in keeps the blue mid. */
+.ask-spark .s-line-out {
+  stroke: var(--warn, #c90);
+}
+
+.ask-spark .s-dot {
+  fill: var(--mid);
+}
+
+.ask-spark .s-last {
+  fill: var(--ink);
+}
+
+.pricing td.viz {
+  vertical-align: middle;
+}
+
+.viz-val {
+  display: block;
+}
+
+/* Rate cell pair: the two eras, stacked. Bold figure = the basis the
+   board ranks on (30d realized, or the projection once the backtest
+   gate passes); the tag names the era, and the alternate era rides
+   below it, dimmed. */
+.viz-val .pair-main {
+  display: block;
+}
+
+.viz-val .pair-alt {
+  display: block;
+  font-size: var(--text-caption);
+  font-weight: 400;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.viz-val .pair-tag {
+  margin-left: 0.35em;
+  font-size: var(--text-caption);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.viz-bar {
+  display: block;
+  width: 72px;
+  height: 4px;
+  margin: 4px 0 1px auto;
+  border-radius: 2px;
+  background: var(--surface);
+}
+
+.viz-bar i {
+  display: block;
+  height: 100%;
+  margin-left: auto;
+  border-radius: 2px;
+}
+
+.viz-bar .ok {
+  background: var(--ok);
+}
+
+.viz-bar .mid {
+  background: var(--mid);
+}
+
+.viz-bar .bad {
+  background: var(--fail);
+}
+
+.viz-bar .neutral {
+  background: var(--primary);
+}
+
+.viz-bar .gold {
+  background: var(--accent);
+}
+
+.ask-mark {
+  color: var(--muted);
+  margin-left: 1px;
+}
+
+.cand-mark {
+  color: var(--accent);
+  /* QA m5: was 0.72em (8.64px desktop) — below the 11px readability floor */
+  font-size: 0.85em;
+  font-weight: 600;
+  margin-left: 6px;
+  vertical-align: 2px;
+}
+
+/* ── Spend block: stats + 30-day sparkline ── */
+
+.spend-block {
+  margin: 0 0 var(--space-5);
+}
+
+.spend-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-7);
+  margin: 0 0 var(--space-4);
+}
+
+.spend-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spend-val {
+  font-size: var(--text-sub);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.spend-cap {
+  font-size: var(--text-caption);
+  color: var(--muted);
+}
+
+.spend-spark {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.spark-bar {
+  fill: var(--accent);
+}
+
+.spark-zero {
+  fill: var(--line);
+}
+
+.spark-missing {
+  fill: var(--line);
+  opacity: 0.35;
+}
+
+.spark-axis {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.spark-lab {
+  fill: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+/* ── Ask deltas ── */
+
+.ask-delta {
+  white-space: nowrap;
+}
+
+.delta-sep {
+  color: var(--muted);
+}
+
+.delta-down {
+  color: var(--teal);
+}
+
+.delta-up {
+  color: var(--amber);
+}
+
+.delta-flat {
+  color: var(--muted);
+}
+
+/* ── Candidates ── */
+
+.probe-results h2 {
+  margin: 0 0 var(--space-4);
+}
+
+.model-group {
+  margin: var(--space-6) 0 0;
+}
+
+.model-group:first-of-type {
+  margin-top: 0;
+}
+
+.model-group .pricing {
+  margin-top: var(--space-3);
+}
+
+.model-group summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  cursor: pointer;
+  list-style: none;
+}
+
+.model-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.model-group summary::before {
+  content: "▾";
+  color: var(--muted);
+  font-size: var(--text-caption);
+}
+
+.model-group:not([open]) summary::before {
+  content: "▸";
+}
+
+.model-name {
+  font-size: var(--text-body);
+  font-weight: 500;
+  color: var(--primary);
+}
+
+.chip {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.chip.ok {
+  border-color: var(--ok);
+  color: var(--ok);
+  background: var(--ok-dim);
+}
+
+.chip.mid {
+  border-color: var(--mid);
+  color: var(--mid);
+  background: var(--surface);
+}
+
+.chip.bad {
+  border-color: var(--fail);
+  color: var(--fail);
+  background: var(--surface);
+}
+
+.chip.price {
+  font-variant-numeric: tabular-nums;
+}
+
+.tests-ok {
+  color: var(--ok);
+  font-weight: 500;
+}
+
+.tests-mid {
+  color: var(--mid);
+  font-weight: 500;
+}
+
+.tests-bad {
+  color: var(--fail);
+  font-weight: 500;
+}
+
+.tests-none {
+  color: var(--muted);
+}
+
+.pill.in-use {
+  margin-left: 0.4rem;
+  background: var(--ok-dim);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+/* Below the in-use bar (100+ reqs/24h): same shape, muted tone. */
+.pill.in-use--light {
+  margin-left: 0.4rem;
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.candidates th,
+.candidates td {
+  white-space: nowrap;
+}
+
+.candidates tbody th {
+  white-space: normal;
+  min-width: 16rem;
+}
+
+/* Family head: chips flow with a gap (owner 2026-09-07: the incumbent
+   score chip, best-candidate chip and price chip used to butt together). */
+.candidates tr.fam-head > th {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.5rem;
+}
+
 .pill {
   display: inline-block;
   font-family: var(--mono);
