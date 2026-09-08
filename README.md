@@ -71,3 +71,7 @@ python3 -m probe.routes cb/gpt-5.6-luna cmc/deepseek/deepseek-v4-pro   # sweep a
 PAGES_BASE= python3 site/generate.py
 ```
 
+
+## Grafana dashboard (draft)
+
+A draft Grafana mirror of the board lives at https://grafana.l1979.ru/d/inferhub-watch (login admin, see vds-servers repo). It reads `usage_logs` on the apps Postgres via the read-only `inferhub_ro` user (provisioned datasource `InferHub`). Provisioned JSON: `vds-servers/apps/services/grafana/dashboards/inferhub/watch.json`. The static board remains the source of truth; the dashboard is an experiment for comparing a live-query Grafana view against the generated static page.
