@@ -523,7 +523,7 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
             if pad_t <= gy <= H - pad_b:
                 grid.append(
                     f'<line x1="{pad_l}" y1="{gy:.1f}" x2="{W - pad_r}" y2="{gy:.1f}" class="sg"/>'
-                    f'<text x="{pad_l - 6}" y="{gy + 3:.1f}" class="st" text-anchor="end">{v}</text>'
+                    f'<text x="{pad_l - 4}" y="{gy + 3:.1f}" class="st" text-anchor="start">{v}</text>'
                 )
         dots = ""
         # Label-collision pass (QA finding: cx/cb pairs at identical y printed
@@ -671,7 +671,7 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
         # Mobile (QA M2): portrait, larger relative type, full route names
         # (owner 2026-09-08: "labels not truncated" — cap raised to 35, the
         # longest probed route; char_w matches the 14px mobile label font).
-        + _render(440, 560, 40, 104, 20, 36, 17.0, 35, "mobile", 8.4)
+        + _render(440, 560, 12, 12, 20, 36, 17.0, 35, "mobile", 8.4)
         + _scatter_legend()
         + "</figure>"
     )

@@ -586,6 +586,29 @@ class ScatterSectionTest(unittest.TestCase):
         self.assertIn("margin-inline: -1rem", block)
         self.assertIn(".scatter svg.mobile { display: block; max-width: none; }", block)
 
+    def test_mobile_grid_spans_full_viewbox(self) -> None:
+        # Owner 2026-09-08: on mobile the grid must span ~the full SVG
+        # width, not 67% — the old 40/104 pads starved the plot. Vertical
+        # gridlines must sit within 16px of each viewBox edge.
+        import re
+
+        svg = self._svg()
+        body = svg[svg.index('viewBox="0 0 440'):]
+        body = body[: body.index("</svg>")]
+        verts = sorted(
+            {
+                float(a)
+                for a, c in re.findall(
+                    r'<line x1="([\d.]+)" y1="[\d.]+" x2="([\d.]+)" y2="[\d.]+" class="sg"/>',
+                    body,
+                )
+                if a == c
+            }
+        )
+        self.assertEqual(5, len(verts))
+        self.assertLessEqual(verts[0], 16)
+        self.assertGreaterEqual(verts[-1], 424)
+
     def test_legend_and_caption_present(self) -> None:
         svg = self._svg()
         self.assertIn("scatter-legend", svg)
@@ -600,5 +623,4 @@ class ScatterSectionTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
 
