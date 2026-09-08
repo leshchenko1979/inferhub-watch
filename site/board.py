@@ -551,7 +551,15 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
             name = html.escape(route)
             short = name if len(name) <= label_cap else name[: label_cap - 1] + "…"
             # Label right of the dot; flip left when it would clip the frame.
+            # Frame clamp (browser QA 2026-09-08): the heuristic above flips
+            # almost every mobile label left, and near the left frame edge
+            # the text bled up to 54px off the canvas. If the chosen side
+            # pushes the text outside the viewBox, use the other side.
             label_right = cx < W - pad_r - label_cap * char_w
+            if label_right and cx + 10 + len(short) * char_w > W - 2:
+                label_right = False
+            elif not label_right and cx - 10 - len(short) * char_w < 2:
+                label_right = True
             lx = cx + 10 if label_right else cx - 10
             anchor = "start" if label_right else "end"
             x0 = (cx + 10) if label_right else (cx - 10 - len(short) * char_w)
@@ -608,9 +616,19 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
                 x0 = (cx + 10) if label_right else (cx - 10 - len(short) * char_w)
                 x1 = x0 + len(short) * char_w
                 ly = cy + 3
-                if _row_taken(ly) or _hits_dot(ly):
-                    # Both sides blocked at the dot: give up, park at dot.
-                    ly = cy + 3
+                # Both sides blocked at the dot: give up, park at dot — but
+                # keep the frame clamp (browser QA 2026-09-08): never park a
+                # left-anchored label past the left frame edge.
+                if (
+                    (_row_taken(ly) or _hits_dot(ly))
+                    and not label_right
+                    and cx - 10 - len(short) * char_w < 2
+                ):
+                    label_right = True
+                    lx = cx + 10
+                    anchor = "start"
+                    x0 = cx + 10
+                    x1 = x0 + len(short) * char_w
             if abs(ly - (cy + 3)) > 1:
                 # Label moved: draw a leader from the dot edge to the label.
                 y1 = cy + (r + 1) if ly > cy else cy - (r + 1)
