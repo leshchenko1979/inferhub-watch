@@ -84,7 +84,7 @@
     }
   },
   "cp/zai/glm-5.3-flash": {
-    "last_probe": "2026-09-08T08:18:06.862198+00:00",
+    "last_probe": "2026-09-08T09:09:40.269980+00:00",
     "statuses": {
       "cache": "fail",
       "core": "pass"
