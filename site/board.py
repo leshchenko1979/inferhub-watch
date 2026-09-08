@@ -232,7 +232,7 @@ def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
         "IQ = Artificial Analysis Intelligence Index (composite of 9 public evals, "
         "artificialanalysis.ai, effort level max), refreshed every sweep; IQ per $ divides it by the route&#8217;s effective $/M &#8212; higher is smarter per dollar. "
         "Sparkline bars are log-scaled &#36;0.001&#8211;&#36;10 per day. "
-        "Rates for this board&#8217;s routes only; other traffic is not listed."
+        "Rates cover this board&#8217;s routes, the current candidates, and every route with billed usage in the window."
     )
 
 def pricing_section(payload: dict | None, runs: list[dict]) -> str:

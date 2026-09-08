@@ -233,6 +233,28 @@ class SnapshotTests(unittest.TestCase):
         )
         self.assertEqual(payload["days"][1]["requests"], 1)
 
+    def test_snapshot_keeps_billed_routes_beyond_board_and_candidates(self) -> None:
+        # Owner 2026-09-08: candidate rotation must not drop a route with
+        # real billed usage out of the snapshot (cbcn/glm-5.3-flash lost its
+        # candidate slot to a cheaper catalog rival and vanished from the
+        # money view while still billing 10k reqs/24h).
+        rows = [
+            _row(model="board/m", cost_consumer_usdc="0.001"),
+            _row(model="cand/m", cost_consumer_usdc="0.002"),
+            _row(model="rotated/m", cost_consumer_usdc="0.004"),
+        ]
+        with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
+                mock.patch.object(pricing, "fetch_catalog", return_value={}):
+            payload = pricing.snapshot(
+                "k", ["board/m"], candidates=["cand/m"]
+            )
+        self.assertEqual(
+            sorted(payload["routes"]), ["board/m", "cand/m", "rotated/m"]
+        )
+        self.assertTrue(payload["routes"]["cand/m"]["candidate"])
+        self.assertNotIn("candidate", payload["routes"]["rotated/m"])
+        self.assertEqual(payload["routes"]["rotated/m"]["source"], "usage-logs")
+
     def test_main_writes_file_and_survives_failure(self) -> None:
         payload = {"generated_at": "t", "routes": {}}
         with tempfile.TemporaryDirectory() as tmp:

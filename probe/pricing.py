@@ -632,6 +632,17 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
             )
         return entry
 
+    # Owner 2026-09-08: every model with billed usage stays in the snapshot.
+    # Candidates rotate (radar shortlist picks top-N fresh each sweep), but a
+    # rotated-out route with real billed traffic must not vanish from the
+    # money view — cbcn/glm-5.3-flash (10k reqs/24h) dropped off the board
+    # the day cmc/z-ai/glm-5.3-flash took its candidate slot. Usage-derived
+    # routes carry no candidate flag; board aliases and shortlist candidates
+    # keep their places and flags.
+    usage_routes = [
+        m for m in stats if m not in aliases and m not in cand
+    ]
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "range": range_,
@@ -641,7 +652,9 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
         "days": daily_series(days_rows),
         "failures": failure_stats(rows),
         "perf": perf_stats(rows),
-        "routes": {alias: _entry(alias) for alias in aliases},
+        "routes": {
+            alias: _entry(alias) for alias in [*aliases, *cand, *usage_routes]
+        },
     }
 
 
