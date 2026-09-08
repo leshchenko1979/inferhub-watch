@@ -637,13 +637,8 @@ dl.plumb dd .dim {
   stroke: var(--warn, #c90);
 }
 
-.ask-spark .s-dot {
-  fill: var(--mid);
-}
-
-.ask-spark .s-last {
-  fill: var(--ink);
-}
+/* Owner 2026-09-08: lines carry no point marks — the ask-in blue vs
+   ask-out amber strokes are the only distinction. (.s-dot/.s-last gone) */
 
 .pricing td.viz {
   vertical-align: middle;

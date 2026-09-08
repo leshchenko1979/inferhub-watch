@@ -714,6 +714,7 @@ class SpendDashboardTests(unittest.TestCase):
         self.assertIn("no earlier snapshot. In = prompt tokens", page)  # legend
         # no route cell shows a movement arrow; legend spans carry no title
         self.assertNotIn('class="delta-down" title', page)
+        self.assertIn('data-tip="no earlier snapshot for this route"', page)
         self.assertNotIn('class="delta-up" title', page)
 
     def test_delta_column_against_prior_snapshot(self) -> None:
@@ -721,7 +722,7 @@ class SpendDashboardTests(unittest.TestCase):
         page = self._page(self.PAYLOAD, dated)
         # ask_in fell 0.020 -> 0.014, ask_out held 0.042
         self.assertIn("delta-down", page)
-        self.assertIn('title="ask unchanged"', page)
+        self.assertIn('data-tip="ask unchanged"', page)
         self.assertNotIn("no earlier snapshot for this route", page)
         # delta-up appears only in the visible legend line (color key),
         # not in any route's delta cell

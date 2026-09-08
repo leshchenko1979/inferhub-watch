@@ -142,11 +142,11 @@ def spend_block(payload: dict, runs: list[dict]) -> str:
 
 def _delta_span(delta: float) -> str:
     if abs(delta) < 1e-9:
-        return '<span class="delta-flat" title="ask unchanged">=</span>'
+        return '<span class="delta-flat" data-tip="ask unchanged">=</span>'
     mag = rundata.rate_label(abs(delta), fixed=4) or f"${abs(delta):.4f}"
     if delta < 0:
-        return f'<span class="delta-down" title="ask fell">&#8595;{mag}</span>'
-    return f'<span class="delta-up" title="ask rose">&#8593;{mag}</span>'
+        return f'<span class="delta-down" data-tip="ask fell">&#8595;{mag}</span>'
+    return f'<span class="delta-up" data-tip="ask rose">&#8593;{mag}</span>'
 
 
 DELTA_TIP = (
@@ -161,7 +161,7 @@ def ask_delta_bits(payload: dict | None, prior: dict | None, route: str) -> str:
     if deltas is None:
         return (
             '<span class="delta-flat" '
-            'title="no earlier snapshot for this route">&#8212;</span>'
+            'data-tip="no earlier snapshot for this route">&#8212;</span>'
         )
     return (
         _delta_span(deltas["in"])
@@ -174,7 +174,8 @@ def _ask_spark(points: list[tuple[str, float, float]]) -> str:
     """Little inline-SVG line graph of a route's ask history, or ''.
 
     Two lines on one shared scale (honest: in and out stay proportional);
-    ask_in is the brighter stroke, ask_out dimmed, last point dotted.
+    ask_in keeps the blue mid stroke, ask_out amber — the colors are the
+    only distinction (owner 2026-09-08: no point marks on either line).
     Needs >= 2 points; days without a logged ask are absent from `points`.
     """
     if len(points) < 2:
@@ -183,21 +184,18 @@ def _ask_spark(points: list[tuple[str, float, float]]) -> str:
     n = len(points)
     hi = max(max(p[1] for p in points), max(p[2] for p in points)) or 1.0
 
-    def polyline(vals: list[float], line_idx: int) -> tuple[str, str, str]:
+    def polyline(vals: list[float], line_idx: int) -> str:
         coords = []
         for i, v in enumerate(vals):
             x = pad + i * (w - 2 * pad) / (n - 1)
             y = h - pad - (v / hi) * (h - 2 * pad)
             coords.append((x, y))
-        dots = "".join(f'<circle class="s-dot" cx="{x:.1f}" cy="{y:.1f}" r="1.5"/>' for x, y in coords)
         path = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
-        lx, ly = coords[-1]
         cls = "s-line" if line_idx == 0 else "s-line s-line-out"
-        return (f'<polyline class="{cls}" points="{path}"/>', dots,
-                f'<circle class="s-last" cx="{lx:.1f}" cy="{ly:.1f}" r="2"/>')
+        return f'<polyline class="{cls}" points="{path}"/>'
 
-    in_path, in_dots, _ = polyline([p[1] for p in points], 0)
-    out_path, _, out_last = polyline([p[2] for p in points], 1)
+    in_path = polyline([p[1] for p in points], 0)
+    out_path = polyline([p[2] for p in points], 1)
     first, last = points[0][0], points[-1][0]
     # Tip carries first + last only (QA: the full per-day data wall hit
     # 300+ chars); the spark itself is the trend.
@@ -212,5 +210,5 @@ def _ask_spark(points: list[tuple[str, float, float]]) -> str:
         f'role="img" aria-label="ask history {first} to {last}" '
         f'data-tip="Ask $/M, {html.escape(tip)}">'
         f'<title>ask in/out, {html.escape(first)} &#8594; {html.escape(last)}</title>'
-        f"{in_path}{in_dots}{out_path}{out_last}</svg>"
+        f"{in_path}{out_path}</svg>"
     )

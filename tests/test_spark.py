@@ -82,8 +82,18 @@ class AskSparkRenderTest(unittest.TestCase):
         out = self.mod._ask_spark(pts)
         self.assertIn("<svg", out)
         self.assertEqual(out.count("<polyline"), 2)  # in + out
-        self.assertIn("s-last", out)  # end dot
         self.assertIn("2026-08-27", out)  # tooltip range
+
+    def test_lines_carry_no_point_marks(self):
+        # Owner 2026-09-08: no dots on either line — the two stroke
+        # colors are the only distinction.
+        pts = [("2026-08-27", 0.014, 0.042), ("2026-08-28", 0.15, 0.45),
+               ("2026-08-29", 0.14, 0.42)]
+        out = self.mod._ask_spark(pts)
+        self.assertNotIn("s-dot", out)
+        self.assertNotIn("s-last", out)
+        self.assertNotIn("<circle", out)
+        self.assertIn("s-line-out", out)  # the amber distinction survives
 
     def test_flat_series_still_renders(self):
         pts = [("2026-08-27", 0.1, 0.2), ("2026-08-28", 0.1, 0.2)]

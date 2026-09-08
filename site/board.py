@@ -202,7 +202,7 @@ def _marginal_cell(row: dict, runs: list[dict]) -> tuple[str, str] | None:
             "window is a sweep probe, so the workload (cache-cold, "
             "tiny prompts) is unrepresentative."
         )
-    return (f"marginal $/M <span title=\"{marg_tip}\">&#9432;</span>", marg_label)
+    return (f"marginal $/M <span data-tip=\"{marg_tip}\">&#9432;</span>", marg_label)
 
 def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
     """The board caption: reading guide + live gate state."""
@@ -291,49 +291,49 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         series = rundata.ask_series(dated, str(row["route"]), payload)
         plumb_cells = [
             ("&#916; ask in / out",
-             (f'<span title="{DELTA_TIP}">'
+             (f'<span data-tip="{DELTA_TIP}">'
              f'{ask_delta_bits(payload, prior, str(row["route"]))}</span>')),
             ("ask source",
-             '<span title="Where the ask price comes from: billed ask is the '
+             '<span data-tip="Where the ask price comes from: billed ask is the '
              'rate actually charged on this route&#8217;s fresh traffic; floor '
              'ask (*) is the catalog minimum shown when a route has no billed '
              'traffic yet.">billed ask</span>' if logged else
-             '<span title="Where the ask price comes from: billed ask is the '
+             '<span data-tip="Where the ask price comes from: billed ask is the '
              'rate actually charged on this route&#8217;s fresh traffic; floor '
              'ask (*) is the catalog minimum shown when a route has no billed '
              'traffic yet.">floor ask</span>'),
             ("cache hit",
-             (f'<span title="Share of prompt tokens served from the provider&#8217;s '
+             (f'<span data-tip="Share of prompt tokens served from the provider&#8217;s '
              f'prompt cache in the window &#8212; cached tokens are billed at the '
              f'cache discount, so high cache hit = cheaper effective rate.">'
              f'{rundata.cache_label(row.get("cache_pct")) or "n/a"}</span>')),
             ("failures",
-             (f'<span class="plumb-fail" title="Failed requests / total requests, with HTTP status '
+             (f'<span class="plumb-fail" data-tip="Failed requests / total requests, with HTTP status '
              f'counts. Failures carry no tokens and no cost — the gateway '
              f'accepted the request and the upstream dropped it.">'
              f'{_route_failures(payload, str(row["route"]), reqs)}</span>')),
             (f"{span} traffic",
-             (f'<span title="Requests and tokens billed on this route over the '
+             (f'<span data-tip="Requests and tokens billed on this route over the '
              f'{span} window (failed requests excluded from tokens).">'
              f"{reqs} req · {toks} tok</span>")),
             (f"{span} cost",
-             (f'<span title="Total billed cost on this route over the {span} '
+             (f'<span data-tip="Total billed cost on this route over the {span} '
              f'window.">{rundata.cost_label(row.get("cost_usdc")) or "n/a"}</span>')),
         ]
         spark = _ask_spark(series)
         if spark:
             plumb_cells.append(("ask history",
-             f'<span title="Ask $/M history from committed probes: in/out on '
+             f'<span data-tip="Ask $/M history from committed probes: in/out on '
              f'the first and latest day, sparkline in between."> {spark}</span>'
              .replace("> <svg", "><svg")))
         if iq:
             plumb_cells.append(("IQ",
-             (f'<span title="Artificial Analysis Intelligence Index for this '
+             (f'<span data-tip="Artificial Analysis Intelligence Index for this '
              f'route (composite of 9 public evals, artificialanalysis.ai, '
              f'effort max) &#8212; quality independent of price.">{iq[0]}</span>')))
         if retries := _route_retries(runs, str(row["route"])):
             plumb_cells.append(("retries",
-             (f'<span title="Sweep evidence: the first probe attempt failed and '
+             (f'<span data-tip="Sweep evidence: the first probe attempt failed and '
              f'a replay was needed. Recovered = second attempt passed; still '
              f'down = failed again.">{retries}</span>')))
         if (marg := _marginal_cell(row, runs)) is not None:
@@ -348,12 +348,12 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         ttft_label, tps_label = rundata.ttft_tps_labels(ttft, tps)
         plumb_cells.extend([
             ("ttft p50",
-             (f'<span title="Median time to first token across this model&#8217;s '
+             (f'<span data-tip="Median time to first token across this model&#8217;s '
              f'billed requests in the newest '
              f'{int((payload.get("perf") or {}).get("window_hours") or 24)}h '
              f'window (p50) &#8212; production traffic included.">{ttft_label}</span>')),
             ("tps mean",
-             (f'<span title="Mean tokens/sec of generation time only (duration '
+             (f'<span data-tip="Mean tokens/sec of generation time only (duration '
              f'minus ttft); rows with a &lt;2s generation window or impossible '
              f'tps are excluded.">{tps_label}</span>')),
         ])
