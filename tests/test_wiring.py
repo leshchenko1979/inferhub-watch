@@ -479,6 +479,14 @@ class ProbeOnlyMarginalTests(unittest.TestCase):
         self.assertNotIn('class="dim"', page)
         self.assertNotIn("probe-only traffic", page)
 
+    def test_marginal_tooltip_sits_on_value(self) -> None:
+        # Owner 2026-09-08: the tiny ℹ beside the label was too small a
+        # tap target — the tooltip must also wrap the VALUE itself.
+        page = self._page(self._payload(self.MARGINAL), self.RUNS)
+        self.assertRegex(
+            page, r'<dd><span data-tip="Billed cost per M over requests[^"]*">'
+        )
+
     def test_probe_only_helper_guards(self) -> None:
         gen = _load_generate()
         row = {"route": "ali/qwen3.8-max", **self.MARGINAL}

@@ -603,15 +603,14 @@ class ScatterSectionTest(unittest.TestCase):
         self.assertIn("right: calc(50% - 50vw);", block)
 
     def test_svg_axis_title_gone_from_svg_lives_in_legend(self) -> None:
-        # Owner 2026-09-08: the "AA IQ" axis title moved out of the SVG
-        # into the HTML legend (first legend item).
+        # Owner 2026-09-08, SECOND order (supersedes the HTML-legend move
+        # from earlier the same day): axis names live INSIDE the SVG,
+        # beside the axis ends — "AA IQ" on the y-axis top, "marginal
+        # $/M" on the x-axis cheap end. Legend carries only the dot key.
         svg = self._svg()
-        self.assertNotIn(">AA IQ</text>", svg)
-        import re
-
-        legend = re.search(r'<div class="scatter-legend">.*?</div>', svg, re.DOTALL).group(0)
-        self.assertIn('class="lg lg-axis"', legend)
-        self.assertIn("AA IQ", legend)
+        self.assertIn('class="st saxis" text-anchor="start">AA IQ</text>', svg)
+        self.assertIn('class="st saxis" text-anchor="end">marginal $/M</text>', svg)
+        self.assertNotIn('class="lg lg-axis"', svg)
 
     def test_mobile_grid_spans_full_viewbox(self) -> None:
         # Owner 2026-09-08: on mobile the grid must span ~the full SVG

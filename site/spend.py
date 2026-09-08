@@ -174,8 +174,9 @@ def _ask_spark(points: list[tuple[str, float, float]]) -> str:
     """Little inline-SVG line graph of a route's ask history, or ''.
 
     Two lines on one shared scale (honest: in and out stay proportional);
-    ask_in keeps the blue mid stroke, ask_out amber — the colors are the
-    only distinction (owner 2026-09-08: no point marks on either line).
+    ask_in keeps the teal stroke, ask_out amber (cheaper/pricier pair —
+    bug 2026-09-08: --mid had become amber, so both lines were one hue).
+    The colors are the only distinction (owner 2026-09-08: no point marks).
     Needs >= 2 points; days without a logged ask are absent from `points`.
     """
     if len(points) < 2:

@@ -95,6 +95,21 @@ class AskSparkRenderTest(unittest.TestCase):
         self.assertNotIn("<circle", out)
         self.assertIn("s-line-out", out)  # the amber distinction survives
 
+    def test_two_distinct_stroke_colors(self):
+        # Owner 2026-09-08 regression: --mid had been redefined to amber,
+        # so BOTH lines rendered one hue. The spark's classes must map to
+        # two DIFFERENT color sources in style.css (teal vs amber).
+        import re
+
+        from probe.registry import repo_root
+
+        css = (repo_root() / "site" / "style.css").read_text()
+        base = re.search(r"\.ask-spark \.s-line \{[^}]*stroke: ([^;]+);", css).group(1)
+        out = re.search(r"\.ask-spark \.s-line-out \{[^}]*stroke: ([^;]+);", css).group(1)
+        self.assertNotEqual(base.strip(), out.strip())
+        self.assertIn("teal", base)
+        self.assertIn("warn", out)
+
     def test_flat_series_still_renders(self):
         pts = [("2026-08-27", 0.1, 0.2), ("2026-08-28", 0.1, 0.2)]
         out = self.mod._ask_spark(pts)

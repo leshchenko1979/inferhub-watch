@@ -627,12 +627,14 @@ dl.plumb dd .dim {
 
 .ask-spark .s-line {
   fill: none;
-  stroke: var(--mid);
+  stroke: var(--teal);
   stroke-width: 1.2;
 }
 
-/* QA: in and out were the same stroke — indistinguishable. Out (the
-   pricier one) renders amber; in keeps the blue mid. */
+/* QA: in and out must read as two lines — out (the pricier one) renders
+   amber, in renders teal (the board's cheaper/pricier pair). Bug
+   2026-09-08: --mid had been redefined to amber, so BOTH strokes came
+   out the same hue and the "two colors" order was silently void. */
 .ask-spark .s-line-out {
   stroke: var(--warn, #c90);
 }
@@ -1336,8 +1338,6 @@ td.tip-open {
 
 .scatter-legend .dot-s { width: 6px; height: 6px; }
 .scatter-legend .dot-l { width: 12px; height: 12px; }
-.scatter-legend .lg-axis {
-  font-weight: 500;
-  color: var(--ink);
-}
 .scatter .sleader { stroke: var(--line); stroke-width: 1; }
+.scatter .saxis { font-weight: 500; fill: var(--ink); }
+.scatter .saxis { font-weight: 500; fill: var(--ink); }

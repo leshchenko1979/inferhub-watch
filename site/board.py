@@ -202,7 +202,12 @@ def _marginal_cell(row: dict, runs: list[dict]) -> tuple[str, str] | None:
             "window is a sweep probe, so the workload (cache-cold, "
             "tiny prompts) is unrepresentative."
         )
-    return (f"marginal $/M <span data-tip=\"{marg_tip}\">&#9432;</span>", marg_label)
+    # Owner 2026-09-08: the tooltip must sit ON THE VALUE — a tiny ℹ next
+    # to the dt was too small a target to tap on touch.
+    return (
+        f"marginal $/M <span data-tip=\"{marg_tip}\">&#9432;</span>",
+        f'<span data-tip="{marg_tip}">{marg_label}</span>',
+    )
 
 def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
     """The board caption: reading guide + live gate state."""
@@ -429,9 +434,11 @@ def usage_radius(reqs: int | None, probe_only: bool = False) -> float:
     return 3.5 + 5.5 * math.sqrt(min(reqs, 10000) / 10000.0)
 
 def _scatter_legend() -> str:
+    # Owner 2026-09-08, second order: axis names live INSIDE the SVG
+    # beside the axis ends (the .saxis texts) — the legend carries only
+    # the dot/size key again.
     return (
         '<div class="scatter-legend">'
-        '<span class="lg lg-axis">AA IQ</span>'
         f'<span class="lg"><i class="dot dot-ok"></i> in use &#8212; {IN_USE_MIN_REQS}+ reqs/24h</span>'
         '<span class="lg"><i class="dot dot-warn"></i> probes only</span>'
         '<span class="lg"><i class="dot dot-mut"></i> little/no traffic</span>'
@@ -526,6 +533,16 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
                     f'<line x1="{pad_l}" y1="{gy:.1f}" x2="{W - pad_r}" y2="{gy:.1f}" class="sg"/>'
                     f'<text x="{pad_l - 4}" y="{gy + 3:.1f}" class="st" text-anchor="start">{v}</text>'
                 )
+        # Axis names INSIDE the SVG, beside the axis ends (owner 2026-09-08,
+        # superseding the HTML-legend placement from the same day): "AA IQ"
+        # rides the top of the y-axis; "marginal $/M" rides the cheap end
+        # (right edge) of the x-axis, above the tick labels.
+        grid.append(
+            f'<text x="{pad_l + 2}" y="{pad_t - 4}" class="st saxis" text-anchor="start">AA IQ</text>'
+        )
+        grid.append(
+            f'<text x="{W - pad_r}" y="{H - pad_b - 6}" class="st saxis" text-anchor="end">marginal $/M</text>'
+        )
         dots = ""
         # Label-collision pass (QA finding: cx/cb pairs at identical y printed
         # on top of each other). Track occupied y rows; nudge a colliding label
