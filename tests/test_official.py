@@ -577,14 +577,41 @@ class ScatterSectionTest(unittest.TestCase):
 
     def test_mobile_css_gives_chart_full_width(self) -> None:
         # Owner 2026-09-08: chart full width on mobile — the mobile media
-        # block must break out of main's gutters and lift the 720px cap.
+        # block must break out of main's gutters and lift the 720px cap,
+        # while caption + legend keep the gutters (padding follow-up).
         from probe.registry import repo_root
 
         css = (repo_root() / "site" / "style.css").read_text()
         block = css[css.index("@media (max-width: 720px)", css.index("Price-vs-IQ scatter")):]
-        block = block[: block.index("}", block.index(".scatter svg.desktop"))]
+        block = block[: block.index(".scatter .sg")]
         self.assertIn("margin-inline: -1rem", block)
         self.assertIn(".scatter svg.mobile { display: block; max-width: none; }", block)
+        self.assertIn(".scatter .scatter-legend { margin-inline: 1rem; }", block)
+        self.assertIn(".scatter figcaption,", block)
+
+    def test_mobile_nav_menu_full_bleed(self) -> None:
+        # Owner 2026-09-08: the floating menu showed a 1rem gap on the
+        # left with the layer below visible — the dropdown's containing
+        # block is the sticky header (inset 1rem per side), so left:0
+        # left that strip open. The menu must bleed to the viewport.
+        from probe.registry import repo_root
+
+        css = (repo_root() / "site" / "style.css").read_text()
+        block = css[css.index("@media (max-width: 720px)", css.index(".nav-menu summary {", 1010)):]
+        block = block[: block.index("}", block.index(".site-nav ul {"))]
+        self.assertIn("left: calc(50% - 50vw);", block)
+        self.assertIn("right: calc(50% - 50vw);", block)
+
+    def test_svg_axis_title_gone_from_svg_lives_in_legend(self) -> None:
+        # Owner 2026-09-08: the "AA IQ" axis title moved out of the SVG
+        # into the HTML legend (first legend item).
+        svg = self._svg()
+        self.assertNotIn(">AA IQ</text>", svg)
+        import re
+
+        legend = re.search(r'<div class="scatter-legend">.*?</div>', svg, re.DOTALL).group(0)
+        self.assertIn('class="lg lg-axis"', legend)
+        self.assertIn("AA IQ", legend)
 
     def test_mobile_grid_spans_full_viewbox(self) -> None:
         # Owner 2026-09-08: on mobile the grid must span ~the full SVG

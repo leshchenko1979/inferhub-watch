@@ -431,6 +431,7 @@ def usage_radius(reqs: int | None, probe_only: bool = False) -> float:
 def _scatter_legend() -> str:
     return (
         '<div class="scatter-legend">'
+        '<span class="lg lg-axis">AA IQ</span>'
         f'<span class="lg"><i class="dot dot-ok"></i> in use &#8212; {IN_USE_MIN_REQS}+ reqs/24h</span>'
         '<span class="lg"><i class="dot dot-warn"></i> probes only</span>'
         '<span class="lg"><i class="dot dot-mut"></i> little/no traffic</span>'
@@ -653,7 +654,6 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
         return (
             f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="{html.escape(caption)}" class="{cls}">'
             f"{''.join(grid)}{dots}"
-            '<text x="50%" y="12" class="st" text-anchor="middle">AA IQ</text>'
             "</svg>"
         )
 

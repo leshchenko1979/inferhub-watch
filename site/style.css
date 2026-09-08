@@ -1018,12 +1018,16 @@ footer {
     display: none;
     position: absolute;
     top: 100%;
-    right: 0;
-    left: 0;
+    /* Full-bleed to the viewport: the menu's containing block is the
+       sticky header, which is inset 1rem per side (calc(100% - 2rem)) —
+       at left:0/right:0 a 1rem strip stayed open and the layer below
+       (e.g. the full-bleed chart) showed through it (owner 2026-09-08). */
+    left: calc(50% - 50vw);
+    right: calc(50% - 50vw);
     flex-direction: column;
     align-items: flex-end;
     gap: 0.7rem;
-    padding: var(--space-4) 0 var(--space-5);
+    padding: var(--space-4) 1rem var(--space-5);
     background: var(--bg);
     border-bottom: 1px solid var(--line);
     z-index: var(--z-nav);
@@ -1291,6 +1295,10 @@ td.tip-open {
   .scatter { margin-inline: -1rem; }
   .scatter svg.mobile { display: block; max-width: none; }
   .scatter svg.desktop { display: none; }
+  /* The -1rem bleed is for the SVG only — the caption and legend keep
+     main's gutters (owner 2026-09-08: legend had no horizontal padding). */
+  .scatter figcaption,
+  .scatter .scatter-legend { margin-inline: 1rem; }
 }
 .scatter .sg { stroke: var(--line); stroke-width: 1; }
 .scatter .st { fill: var(--muted); font-size: 10px; font-family: var(--sans); }
@@ -1328,4 +1336,8 @@ td.tip-open {
 
 .scatter-legend .dot-s { width: 6px; height: 6px; }
 .scatter-legend .dot-l { width: 12px; height: 12px; }
+.scatter-legend .lg-axis {
+  font-weight: 500;
+  color: var(--ink);
+}
 .scatter .sleader { stroke: var(--line); stroke-width: 1; }
