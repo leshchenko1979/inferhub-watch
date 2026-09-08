@@ -566,6 +566,26 @@ class ScatterSectionTest(unittest.TestCase):
         self.assertIn(">zai/glm-5.3-flash</text>", svg)
         self.assertIn(">ali/kimi-k3</text>", svg)
 
+    def test_mobile_svg_keeps_full_route_names(self) -> None:
+        # Owner 2026-09-08: mobile labels must not truncate. The longest
+        # probed route is 35 chars; the cap must cover it and rendered
+        # labels must carry the full name, no ellipsis.
+        svg = self._svg()
+        self.assertNotIn("\u2026</text>", svg)
+        self.assertIn(">zai/glm-5.3-flash</text>", svg)
+        self.assertIn(">ali/kimi-k3</text>", svg)
+
+    def test_mobile_css_gives_chart_full_width(self) -> None:
+        # Owner 2026-09-08: chart full width on mobile — the mobile media
+        # block must break out of main's gutters and lift the 720px cap.
+        from probe.registry import repo_root
+
+        css = (repo_root() / "site" / "style.css").read_text()
+        block = css[css.index("@media (max-width: 720px)", css.index("Price-vs-IQ scatter")):]
+        block = block[: block.index("}", block.index(".scatter svg.desktop"))]
+        self.assertIn("margin-inline: -1rem", block)
+        self.assertIn(".scatter svg.mobile { display: block; max-width: none; }", block)
+
     def test_legend_and_caption_present(self) -> None:
         svg = self._svg()
         self.assertIn("scatter-legend", svg)

@@ -1290,8 +1290,11 @@ td.tip-open {
    larger baked-in type on phones, landscape on desktop. */
 .scatter svg.mobile { display: none; }
 .scatter svg.desktop { display: block; }
+/* Owner 2026-09-08: chart full width on mobile — break out of main's
+   1rem gutters and ignore the 720px desktop cap. */
 @media (max-width: 720px) {
-  .scatter svg.mobile { display: block; }
+  .scatter { margin-inline: -1rem; }
+  .scatter svg.mobile { display: block; max-width: none; }
   .scatter svg.desktop { display: none; }
 }
 .scatter .sg { stroke: var(--line); stroke-width: 1; }

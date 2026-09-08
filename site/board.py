@@ -486,7 +486,8 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
     # desktop and a 440x520 portrait SVG with larger baked-in type and
     # truncated labels for mobile; CSS shows exactly one per viewport.
     def _render(W: int, H: int, pad_l: int, pad_r: int, pad_t: int, pad_b: int,
-                label_step: float, label_cap: int, cls: str) -> str:
+                label_step: float, label_cap: int, cls: str,
+                char_w: float) -> str:
         def sx(eff: float) -> float:
             # Cheaper = RIGHT (board money law + caption): invert so
             # higher price renders left. x_lo (cheap) sits at the right edge.
@@ -550,11 +551,11 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
             name = html.escape(route)
             short = name if len(name) <= label_cap else name[: label_cap - 1] + "…"
             # Label right of the dot; flip left when it would clip the frame.
-            label_right = cx < W - pad_r - label_cap * 6
+            label_right = cx < W - pad_r - label_cap * char_w
             lx = cx + 10 if label_right else cx - 10
             anchor = "start" if label_right else "end"
-            x0 = (cx + 10) if label_right else (cx - 10 - len(short) * 6)
-            x1 = x0 + len(short) * 6
+            x0 = (cx + 10) if label_right else (cx - 10 - len(short) * char_w)
+            x1 = x0 + len(short) * char_w
 
             def _hits_dot(y: float, _cx=cx, _cy=cy, _x0=x0, _x1=x1) -> bool:
                 # Dot obstructed when its center is inside the glyph band
@@ -604,8 +605,8 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
                 label_right = not label_right
                 lx = cx + 10 if label_right else cx - 10
                 anchor = "start" if label_right else "end"
-                x0 = (cx + 10) if label_right else (cx - 10 - len(short) * 6)
-                x1 = x0 + len(short) * 6
+                x0 = (cx + 10) if label_right else (cx - 10 - len(short) * char_w)
+                x1 = x0 + len(short) * char_w
                 ly = cy + 3
                 if _row_taken(ly) or _hits_dot(ly):
                     # Both sides blocked at the dot: give up, park at dot.
@@ -648,11 +649,11 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
         '<figure class="scatter">'
         f"<figcaption>{caption}</figcaption>"
         # Desktop: landscape, full route names (640x300).
-        + _render(640, 300, 44, 12, 14, 34, 13.0, 40, "desktop")
-        # Mobile (QA M2): portrait, larger relative type, truncated names.
-        # At a 358px viewport the 440 viewBox scales ~0.81, so 14px labels
-        # land at ~11px rendered — legible.
-        + _render(440, 520, 40, 96, 20, 36, 17.0, 16, "mobile")
+        + _render(640, 300, 44, 12, 14, 34, 13.0, 40, "desktop", 5.7)
+        # Mobile (QA M2): portrait, larger relative type, full route names
+        # (owner 2026-09-08: "labels not truncated" — cap raised to 35, the
+        # longest probed route; char_w matches the 14px mobile label font).
+        + _render(440, 560, 40, 104, 20, 36, 17.0, 35, "mobile", 8.4)
         + _scatter_legend()
         + "</figure>"
     )
