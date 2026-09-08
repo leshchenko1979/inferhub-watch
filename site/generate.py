@@ -86,21 +86,61 @@ def check_page(spec: dict) -> str:
         spec["title"], body, crumb=spec["title"], nested=True, page_class="brief"
     )
 
+DOCS_MD = _SITE / "docs.md"
+
+def _docs_explainers() -> str:
+    """Each-check explainers for the docs page (mirrors the old board
+    section: one collapsed brief per check)."""
+    parts = []
+    for spec in load_registry():
+        brief = mdhtml.check_brief_html(ROOT, spec)
+        parts.append(
+            f'<details id="check-{html.escape(spec["id"])}">'
+            f"<summary>{html.escape(spec['title'])}</summary>"
+            f'<div class="check-brief">{brief}</div></details>'
+        )
+    return "".join(parts)
+
+def docs_html() -> str:
+    """The Reading-guide page: ALL explanatory prose lives here; the board
+    stays numbers-only and links over (owner order 2026-09-08)."""
+    md = DOCS_MD.read_text()
+    # Marker survives md_to_html escaping as a <p>; swapped for the raw
+    # explainer markup AFTER conversion (an HTML comment in the md would
+    # be escaped like any other text).
+    md = md.replace("<!-- CHECK_EXPLAINERS -->", "CHECK_EXPLAINERS_TOKEN")
+    body = mdhtml.md_to_html(md)
+    body = body.replace(
+        "<p>CHECK_EXPLAINERS_TOKEN</p>",
+        f'<div class="explainers">{_docs_explainers()}</div>',
+    )
+    # Board captions link to docs anchors (docs_href); mdhtml emits no ids,
+    # so pin each section heading to the slug the board links to.
+    for slug, heading in (
+        ("how-to-read-the-board", "How to read the board"),
+        ("the-scatter-chart", "The scatter chart"),
+        ("probe-results-the-candidates-table", "Probe results (the candidates table)"),
+        ("how-we-test", "How we test"),
+    ):
+        body = body.replace(
+            f"<h2>{heading}</h2>", f'<h2 id="{slug}">{heading}</h2>'
+        )
+        body = body.replace(
+            f"<h3>{heading}</h3>", f'<h3 id="{slug}">{heading}</h3>'
+        )
+    return chrome_mod.shell(
+        "Reading guide",
+        body,
+        crumb="Reading guide",
+        page_class="docs",
+    )
+
 
 def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> str:
     if not runs:
         return chrome_mod.shell("InferHub Watch", tmpl.render("empty.html"))
 
     latest = runs[-1]
-
-    explainers = []
-    for spec in registry:
-        brief = mdhtml.check_brief_html(ROOT, spec)
-        explainers.append(
-            f'<details id="check-{_html_escape(spec["id"])}">'
-            f"<summary>{_html_escape(spec['title'])}</summary>"
-            f'<div class="check-brief">{brief}</div></details>'
-        )
 
     started_raw = (latest.get("started_at") or "")[:19]
     started = _html_escape(started_raw.replace("T", " ") + " UTC")
@@ -121,7 +161,7 @@ def index_html(runs: list[dict], aliases: list[str], registry: list[dict]) -> st
         probe_results_section=probe_results_section(
             runs, aliases, registry, payload
         ),
-        explainers="".join(explainers),
+        docs_endpoint=chrome_mod.docs_href("how-we-test"),
         github=chrome_mod.GITHUB,
         clone=chrome_mod.CLONE,
     )
@@ -154,6 +194,7 @@ def main() -> int:
     dist.mkdir(parents=True)
     shutil.copy(ROOT / "site" / "style.css", dist / "style.css")
     (dist / "index.html").write_text(index_html(runs, aliases, registry))
+    (dist / "docs.html").write_text(docs_html())
     checks_dir = dist / "checks"
     checks_dir.mkdir()
     for spec in registry:

@@ -12,7 +12,7 @@ import html
 import math
 
 import rundata
-from chrome import _viz_cell, section_title
+from chrome import _viz_cell, docs_href, section_title
 from spend import DELTA_TIP, _ask_spark, ask_delta_bits, spend_block
 
 from probe import basis, official_compare, pricing
@@ -210,34 +210,18 @@ def _marginal_cell(row: dict, runs: list[dict]) -> tuple[str, str] | None:
     )
 
 def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
-    """The board caption: reading guide + live gate state."""
+    """The board caption: one live line (gate state) + reading-guide link.
+
+    All static explanation moved to the docs page (owner order
+    2026-09-08); the caption keeps only what changes per sweep."""
+    guide = f'<a class="guide-link" href="{docs_href("how-to-read-the-board")}">reading guide</a>'
     return (
-        "&#8220;ask&#8221; under each route is the per-M rate billed on fresh "
-        "(uncached) input / output; &#8220;effective&#8221; is billed cost over all "
-        "tokens, cache discounts included. Each rate cell pairs the two eras and "
-        "tags each: &#8220;now&#8221; is the forward projection at current billed "
-        "asks (median ask, smoothed hit rate) and &#8220;30d&#8221; the realized "
-        "window figure &#8212; the bold one is the basis IQ "
-        f"per $ ranks on ({'projection' if use_proj else 'realized'} basis, "
-        f"backtest gate {'passed' if use_proj else 'not passed'}: "
-        f"{gate.get('within')}/{gate.get('n')} transitions within "
-        f"{int((gate.get('tol') or 0.2) * 100)}%). "
-        "Effective bars are log-scaled from the cheapest to the priciest "
-        "route on the board (priciest = full bar) and colored teal &#8804; "
-        "&#36;0.02, amber above. "
-        "Show plumbing folds each route&#8217;s ask movement "
-        "(the color key sits under the table), ask source, ask history, "
-        "cache hit, failures, window traffic and cost, ttft p50 and tps "
-        "mean (main-traffic speed, newest 24h), IQ, and retries (when a "
-        "sweep replayed a route). "
-        "Marginal $/M is billed cost over requests since the previous daily "
-        "snapshot, dimmed when the route&#8217;s only fresh traffic is sweep "
-        "probes (real money, unrepresentative workload). "
-        "* = floor ask &#8212; catalog minimum, shown when the route has no billed traffic in the window. "
-        "IQ = Artificial Analysis Intelligence Index (composite of 9 public evals, "
-        "artificialanalysis.ai, effort level max), refreshed every sweep; IQ per $ divides it by the route&#8217;s effective $/M &#8212; higher is smarter per dollar. "
-        "Sparkline bars are log-scaled &#36;0.001&#8211;&#36;10 per day. "
-        "Rates cover this board&#8217;s routes, the current candidates, and every route with billed usage in the window."
+        "Basis: "
+        f"{'projection' if use_proj else 'realized'}, backtest gate "
+        f"{'passed' if use_proj else 'not passed'}: {gate.get('within')}/"
+        f"{gate.get('n')} transitions within "
+        f"{int((gate.get('tol') or 0.2) * 100)}%. Column meanings, "
+        f"the * floor-ask mark, and the plumbing key: {guide}."
     )
 
 def pricing_section(payload: dict | None, runs: list[dict]) -> str:
@@ -676,9 +660,8 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
 
     caption = (
         "Marginal $/M vs AA IQ, in use = billed traffic in the newest "
-        f"{hours}h. Right = cheaper, up = smarter. Log x-axis; eff fallback "
-        f"for routes without a marginal sample; routes without a price or an "
-        f"IQ mapping are not plotted ({skipped} skipped)."
+        f"{hours}h. Not plotted: {skipped} (no price or IQ). "
+        f'<a class="guide-link" href="{docs_href("the-scatter-chart", nested=True)}">reading guide</a>'
     )
     return (
         '<figure class="scatter">'

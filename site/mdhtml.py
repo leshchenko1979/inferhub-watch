@@ -67,6 +67,11 @@ def md_to_html(text: str) -> str:
             flush_list()
             out.append(f"<h2>{inline(stripped[3:])}</h2>")
             continue
+        if stripped.startswith("### "):
+            flush_para()
+            flush_list()
+            out.append(f"<h3>{inline(stripped[4:])}</h3>")
+            continue
         if stripped.startswith("- "):
             flush_para()
             list_items.append(stripped[2:])

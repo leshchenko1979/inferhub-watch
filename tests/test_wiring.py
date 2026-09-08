@@ -68,9 +68,13 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn('href="#report"', header)
         self.assertNotIn('href="#today"', header)
         self.assertNotIn('href="#notes"', header)
-        self.assertIn("Ask for another", html)
-        self.assertIn("/issues/new", html)
-        self.assertIn("models.toml", html)
+        # explanatory prose moved to the docs page (owner 2026-09-08):
+        # the board carries only the reading-guide entry points.
+        self.assertIn('href="/inferhub-watch/docs.html"', html)
+        self.assertNotIn("Ask for another", html)
+        self.assertNotIn("/issues/new", html)
+        self.assertNotIn("models.toml", html)
+        self.assertIn("models.toml", gen.docs_html())
         self.assertIn("github.com/leshchenko1979/inferhub-watch", rest)
         self.assertIn("board-footer", rest)
         self.assertIn("<footer", rest)
@@ -81,15 +85,19 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn('class="rank-table"', html)
         self.assertNotIn("check-col", html)
         self.assertNotIn('href="#check-core"', html)
-        self.assertIn('id="check-core"', html)
-        self.assertIn("<details", html)
-        self.assertIn("<summary>", html)
-        self.assertIn("report_answer", html)
+        # check explainers moved to the docs page
+        docs = gen.docs_html()
+        self.assertIn('id="check-core"', docs)
+        self.assertIn("<details", docs)
+        self.assertIn("<summary>", docs)
+        self.assertIn("report_answer", docs)
+        self.assertNotIn('class="explainers"', html)
         self.assertIn('title="Prompt-cache share', html)
         self.assertNotIn("Safe to use", html)
         self.assertNotIn("Latest results", html)
         self.assertNotIn("No alias is safe to use this run.", html)
-        self.assertIn("platform.openai.com", html)
+        self.assertIn("platform.openai.com", docs)
+        self.assertNotIn("platform.openai.com", html)
         thead, _, _after_head = html.partition("</thead>")
         self.assertNotIn("checks/core.html", thead)
         self.assertNotIn("checks/core.html", rest[rest.find('id="method"') :])
@@ -113,11 +121,14 @@ class WiringTests(unittest.TestCase):
         # line underneath (alias-cell th retired with the results-table era)
         self.assertIn('scope="row"><code>', html)
         self.assertIn('class="route-ask"', html)
-        self.assertIn('class="explanations"', html)
+        self.assertIn('class="explainers"', gen.docs_html())
+        self.assertNotIn('class="explainers"', html)
         self.assertNotIn('class="notes"', html)
         self.assertNotIn('class="about"', html)
         self.assertNotIn('class="hero"', html)
-        self.assertIn("The endpoint", html)
+        self.assertIn('class="docs"', gen.docs_html())
+        self.assertNotIn("The endpoint", html)
+        self.assertIn("The endpoint", gen.docs_html())
         self.assertNotIn("What we probe", html)
         # publisher labels render — dated-only board: cp/cline-pass left the
         # board, z.ai carries the check now
@@ -985,3 +996,38 @@ class PairCellTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DocsPageTests(unittest.TestCase):
+    """The reading-guide page (owner order 2026-09-08: all explanatory
+    prose lives on docs.html; the board stays numbers-only)."""
+
+    def test_docs_page_renders_sections_explainers_and_anchors(self) -> None:
+        gen = _load_generate()
+        docs = gen.docs_html()
+        self.assertIn("<h1>", docs)
+        for slug in (
+            "how-to-read-the-board",
+            "the-scatter-chart",
+            "probe-results-the-candidates-table",
+            "how-we-test",
+        ):
+            self.assertIn(f'id="{slug}"', docs)
+        for check_id in ("core", "cache"):
+            self.assertIn(f'id="check-{check_id}"', docs)
+        self.assertIn("report_answer", docs)
+        self.assertIn("Ask for another", docs)
+        self.assertIn("/issues/new", docs)
+        self.assertIn("models.toml", docs)
+
+    def test_board_links_to_docs_anchors(self) -> None:
+        gen = _load_generate()
+        html = gen.index_html(gen.load_runs(), gen.load_aliases(), gen.load_registry())
+        for anchor in (
+            "how-to-read-the-board",
+            "the-scatter-chart",
+            "probe-results-the-candidates-table",
+            "how-we-test",
+        ):
+            self.assertIn(f"docs.html#{anchor}", html)
+        self.assertIn("Reading guide", html)

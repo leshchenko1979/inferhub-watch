@@ -243,6 +243,49 @@ h2 {
   text-wrap: pretty;
 }
 
+/* Reading-guide links (owner order 2026-09-08: explanatory prose lives
+   on the docs page; the board keeps one-line captions that link there). */
+.guide-link {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+/* Docs page ("Reading guide") — same prose recipe as .explanations but
+   rendered by mdhtml (h2 sections + h3 subsections), not raw HTML. */
+.docs article {
+  max-width: 62ch;
+}
+.docs article h2 {
+  font-size: var(--text-body);
+  font-weight: 500;
+  color: var(--primary);
+  margin: var(--space-6) 0 var(--space-3);
+}
+.docs article h2:first-child {
+  margin-top: var(--space-4);
+}
+.docs article h3 {
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--ink);
+  margin: var(--space-5) 0 var(--space-2);
+}
+.docs article p,
+.docs article li {
+  font-family: var(--sans);
+  color: var(--muted);
+  text-wrap: pretty;
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+.docs article p {
+  margin: 0 0 var(--space-5);
+}
+.docs article ul {
+  margin: 0 0 var(--space-5);
+  padding-left: 1.2rem;
+}
+
 .explanations {
   margin-top: var(--space-8);
   padding-top: var(--space-6);

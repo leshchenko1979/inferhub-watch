@@ -299,15 +299,12 @@ def probe_results_section(
         )
     if not blocks:
         return ""
+    from chrome import docs_href
+
     note = (
-        "Board routes in current use (&#8220;in use&#8221; pill) plus audition routes "
-        "from the market shortlist — live catalog asks ranked by predicted $/M, "
-        "cheaper-than-in-use only — probed after each board sweep. One merged table: "
-        "family bands in reading order, incumbent first, then audition routes by "
-        "checks passed, cache hit, blended ask. "
-        "Cache share: board routes from the 30-day billing window, audition routes "
-        "from the probe. Window = runs all-pass / runs probed since first seen. "
-        "Audition asks are billed on probe traffic."
+        "Live catalog asks ranked by predicted $/M, cheaper-than-in-use "
+        "only — probed after each board sweep. Column meanings and the "
+        f"audition rules: <a class=\"guide-link\" href=\"{docs_href('probe-results-the-candidates-table')}\">reading guide</a>."
     )
     from tmpl import render
 

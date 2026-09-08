@@ -639,7 +639,8 @@ class ScatterSectionTest(unittest.TestCase):
         svg = self._svg()
         self.assertIn("scatter-legend", svg)
         self.assertIn("Marginal $/M vs AA IQ", svg)
-        self.assertIn("1 skipped", svg)  # ocg/unmapped has no IQ
+        self.assertIn("Not plotted: 1", svg)  # ocg/unmapped has no IQ
+        self.assertIn("reading guide", svg)
 
     def test_section_skipped_without_snapshot_or_sparse_points(self) -> None:
         self.assertEqual("", self.mod.scatter_section(None, self.INTEL))

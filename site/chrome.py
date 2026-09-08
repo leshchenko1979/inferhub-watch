@@ -54,6 +54,14 @@ def check_href(fname: str, nested: bool = False) -> str:
     base = base_href()
     return f"{base}/checks/{fname}" if base else f"../checks/{fname}" if nested else f"checks/{fname}"
 
+def docs_href(anchor: str = "", nested: bool = False) -> str:
+    """URL for the reading-guide page (optionally #anchored). The board
+    links its one-line captions here — all explanatory prose lives on the
+    docs page, not the board (owner order 2026-09-08)."""
+    base = base_href()
+    url = f"{base}/docs.html" if base else "../docs.html" if nested else "docs.html"
+    return f"{url}#{anchor}" if anchor else url
+
 
 def results_available(runs: list[dict] | None = None) -> bool:
     """True when the latest run renders any model group (board or audition).
@@ -82,6 +90,11 @@ def board_nav(runs: list[dict] | None = None) -> str:
         items.append(
             f'<li><a href="#{html.escape(sid)}">{html.escape(title)}</a></li>'
         )
+    # Reading guide: external page (all explanatory prose lives there —
+    # owner order 2026-09-08), so it's a plain link, not an anchor.
+    items.append(
+        f'<li><a href="{docs_href()}">Reading guide</a></li>'
+    )
     # Family anchors: jump straight to a family band inside #results.
     families = []
     aliases = load_aliases()

@@ -3,32 +3,10 @@
 {{ scatter_section }}
 {{ pricing_section }}
 {{ probe_results_section }}
-<section class="explanations" id="method">
+<section class="explanations docs-link" id="method">
   <h2>{{ method_title }}</h2>
-  <h3>The endpoint</h3>
-  <p><a href="https://inferhub.dev/">InferHub</a> exposes an OpenAI-compatible <code>/v1/chat/completions</code> API.
-    This site probes that endpoint daily with <code>stream: true</code>. A failed test score means a check missed in
-    that run. It is not an uptime check and not a score of your traffic.</p>
-  <h3>The results table</h3>
-  <ul class="readout">
-    <li><strong>Route</strong>: the short name we send in <code>model</code>; the publisher line underneath is the
-      <code>model</code> string InferHub returned (who actually served). The two can differ.</li>
-    <li><strong>tests</strong>: scoring checks passed in the latest probe — tool names in the SSE stream, prompt
-      cache, and mojibake in answers to a Russian question. Missed checks are named under the score.</li>
-    <li><strong>cache hit / ask / window</strong>: billing-window cache share (board routes) or probe evidence
-      (audition routes), current ask prices, and the all-pass record since the route was first seen.</li>
-    <li><strong>Info checks</strong>: recorded on each check page; they never fail a route. Price is info and never
-      ranks.</li>
-  </ul>
-  <h3>Each check</h3>
-  <p class="section-note">Open a check for the request JSON and the pass/fail rule.</p>
-  <div class="explainers">{{ explainers }}</div>
-  <h3>Ask for another</h3>
-  <p>To probe another InferHub alias, <a href="{{ github }}/issues/new">open a GitHub issue</a> with the name you send in
-    <code>model</code>. The current list is <a href="{{ github }}/blob/main/models.toml">models.toml</a>. To add a check,
-    describe the request JSON and what should pass or fail. Pull requests follow the README <a
-      href="{{ github }}/blob/main/README.md#add-a-check">Add a check</a> steps.
-  </p>
+  <p class="section-note">Endpoint, results-table reading, and what each
+    check passes or fails — <a href="{{ docs_endpoint }}">Reading guide</a>.</p>
 </section>
 <footer class="board-footer">
   <p>{{ clone }} The public board uses the site owner’s InferHub key on GitHub Actions.
