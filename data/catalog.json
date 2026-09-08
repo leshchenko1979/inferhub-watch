@@ -1,125 +1,125 @@
 {
-  "generated_at": "2026-09-07T19:26:16+00:00",
+  "generated_at": "2026-09-08T08:26:31+00:00",
   "cache_rate": 0.1,
   "models": {
     "ag/claude-opus-4-6-thinking": {
       "official_in": 5.0,
       "official_out": 25.0,
       "supports_cache": true,
-      "ask_in": 0.05,
-      "ask_out": 0.25
+      "ask_in": 0.435,
+      "ask_out": 2.175
     },
     "ag/claude-sonnet-4-6": {
       "official_in": 3.0,
       "official_out": 15.0,
       "supports_cache": true,
-      "ask_in": 0.03,
-      "ask_out": 0.15
+      "ask_in": 0.12,
+      "ask_out": 0.6
     },
     "ag/gemini-3.6-flash-high": {
       "official_in": 0.75,
       "official_out": 3.75,
       "supports_cache": true,
-      "ask_in": 0.00075,
-      "ask_out": 0.00375
+      "ask_in": 0.01275,
+      "ask_out": 0.06375
     },
     "ag/gemini-3.7-flash-high": {
       "official_in": 0.75,
       "official_out": 3.75,
       "supports_cache": true,
-      "ask_in": 0.00075,
-      "ask_out": 0.00375
+      "ask_in": 0.01275,
+      "ask_out": 0.06375
     },
     "ag/gemini-3.8-flash-high": {
       "official_in": 0.75,
       "official_out": 3.75,
       "supports_cache": true,
-      "ask_in": 0.00075,
-      "ask_out": 0.00375
+      "ask_in": 0.01275,
+      "ask_out": 0.06375
     },
     "ag/gemini-pro-agent": {
       "official_in": 2.0,
       "official_out": 12.0,
       "supports_cache": true,
-      "ask_in": 0.002,
-      "ask_out": 0.012
+      "ask_in": 0.006,
+      "ask_out": 0.036
     },
     "cc/claude-fable-5": {
       "official_in": 10.0,
       "official_out": 50.0,
       "supports_cache": true,
-      "ask_in": 0.9,
-      "ask_out": 4.5
+      "ask_in": 0.95,
+      "ask_out": 4.75
     },
     "cc/claude-fable-5-1": {
       "official_in": 10.0,
       "official_out": 50.0,
       "supports_cache": true,
-      "ask_in": 0.9,
-      "ask_out": 4.5
+      "ask_in": 0.95,
+      "ask_out": 4.75
     },
     "cc/claude-haiku-4-5": {
       "official_in": 1.0,
       "official_out": 5.0,
       "supports_cache": true,
-      "ask_in": 0.09,
-      "ask_out": 0.45
+      "ask_in": 0.095,
+      "ask_out": 0.475
     },
     "cc/claude-opus-4-6": {
       "official_in": 5.0,
       "official_out": 25.0,
       "supports_cache": true,
-      "ask_in": 0.45,
-      "ask_out": 2.25
+      "ask_in": 0.475,
+      "ask_out": 2.375
     },
     "cc/claude-opus-4-7": {
       "official_in": 5.0,
       "official_out": 25.0,
       "supports_cache": true,
-      "ask_in": 0.45,
-      "ask_out": 2.25
+      "ask_in": 0.475,
+      "ask_out": 2.375
     },
     "cc/claude-opus-4-8": {
       "official_in": 5.0,
       "official_out": 25.0,
       "supports_cache": true,
-      "ask_in": 0.45,
-      "ask_out": 2.25
+      "ask_in": 0.475,
+      "ask_out": 2.375
     },
     "cc/claude-opus-5": {
       "official_in": 5.0,
       "official_out": 25.0,
       "supports_cache": true,
-      "ask_in": 0.45,
-      "ask_out": 2.25
+      "ask_in": 0.475,
+      "ask_out": 2.375
     },
     "cc/claude-sonnet-4-5": {
       "official_in": 3.0,
       "official_out": 15.0,
       "supports_cache": true,
-      "ask_in": 0.27,
-      "ask_out": 1.35
+      "ask_in": 0.285,
+      "ask_out": 1.425
     },
     "cc/claude-sonnet-4-6": {
       "official_in": 3.0,
       "official_out": 15.0,
       "supports_cache": true,
-      "ask_in": 0.27,
-      "ask_out": 1.35
+      "ask_in": 0.285,
+      "ask_out": 1.425
     },
     "cc/claude-sonnet-5": {
       "official_in": 3.0,
       "official_out": 15.0,
       "supports_cache": true,
-      "ask_in": 0.27,
-      "ask_out": 1.35
+      "ask_in": 0.285,
+      "ask_out": 1.425
     },
     "cp/cline-pass/deepseek-v4-flash": {
       "official_in": 0.22,
       "official_out": 0.66,
       "supports_cache": true,
-      "ask_in": 0.04004,
-      "ask_out": 0.12012
+      "ask_in": 0.044,
+      "ask_out": 0.132
     },
     "cp/cline-pass/deepseek-v4-pro": {
       "official_in": 0.66,
@@ -132,8 +132,8 @@
       "official_in": 1.4,
       "official_out": 4.4,
       "supports_cache": true,
-      "ask_in": 0.014,
-      "ask_out": 0.044
+      "ask_in": 0.28,
+      "ask_out": 0.88
     },
     "cp/cline-pass/glm-5.3": {
       "official_in": 1.4,
@@ -160,8 +160,8 @@
       "official_in": 3.0,
       "official_out": 15.0,
       "supports_cache": true,
-      "ask_in": 0.12,
-      "ask_out": 0.6
+      "ask_in": 0.15,
+      "ask_out": 0.75
     },
     "cp/cline-pass/mimo-v2.5": {
       "official_in": 0.14,
@@ -251,190 +251,190 @@
       "official_in": 0.15,
       "official_out": 0.5,
       "supports_cache": true,
-      "ask_in": 0.006,
-      "ask_out": 0.02
+      "ask_in": 0.0075,
+      "ask_out": 0.025
     },
     "cb/claude-opus-4.6": {
       "official_in": 5.0,
       "official_out": 25.0,
       "supports_cache": true,
-      "ask_in": 0.04,
-      "ask_out": 0.2
+      "ask_in": 0.06,
+      "ask_out": 0.3
     },
     "cb/claude-opus-4.7-1m": {
       "official_in": 5.0,
       "official_out": 25.0,
       "supports_cache": true,
-      "ask_in": 0.04,
-      "ask_out": 0.2
+      "ask_in": 0.06,
+      "ask_out": 0.3
     },
     "cb/claude-opus-5": {
       "official_in": 5.0,
       "official_out": 25.0,
       "supports_cache": true,
-      "ask_in": 0.04,
-      "ask_out": 0.2
+      "ask_in": 0.06,
+      "ask_out": 0.3
     },
     "cb/gemini-3.1-pro": {
       "official_in": 2.0,
       "official_out": 12.0,
       "supports_cache": true,
-      "ask_in": 0.018,
-      "ask_out": 0.108
+      "ask_in": 0.022,
+      "ask_out": 0.132
     },
     "cb/glm-5.2": {
       "official_in": 1.4,
       "official_out": 4.4,
       "supports_cache": true,
-      "ask_in": 0.0126,
-      "ask_out": 0.0396
+      "ask_in": 0.0266,
+      "ask_out": 0.0836
     },
     "cb/glm-5.3": {
       "official_in": 1.4,
       "official_out": 4.4,
       "supports_cache": true,
-      "ask_in": 0.0112,
-      "ask_out": 0.0352
+      "ask_in": 0.0182,
+      "ask_out": 0.0572
     },
     "cb/gpt-5.3-codex": {
       "official_in": 1.75,
       "official_out": 14.0,
       "supports_cache": true,
-      "ask_in": 0.0175,
-      "ask_out": 0.14
+      "ask_in": 0.021,
+      "ask_out": 0.168
     },
     "cb/gpt-5.4": {
       "official_in": 2.5,
       "official_out": 15.0,
       "supports_cache": true,
-      "ask_in": 0.025,
-      "ask_out": 0.15
+      "ask_in": 0.03,
+      "ask_out": 0.18
     },
     "cb/gpt-5.5": {
       "official_in": 5.0,
       "official_out": 30.0,
       "supports_cache": true,
-      "ask_in": 0.045,
-      "ask_out": 0.27
+      "ask_in": 0.06,
+      "ask_out": 0.36
     },
     "cb/gpt-5.6-luna": {
       "official_in": 0.2,
       "official_out": 1.2,
       "supports_cache": true,
-      "ask_in": 0.002,
-      "ask_out": 0.012
+      "ask_in": 0.0038,
+      "ask_out": 0.0228
     },
     "cb/gpt-5.6-sol": {
       "official_in": 5.0,
       "official_out": 30.0,
       "supports_cache": true,
-      "ask_in": 0.04,
-      "ask_out": 0.24
+      "ask_in": 0.06,
+      "ask_out": 0.36
     },
     "cb/gpt-5.6-terra": {
       "official_in": 2.0,
       "official_out": 12.0,
       "supports_cache": true,
-      "ask_in": 0.02,
-      "ask_out": 0.12
+      "ask_in": 0.038,
+      "ask_out": 0.228
     },
     "cb/kimi-k3": {
       "official_in": 3.0,
       "official_out": 15.0,
       "supports_cache": true,
-      "ask_in": 0.024,
-      "ask_out": 0.12
+      "ask_in": 0.036,
+      "ask_out": 0.18
     },
     "cb/minimax-m3": {
       "official_in": 0.3,
       "official_out": 1.2,
       "supports_cache": true,
-      "ask_in": 0.0027,
-      "ask_out": 0.0108
+      "ask_in": 0.0057,
+      "ask_out": 0.0228
     },
     "cbcn/deepseek-v4-flash": {
       "official_in": 0.22,
       "official_out": 0.66,
       "supports_cache": true,
-      "ask_in": 0.0044,
-      "ask_out": 0.0132
+      "ask_in": 0.0066,
+      "ask_out": 0.0198
     },
     "cbcn/deepseek-v4-pro": {
       "official_in": 0.66,
       "official_out": 1.98,
       "supports_cache": true,
-      "ask_in": 0.0132,
-      "ask_out": 0.0396
+      "ask_in": 0.0198,
+      "ask_out": 0.0594
     },
     "cbcn/glm-5.2": {
       "official_in": 1.4,
       "official_out": 4.4,
       "supports_cache": true,
-      "ask_in": 0.028,
-      "ask_out": 0.088
+      "ask_in": 0.0406,
+      "ask_out": 0.1276
     },
     "cbcn/glm-5.3": {
       "official_in": 1.4,
       "official_out": 4.4,
       "supports_cache": true,
-      "ask_in": 0.028,
-      "ask_out": 0.088
+      "ask_in": 0.0406,
+      "ask_out": 0.1276
     },
     "cbcn/glm-5.3-flash": {
       "official_in": 0.15,
       "official_out": 0.5,
       "supports_cache": true,
-      "ask_in": 0.003,
-      "ask_out": 0.01
+      "ask_in": 0.0045,
+      "ask_out": 0.015
     },
     "cbcn/kimi-k2.6": {
       "official_in": 0.95,
       "official_out": 4.0,
       "supports_cache": true,
-      "ask_in": 0.019,
-      "ask_out": 0.08
+      "ask_in": 0.0285,
+      "ask_out": 0.12
     },
     "cbcn/kimi-k2.7": {
       "official_in": 0.95,
       "official_out": 4.0,
       "supports_cache": true,
-      "ask_in": 0.019,
-      "ask_out": 0.08
+      "ask_in": 0.0285,
+      "ask_out": 0.12
     },
     "cbcn/kimi-k3": {
       "official_in": 3.0,
       "official_out": 15.0,
       "supports_cache": true,
-      "ask_in": 0.06,
-      "ask_out": 0.3
+      "ask_in": 0.087,
+      "ask_out": 0.435
     },
     "cbcn/minimax-m2.7": {
       "official_in": 0.3,
       "official_out": 1.2,
       "supports_cache": true,
-      "ask_in": 0.006,
-      "ask_out": 0.024
+      "ask_in": 0.0087,
+      "ask_out": 0.0348
     },
     "cbcn/minimax-m3": {
       "official_in": 0.3,
       "official_out": 1.2,
       "supports_cache": true,
-      "ask_in": 0.0072,
-      "ask_out": 0.0288
+      "ask_in": 0.0087,
+      "ask_out": 0.0348
     },
     "cmc/MiniMaxAI/MiniMax-M2.5": {
       "official_in": 0.3,
       "official_out": 1.2,
       "supports_cache": true,
-      "ask_in": 0.087,
-      "ask_out": 0.348
+      "ask_in": 0.09,
+      "ask_out": 0.36
     },
     "cmc/MiniMaxAI/MiniMax-M2.7": {
       "official_in": 0.3,
       "official_out": 1.2,
       "supports_cache": true,
-      "ask_in": 0.0456,
-      "ask_out": 0.1824
+      "ask_in": 0.09,
+      "ask_out": 0.36
     },
     "cmc/Qwen/Qwen3.6-Max-Preview": {
       "official_in": 1.3,
@@ -447,8 +447,8 @@
       "official_in": 0.22,
       "official_out": 0.66,
       "supports_cache": true,
-      "ask_in": 0.022,
-      "ask_out": 0.066
+      "ask_in": 0.0176,
+      "ask_out": 0.0528
     },
     "cmc/deepseek/deepseek-v4-pro": {
       "official_in": 0.66,
@@ -461,8 +461,8 @@
       "official_in": 1.25,
       "official_out": 4.25,
       "supports_cache": true,
-      "ask_in": 0.3125,
-      "ask_out": 1.0625
+      "ask_in": 0.375,
+      "ask_out": 1.275
     },
     "cmc/meta/muse-spark-1.2-contributor": {
       "official_in": 0.1,
@@ -475,15 +475,15 @@
       "official_in": 1.25,
       "official_out": 4.25,
       "supports_cache": true,
-      "ask_in": 0.3175,
-      "ask_out": 1.0795
+      "ask_in": 0.375,
+      "ask_out": 1.275
     },
     "cmc/meta/muse-spark-1.3-contributor": {
       "official_in": 0.1,
       "official_out": 0.2,
       "supports_cache": true,
-      "ask_in": 0.0295,
-      "ask_out": 0.059
+      "ask_in": 0.03,
+      "ask_out": 0.06
     },
     "cmc/moonshotai/Kimi-K2.6": {
       "official_in": 0.95,
@@ -517,15 +517,15 @@
       "official_in": 2.0,
       "official_out": 6.0,
       "supports_cache": true,
-      "ask_in": 0.96,
-      "ask_out": 2.88
+      "ask_in": 0.6,
+      "ask_out": 1.8
     },
     "cmc/z-ai/glm-5.3-flash": {
       "official_in": 0.15,
       "official_out": 0.5,
       "supports_cache": true,
-      "ask_in": 0.01485,
-      "ask_out": 0.0495
+      "ask_in": 0.006,
+      "ask_out": 0.02
     },
     "cmc/zai-org/GLM-5.1": {
       "official_in": 1.4,
@@ -538,64 +538,64 @@
       "official_in": 1.4,
       "official_out": 4.4,
       "supports_cache": true,
-      "ask_in": 0.14,
-      "ask_out": 0.44
+      "ask_in": 0.42,
+      "ask_out": 1.32
     },
     "cx/gpt-5.4": {
       "official_in": 2.5,
       "official_out": 15.0,
       "supports_cache": true,
-      "ask_in": 0.0025,
-      "ask_out": 0.015
+      "ask_in": 0.0225,
+      "ask_out": 0.135
     },
     "cx/gpt-5.4-mini": {
       "official_in": 0.75,
       "official_out": 4.5,
       "supports_cache": true,
-      "ask_in": 0.00075,
-      "ask_out": 0.0045
+      "ask_in": 0.00675,
+      "ask_out": 0.0405
     },
     "cx/gpt-5.5": {
       "official_in": 5.0,
       "official_out": 30.0,
       "supports_cache": true,
-      "ask_in": 0.005,
-      "ask_out": 0.03
+      "ask_in": 0.045,
+      "ask_out": 0.27
     },
     "cx/gpt-5.6-luna": {
       "official_in": 0.2,
       "official_out": 1.2,
       "supports_cache": true,
-      "ask_in": 0.0002,
-      "ask_out": 0.0012
+      "ask_in": 0.0018,
+      "ask_out": 0.0108
     },
     "cx/gpt-5.6-sol": {
       "official_in": 5.0,
       "official_out": 30.0,
       "supports_cache": true,
-      "ask_in": 0.005,
-      "ask_out": 0.03
+      "ask_in": 0.045,
+      "ask_out": 0.27
     },
     "cx/gpt-5.6-terra": {
       "official_in": 2.0,
       "official_out": 12.0,
       "supports_cache": true,
-      "ask_in": 0.002,
-      "ask_out": 0.012
+      "ask_in": 0.018,
+      "ask_out": 0.108
     },
     "cx/gpt-6-astra": {
       "official_in": 10.0,
       "official_out": 50.0,
       "supports_cache": true,
-      "ask_in": 0.01,
-      "ask_out": 0.05
+      "ask_in": 0.09,
+      "ask_out": 0.45
     },
     "ocg/deepseek-v4-flash": {
       "official_in": 0.22,
       "official_out": 0.66,
       "supports_cache": true,
-      "ask_in": 0.00792,
-      "ask_out": 0.02376
+      "ask_in": 0.022,
+      "ask_out": 0.066
     },
     "ocg/deepseek-v4-pro": {
       "official_in": 0.66,
@@ -734,22 +734,22 @@
       "official_in": 0.22,
       "official_out": 0.66,
       "supports_cache": true,
-      "ask_in": 0.00836,
-      "ask_out": 0.02508
+      "ask_in": 0.022,
+      "ask_out": 0.066
     },
     "ali/deepseek-v4-pro-0813": {
       "official_in": 0.66,
       "official_out": 1.98,
       "supports_cache": true,
-      "ask_in": 0.00594,
-      "ask_out": 0.01782
+      "ask_in": 0.0066,
+      "ask_out": 0.0198
     },
     "ali/glm-5.2": {
       "official_in": 1.4,
       "official_out": 4.4,
       "supports_cache": true,
-      "ask_in": 0.0266,
-      "ask_out": 0.0836
+      "ask_in": 0.028,
+      "ask_out": 0.088
     },
     "ali/kimi-k2.7-code": {
       "official_in": 0.95,
