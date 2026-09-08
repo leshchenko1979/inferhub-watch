@@ -84,6 +84,57 @@ def tag_probe_windows(conn) -> int:
     return tagged
 
 
+def sync_route_metrics(conn) -> int:
+    """D3 decision layer: upsert catalog asks + AA IQ per route into
+    route_metrics, the table the dashboard's scatter/panels join against."""
+    import json
+
+    root = Path(__file__).resolve().parents[1]
+    catalog = json.loads((root / "data" / "catalog.json").read_text())
+    intel = json.loads((root / "data" / "intelligence.json").read_text())
+    toml_models = tomllib.loads((root / "models.toml").read_text()) \
+        if (root / "models.toml").exists() else {}
+    aa_map = toml_models.get("aa") or {}
+    slugs = intel.get("models") or {}
+    models = catalog.get("models") or {}
+
+    with conn.cursor() as cur:
+        cur.execute("""
+            create table if not exists route_metrics (
+                route text primary key,
+                ask_in numeric(12,6),
+                ask_out numeric(12,6),
+                official_in numeric(12,6),
+                official_out numeric(12,6),
+                supports_cache boolean,
+                iq numeric(8,2),
+                updated_at timestamptz not null default now()
+            )
+        """)
+        n = 0
+        for route, m in models.items():
+            slug = aa_map.get(route) or route.rsplit("/", 1)[-1].lower() \
+                .replace(".", "-")
+            iq = (slugs.get(slug) or {}).get("iq")
+            cur.execute("""
+                insert into route_metrics
+                    (route, ask_in, ask_out, official_in, official_out,
+                     supports_cache, iq, updated_at)
+                values (%s, %s, %s, %s, %s, %s, %s, now())
+                on conflict (route) do update set
+                    ask_in = excluded.ask_in,
+                    ask_out = excluded.ask_out,
+                    official_in = excluded.official_in,
+                    official_out = excluded.official_out,
+                    supports_cache = excluded.supports_cache,
+                    iq = excluded.iq,
+                    updated_at = now()
+            """, (route, m.get("ask_in"), m.get("ask_out"),
+                  m.get("official_in"), m.get("official_out"),
+                  m.get("supports_cache"), iq))
+            n += 1
+    return n
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=float, default=8.0,
@@ -121,6 +172,8 @@ def main() -> int:
     print(f"upserted {cached} rows")
     tagged = tag_probe_windows(conn)
     print(f"tagged {tagged} probe rows")
+    metrics = sync_route_metrics(conn)
+    print(f"route_metrics upserted: {metrics}")
     with conn.cursor() as cur:
         cur.execute("select max(created_at) from usage_logs")
         print(f"table now ends at {cur.fetchone()[0]}")
