@@ -494,21 +494,21 @@ td {
 
 /* Open: the word itself flips to 'less' — no +/- glyph. The ::after
    carries the new word; the base word is hidden by collapsing its size. */
-.plumb details[open] summary .plumb-word {
+details.plumb[open] summary .plumb-word {
   font-size: 0;
 }
 
-.plumb details[open] summary .plumb-word::after {
+details.plumb[open] summary .plumb-word::after {
   content: "less";
   font-size: var(--text-caption);
 }
 
-.plumb details[open] summary {
+details.plumb[open] summary {
   color: var(--ink);
 }
 
 /* The route row whose details is open reveals ONLY its own sibling row. */
-.pricing tr:has(.plumb details[open]) + tr.plumb-row {
+.pricing tr:has(details.plumb[open]) + tr.plumb-row {
   display: table-row;
 }
 
@@ -1094,7 +1094,7 @@ footer {
     grid-column: 1 / -1;
   }
 
-  .pricing tr:has(.plumb details[open]) + tr.plumb-row {
+  .pricing tr:has(details.plumb[open]) + tr.plumb-row {
     display: block;
   }
 
