@@ -34,8 +34,9 @@ ALIASES = [
     "cb/gpt-5.6-sol",
     "cb/gpt-5.6-terra",
     "cb/kimi-k3",
-    "cp/zai/glm-5.3-flash",
 ]
+# cp/zai/glm-5.3-flash removed (owner 2026-09-09: everything moved to cbcn;
+# the route's ask jumped +274% and the market radar disqualifies it anyway).
 
 # 0 = head only (~550-800 ali tokens billed); each block ≈ 65-80 tokens.
 BLOCKS = [0, 4, 8, 12, 24, 48, 96]
