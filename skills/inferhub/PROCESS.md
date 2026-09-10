@@ -24,7 +24,7 @@ Banned synonyms (enforced by `tests/test_ontology.py` in code; by review in pros
 ## Worker dispatch law (hard)
 
 - Any task that outgrows a single reply becomes an issue first, then a dispatch.
-- Dispatch = spawn the worker with a thin prompt: the issue number + "read skills/hq/PROCESS.md, follow it" — the process lives here, not in the prompt.
+- Dispatch = spawn the worker with a thin prompt: the issue number + "read skills/inferhub/PROCESS.md, follow it" — the process lives here, not in the prompt.
 - Workers commit to `main` only via small, single-concern commits (repo convention: `data:`, `probe:`, `site:`, `scripts:`, `sync:` prefixes seen in git log). One change per commit.
 - Workers NEVER push to `gh-pages` — the site deploys via the sweep workflow only.
 - Workers `git pull --ff-only` before touching anything; a stale checkout is a clobbered sweep.
@@ -52,7 +52,7 @@ A rule without a source incident is a guess; each landed rule cites its origin (
 Each daily cycle, the firing session MUST execute all of:
 
 1. `git -C /root/inferhub-watch pull --ff-only` (report failure; continue if possible).
-2. Load this skill file (`skills/hq/PROCESS.md`) and re-read the Self-improvement section.
+2. Load this skill file (`skills/inferhub/PROCESS.md`) and re-read the Self-improvement section.
 3. **Sweep health:** check the latest `watch.yml` run on GitHub (`gh run list -R leshchenko1979/inferhub-watch --workflow watch.yml --limit 1 --json conclusion,displayTitle,createdAt`). If it failed or hasn't run in 26h → open an `ops:` issue, run `python3 -m pytest tests/ -x -q` locally if code is suspected, report to the owner in the group.
 4. **Issue triage:** `gh issue list -R leshchenko1979/inferhub-watch --state open`. For each: progress made in 7+ days → nudge/comment; resolved silently → close with a receipt comment; done criteria met → close. Empty list → nothing.
 5. **Site sanity:** fetch `https://leshchenko1979.github.io/inferhub-watch/` (HTTP GET). Confirm the page renders and carries a fresh sweep date. Stale >36h → treat as sweep failure (step 3 path).
