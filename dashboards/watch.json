@@ -1,0 +1,1626 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 1,
+      "pluginVersion": "11.6.0",
+      "title": "Market",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "All traffic except probe runs (is_probe=false), over the dashboard time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 33
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at)",
+          "refId": "A"
+        }
+      ],
+      "title": "Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "All traffic except probe runs (is_probe=false), over the dashboard time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 33
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawSql": "SELECT round(sum(cost_usdc)::numeric, 4) FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at)",
+          "refId": "A"
+        }
+      ],
+      "title": "Cost (all traffic, non-probe)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "All traffic except probe runs (is_probe=false), over the dashboard time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 33
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(DISTINCT model) FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at)",
+          "refId": "A"
+        }
+      ],
+      "title": "Models in use",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "All catalog routes ranked by projected $/M (blended cost of the route's 7-day token mix at current asks; cached input billed at 10%; no-traffic routes use a 0.75/0.25 in/out mix). Tier: green = in use (>=100 billed reqs/7d), yellow = light, gray = catalog/probe-only. Cache green = high, TTFT green = fast.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "minWidth": 60
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Projected $/M"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ask in $/M"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ask out $/M"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Realized $/M"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cost $"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "IQ per $"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "dark-red",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 3000
+                    },
+                    {
+                      "color": "orange",
+                      "value": 6000
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 10000
+                    },
+                    {
+                      "color": "light-green",
+                      "value": 20000
+                    },
+                    {
+                      "color": "green",
+                      "value": 30000
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cache %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "dark-red",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 10
+                    },
+                    {
+                      "color": "orange",
+                      "value": 25
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 40
+                    },
+                    {
+                      "color": "light-green",
+                      "value": 60
+                    },
+                    {
+                      "color": "green",
+                      "value": 75
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "TTFT ms"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "light-green",
+                      "value": 1200
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 3000
+                    },
+                    {
+                      "color": "orange",
+                      "value": 4500
+                    },
+                    {
+                      "color": "red",
+                      "value": 6000
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 9000
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Reqs (7d)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tokens (7d)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tier"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "0": {
+                        "color": "text",
+                        "index": 2,
+                        "text": "catalog"
+                      },
+                      "1": {
+                        "color": "yellow",
+                        "index": 1,
+                        "text": "light"
+                      },
+                      "2": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "in use"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "md",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.route AS \"Route\",\n  round(px.projected::numeric,4) AS \"Projected $/M\",\n  round(px.iq / NULLIF(px.projected,0)) AS \"IQ per $\",\n  round(px.ask_in::numeric,4) AS \"Ask in $/M\",\n  round(px.ask_out::numeric,4) AS \"Ask out $/M\",\n  round(px.iq) AS \"AA IQ\",\n  CASE px.tier WHEN 'in use' THEN 2 WHEN 'probed' THEN 1 ELSE 0 END AS \"Tier\",\n  u.reqs AS \"Reqs (7d)\",\n  u.tok AS \"Tokens (7d)\",\n  u.cache_pct AS \"Cache %\",\n  u.ttft AS \"TTFT ms\",\n  u.cost AS \"Cost $\",\n  u.realized AS \"Realized $/M\"\nFROM px\nLEFT JOIN (\n  SELECT model,\n    count(*) FILTER (WHERE NOT is_probe) AS reqs,\n    sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe) AS tok,\n    round(100.0*sum(cached_tokens) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens) FILTER (WHERE NOT is_probe),0),1) AS cache_pct,\n    round(avg(ttft_ms) FILTER (WHERE NOT is_probe)) AS ttft,\n    round(sum(cost_usdc) FILTER (WHERE NOT is_probe)::numeric,4) AS cost,\n    round((sum(cost_usdc) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe),0)*1e6)::numeric,4) AS realized\n  FROM usage_logs WHERE created_at > now() - interval '7 days' GROUP BY 1\n) u ON u.model = px.route\nORDER BY px.projected ASC NULLS LAST",
+          "refId": "A"
+        }
+      ],
+      "title": "Model leaderboard \u2014 catalog routes by projected price",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "Requests per model, bucket size auto-scales with the time range (short range = finer buckets). Only models in use (>=100 billed reqs in range) are shown.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, count(*) AS reqs FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model WHERE u.is_probe = false AND $__timeFilter(u.created_at) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "title": "Daily requests by model",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "Spend per model, auto-granular buckets, in-use models only.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              },
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round(sum(u.cost_usdc)::numeric, 4) AS cost_usdc FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model WHERE u.is_probe = false AND $__timeFilter(u.created_at) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "title": "Cost by model ($)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "Prompt-cache hit rate per model, in-use only (>=100 billed reqs in range).",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 45
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round(100.0 * sum(u.cached_tokens) / NULLIF(sum(u.prompt_tokens), 0), 1) AS cache_pct FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model WHERE u.is_probe = false AND $__timeFilter(u.created_at) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "title": "Cache hit % by model (in use)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "Time-to-first-token average per model, in-use only (>=100 billed reqs with TTFT in range).",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 45
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round(avg(u.ttft_ms)) AS avg_ttft_ms FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model WHERE u.is_probe = false AND u.ttft_ms IS NOT NULL AND $__timeFilter(u.created_at) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "title": "TTFT ms by model (in use)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "inferhub-pg"
+      },
+      "description": "Top 40 cheapest routes with AA IQ data by billed ask-in price. Full 88-route list with IQ lives in the table panel below. Data: route_metrics, refreshed hourly.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in use"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73bf69",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "probed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#fade2a",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "catalog"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#8b939f",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 20,
+      "options": {
+        "barWidth": 0.8,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "horizontal",
+        "showLegend": true,
+        "showValue": "never",
+        "stacking": "off",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "route",
+        "xTickLabelMaxGap": 0,
+        "xTickLabelRotation": 45,
+        "xTickLabelSkip": 1
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "inferhub-pg"
+          },
+          "rawSql": "WITH u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.ask_in IS NOT NULL\n)\nSELECT route AS \"route\",\n  CASE WHEN tier='in use'  THEN ask_in END AS \"in use\",\n  CASE WHEN tier='probed'  THEN ask_in END AS \"probed\",\n  CASE WHEN tier='catalog' THEN ask_in END AS \"catalog\"\nFROM base\nWHERE true\nORDER BY ask_in\nLIMIT 48",
+          "format": "table"
+        }
+      ],
+      "title": "Catalog ask-in $/M \u2014 colored by tier, cheapest first within tier",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "inferhub-pg"
+      },
+      "description": "Each route: X = projected $/M (7-day token mix at current asks, cached input at 10%, no-traffic fallback 0.75/0.25), Y = AA IQ. Green = in use (>=100 billed reqs/7d), yellow = light, gray = catalog/probe-only. X log scale: cheap left, expensive right. Hover for route name + values.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "custom": {
+            "pointSize": {
+              "fixed": 8,
+              "min": 8,
+              "max": 32
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "projected $/M"
+            },
+            "properties": [
+              {
+                "id": "custom.scaleDistribution",
+                "value": {
+                  "log": 10,
+                  "type": "log"
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tier"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "0": {
+                        "color": "#8b939f",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "1": {
+                        "color": "#fade2a",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "2": {
+                        "color": "#73bf69",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "in use: cbcn/glm-5.3-flash, zai/glm-5.3-flash"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Reqs 24h"
+            },
+            "properties": [
+              {
+                "id": "custom.pointSize",
+                "value": {
+                  "min": 8,
+                  "max": 32
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 21,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mapping": "manual",
+        "series": [
+          {
+            "color": {
+              "matcher": {
+                "id": "byName",
+                "options": "Tier"
+              }
+            },
+            "frame": {
+              "matcher": {
+                "id": "byIndex",
+                "options": 0
+              }
+            },
+            "size": {
+              "matcher": {
+                "id": "byName",
+                "options": "Reqs 24h"
+              }
+            },
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "projected $/M"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "AA IQ"
+              }
+            }
+          }
+        ],
+        "tooltip": {
+          "mode": "multi"
+        },
+        "xAxis": {
+          "label": "projected $/M (log)",
+          "mode": "linear"
+        },
+        "yAxis": {
+          "label": "AA IQ",
+          "mode": "linear"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.projected::float AS \"projected $/M\",\n       px.iq::float        AS \"AA IQ\",\n       px.req24::float     AS \"Reqs 24h\",\n       px.route            AS \"Route\",\n       CASE px.tier WHEN 'in use' THEN 2 WHEN 'probed' THEN 1 ELSE 0 END::float AS \"Tier\"\nFROM px ORDER BY px.projected",
+          "refId": "A"
+        }
+      ],
+      "title": "Catalog: projected $/M vs AA IQ (log X)",
+      "type": "xychart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "id": 30,
+      "pluginVersion": "11.6.0",
+      "title": "Usage",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "Cheapest in-use route by projected $/M (7d token mix at current asks).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "id": 52,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^Route$/",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": false
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.route AS \"Route\" FROM px WHERE px.tier='in use' ORDER BY px.projected ASC LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Best value route",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "AA IQ per projected $/M for the best value route.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "id": 53,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": false
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT round(px.iq/NULLIF(px.projected,0)) AS \"IQ per $\" FROM px WHERE px.tier='in use' ORDER BY px.projected ASC LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Best IQ per $",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "Runner-up in-use route by projected $/M.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#8b939f",
+            "mode": "fixed"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "id": 54,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^Route$/",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": false
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.route AS \"Route\" FROM px WHERE px.tier='in use' ORDER BY px.projected ASC OFFSET 1 LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Alternate route",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "AA IQ per projected $/M for the alternate route.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#8b939f",
+            "mode": "fixed"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "id": 55,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": false
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT round(px.iq/NULLIF(px.projected,0)) AS \"IQ per $\" FROM px WHERE px.tier='in use' ORDER BY px.projected ASC OFFSET 1 LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Alt IQ per $",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "All traffic except probe runs (is_probe=false), over the dashboard time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": null,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 33
+      },
+      "id": 31,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawSql": "SELECT round((sum(prompt_tokens)+sum(completion_tokens))::numeric, 0) FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at)",
+          "refId": "A"
+        }
+      ],
+      "title": "Tokens (all traffic, non-probe)",
+      "type": "stat"
+    },
+    {
+      "id": 60,
+      "type": "row",
+      "title": "Best routes",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 63,
+      "type": "row",
+      "title": "Price history",
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 61,
+      "type": "timeseries",
+      "title": "Price history \u2014 ask-in $/M (observed, non-probe)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "inferhub-pg"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at,'1d'), round(avg(ask_input_per_mtok)::numeric,5) AS avg_price, model AS metric FROM usage_logs WHERE $__timeFilter(created_at) AND is_probe = false AND ask_input_per_mtok > 0 GROUP BY 1, model ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "pointSize": 5,
+            "axisPlacement": "auto",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "unit": "currencyUSD",
+          "decimals": 5,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 62,
+      "type": "timeseries",
+      "title": "Price history \u2014 ask-out $/M (observed, non-probe)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "inferhub-pg"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at,'1d'), round(avg(ask_output_per_mtok)::numeric,5) AS avg_price, model AS metric FROM usage_logs WHERE $__timeFilter(created_at) AND is_probe = false AND ask_output_per_mtok > 0 GROUP BY 1, model ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "pointSize": 5,
+            "axisPlacement": "auto",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "unit": "currencyUSD",
+          "decimals": 5,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    }
+  ],
+  "refresh": "10m",
+  "schemaVersion": 39,
+  "tags": [
+    "inferhub",
+    "draft"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "Tier",
+        "type": "custom",
+        "hide": 0,
+        "multi": false,
+        "includeAll": false,
+        "refresh": 0,
+        "sort": 1,
+        "query": "All,in use,probed,catalog",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "All"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "All",
+            "value": "All"
+          },
+          {
+            "selected": false,
+            "text": "in use",
+            "value": "in use"
+          },
+          {
+            "selected": false,
+            "text": "probed",
+            "value": "probed"
+          },
+          {
+            "selected": false,
+            "text": "catalog",
+            "value": "catalog"
+          }
+        ]
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "InferHub Watch",
+  "uid": "inferhub-watch",
+  "version": 13
+}
