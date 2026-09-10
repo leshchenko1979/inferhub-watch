@@ -5,8 +5,12 @@ naive fallback missed most routes)."""
 from __future__ import annotations
 
 import importlib.util
+import json
 import unittest
 from pathlib import Path
+from typing import ClassVar
+
+import tomllib
 
 from probe.registry import repo_root
 
@@ -29,7 +33,7 @@ class NormSlugTests(unittest.TestCase):
 
 
 class ResolveSlugTests(unittest.TestCase):
-    SLUGS = {
+    SLUGS: ClassVar[dict] = {
         "deepseek-v4-flash": {"iq": 34.5},
         "deepseek-v4-pro": {"iq": 36.3},
         "muse-spark-1-2": {"iq": 39.8},
@@ -108,8 +112,6 @@ class LiveCatalogTests(unittest.TestCase):
     an intelligence slug carrying an iq score."""
 
     def test_at_least_90_percent_of_routes_have_iq(self) -> None:
-        import json
-        import tomllib
         root = Path(repo_root())
         catalog = json.loads((root / "data" / "catalog.json").read_text())
         intel = json.loads((root / "data" / "intelligence.json").read_text())
