@@ -27,6 +27,7 @@ Banned synonyms (enforced by `tests/test_ontology.py` in code; by review in pros
 - Every issue body states: goal, owner (HQ or a named lane), done criteria. Status edits go in comments, never silent body rewrites.
 - Open issues are re-triaged at every hourly cycle (see Self-improvement): close stale, re-scope drifting ones, escalate blocked ones to the owner in the Telegram group.
 - Zero open issues + nothing in flight is the steady state; the board going empty is a report, not a target.
+- **Self-approval (owner order 2026-09-10 ~06:07Z: "You approve the issues yourself if you think it's a good idea"):** HQ approves its own self-improvement / process proposals without waiting for the owner 👍, when it judges the issue sound. Guardrails: (1) the proposal's premises are verified first-hand before approval (receipts in the issue body); (2) mechanical, reversible process edits only — anything touching infra, spend, credentials, or the owner's own surfaces still waits for him; (3) the approval is stamped in a same-turn issue comment (`Approved by HQ under self-approval law, <date>: <one-line why>`) so the audit trail shows it was self-, not owner-, approved. Source incident: owner issued the authority immediately after #2 and #3 were reported as "pending 👍" twice in one hour.
 
 ## Delegation law (hard, owner order 2026-09-10: "You work on the process, not in the process")
 
@@ -102,7 +103,7 @@ The rest of the cycle is the loop that carries this scan:
 
 1. `git -C /root/inferhub-watch pull --ff-only` (report failure; continue if possible).
 2. Load this skill file (`skills/inferhub/PROCESS.md`) and re-read the Self-improvement section.
-3. **Sweep health:** check the latest `watch.yml` run on GitHub (`gh run list -R leshchenko1979/inferhub-watch --workflow watch.yml --limit 1 --json conclusion,displayTitle,createdAt`). If it failed or hasn't run in 26h → open an `ops:` issue, run `python3 -m pytest tests/ -x -q` locally if code is suspected, report to the owner in the group.
+3. **Sweep health:** check the latest SCHEDULED `watch.yml` run on GitHub (`gh run list -R leshchenko1979/inferhub-watch --workflow watch.yml --event schedule --limit 1 --json conclusion,displayTitle,createdAt` — the `--event schedule` filter is mandatory: push runs never execute the probe, so a "success" push run masks a missed sweep, per issue #3). If it failed or hasn't run in 26h → open an `ops:` issue, run `python3 -m pytest tests/ -x -q` locally if code is suspected, report to the owner in the group.
 4. **Issue triage:** `gh issue list -R leshchenko1979/inferhub-watch --state open`. For each: progress made in 7+ days → nudge/comment; resolved silently → close with a receipt comment; done criteria met → close. Empty list → nothing.
 5. **Surface sanity (Grafana):** fetch `https://grafana.l1979.ru/api/health` (expect 200) — Grafana is the main observation surface per the law above. The GitHub Pages site (`https://leshchenko1979.github.io/inferhub-watch/`) is checked as secondary; stale >36h → treat as sweep failure (step 3 path).
 6. **Self-improvement scan:** execute the scan defined at the top of this section (find objects in the project for self-improvement → propose → land on 👍).
