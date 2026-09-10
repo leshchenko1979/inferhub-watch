@@ -12,7 +12,8 @@ Criteria:
 - OpenCrabs updates: config.toml ([agent].default_model, [agent].subagent_model,
   [providers.custom.inferhub].default_model, and append to [providers.custom.inferhub].models)
   and active unarchived sessions in opencrabs.db
-- Telegram notification with old vs new metrics.
+- Switch alert via `opencrabs session notify` (Issue #14): the notified session owns the
+  Telegram card; this script never touches Telegram or the Bot API directly.
 """
 
 from __future__ import annotations
@@ -22,9 +23,8 @@ import json
 import logging
 import re
 import sqlite3
+import subprocess
 import sys
-import urllib.parse
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -45,6 +45,13 @@ DEFAULT_DB_PATH = Path("/root/.opencrabs/profiles/ops/opencrabs.db")
 DEFAULT_ROOT_DB_PATH = Path("/root/.opencrabs/opencrabs.db")
 IQ_FLOOR = 35.0
 SWITCH_THRESHOLD = 0.15  # >15% higher value
+
+# Inferhub Watch Telegram group whose bound session receives switch alerts (Issue #14).
+INFERHUB_WATCH_CHAT_ID = "-1004379632866"
+NOTIFY_PROFILE = "ops"
+NOTIFY_TITLE = "Inferhub Route Auto-Switched"
+# Receipt verdicts accepted from `opencrabs session notify --confirm` (Issue #14).
+NOTIFY_VERDICTS = ("woke", "queued", "delivered")
 
 
 # Models or publishers known not to support standard chat/tool calling
@@ -287,33 +294,121 @@ def update_active_sessions(db_path: Path, new_model: str, target_provider: str =
         conn.close()
 
 
-def send_telegram_notification(
-    bot_token: str,
-    chat_id: str | int,
-    text: str,
-    message_thread_id: int | None = None,
-) -> bool:
-    """Send switch notification to Telegram via Bot API."""
-    if not bot_token or not chat_id:
-        return False
+def resolve_notify_session(
+    config_path: Path,
+    db_path: Path = DEFAULT_DB_PATH,
+    chat_id: str = INFERHUB_WATCH_CHAT_ID,
+) -> str:
+    """Resolve the OpenCrabs session that should receive switch alerts (Issue #14).
 
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload: dict[str, Any] = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "Markdown",
-    }
-    if message_thread_id:
-        payload["message_thread_id"] = message_thread_id
+    Order (dynamic, never hardcoded to a session id):
+      1. Explicit override key `notify_session` in config.toml
+         (top-level or [notifications]).
+      2. The session bound to the Inferhub Watch group chat in the
+         `session_bindings` table — preferring a binding whose session is
+         still active (archived_at IS NULL), most recent first.
+      3. Last resort: most recent binding row for that chat, even if the
+         bound session is archived (a stale binding is better than no alert).
 
-    data = urllib.parse.urlencode(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers={"User-Agent": "InferhubWatch/1.0"})
+    Raises RuntimeError (fail loudly) if no session can be resolved.
+    """
+    if config_path.exists():
+        with config_path.open("rb") as f:
+            cfg_data = tomllib.load(f)
+        override = cfg_data.get("notify_session") or cfg_data.get("notifications", {}).get("notify_session")
+        if override:
+            return str(override)
+
+    if not db_path.exists():
+        raise RuntimeError(
+            f"Cannot resolve notify session: bindings DB {db_path} does not exist "
+            f"and no `notify_session` override is set in {config_path}."
+        )
+
+    conn = sqlite3.connect(str(db_path))
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return resp.status == 200
-    except Exception as exc:
-        logger.error(f"Failed to send Telegram notification: {exc}")
-        return False
+        # 2. Preferred: most recent binding for the chat with an ACTIVE session.
+        row = conn.execute(
+            """
+            SELECT b.session_id
+            FROM session_bindings b
+            JOIN sessions s ON s.id = b.session_id
+            WHERE b.chat_id = ? AND s.archived_at IS NULL
+            ORDER BY b.updated_at DESC
+            LIMIT 1
+            """,
+            (chat_id,),
+        ).fetchone()
+        if row:
+            return str(row[0])
+
+        # 3. Last resort: most recent binding for the chat, regardless of
+        #    session status (stale binding beats staying silent).
+        row = conn.execute(
+            """
+            SELECT session_id
+            FROM session_bindings
+            WHERE chat_id = ?
+            ORDER BY updated_at DESC
+            LIMIT 1
+            """,
+            (chat_id,),
+        ).fetchone()
+        if row:
+            logger.warning(
+                f"No active session bound to chat {chat_id}; falling back to "
+                f"most recent (possibly archived) binding {row[0]}."
+            )
+            return str(row[0])
+    finally:
+        conn.close()
+
+    raise RuntimeError(
+        f"No session resolvable for chat {chat_id}: no `notify_session` override "
+        f"in {config_path} and no rows in session_bindings ({db_path})."
+    )
+
+
+def send_session_notification(
+    session_id: str,
+    text: str,
+    title: str = NOTIFY_TITLE,
+    profile: str = NOTIFY_PROFILE,
+    timeout_secs: int = 120,
+) -> tuple[bool, str]:
+    """Send an alert via the OpenCrabs CLI and verify the receipt (Issue #14).
+
+    Runs: opencrabs -p <profile> session notify <session_id> --text ... --title ... --confirm
+
+    Success requires BOTH: subprocess exit code 0 AND a --confirm verdict
+    (woke / queued / delivered) in the CLI output. Both are logged. No silent
+    HTTP fire: the notified session owns the Telegram card.
+    """
+    cmd = [
+        "opencrabs",
+        "-p", profile,
+        "session", "notify", session_id,
+        "--text", text,
+        "--title", title,
+        "--confirm",
+    ]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_secs)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.error(f"session notify to {session_id} failed to run: {exc}")
+        return False, f"error: {exc}"
+
+    output = ((proc.stdout or "") + (proc.stderr or "")).strip()
+    logger.info(f"session notify exit={proc.returncode} output={output!r}")
+    verdict = next((v for v in NOTIFY_VERDICTS if re.search(rf"\b{v}\b", output, re.IGNORECASE)), None)
+    detail = f"exit={proc.returncode} verdict={verdict or 'none'} output={output!r}"
+
+    if proc.returncode != 0 or verdict is None:
+        logger.error(f"session notify to {session_id} NOT confirmed ({detail})")
+        return False, detail
+
+    logger.info(f"session notify to {session_id} confirmed ({detail})")
+    return True, detail
 
 
 def get_current_model(config_path: Path) -> str:
@@ -329,44 +424,14 @@ def get_current_model(config_path: Path) -> str:
     )
 
 
-def get_bot_token(config_path: Path) -> str | None:
-    """Resolve the Telegram bot token.
-
-    Order:
-      1. config.toml: channels.telegram.token
-      2. keys.toml (sibling of config.toml): channels.telegram.token
-      3. keys.toml: telegram.bot_token
-
-    In OpenCrabs profiles sensitive credentials live in keys.toml and
-    config.toml often omits channels.telegram.token entirely.
-    """
-    if config_path.exists():
-        with config_path.open("rb") as f:
-            cfg_data = tomllib.load(f)
-        token = cfg_data.get("channels", {}).get("telegram", {}).get("token")
-        if token:
-            return token
-
-    keys_path = config_path.parent / "keys.toml"
-    if keys_path.exists():
-        with keys_path.open("rb") as f:
-            keys_data = tomllib.load(f)
-        token = keys_data.get("channels", {}).get("telegram", {}).get("token")
-        if token:
-            return token
-        token = keys_data.get("telegram", {}).get("bot_token")
-        if token:
-            return token
-
-    return None
-
-
 def run_auto_route_switch(
     root_dir: Path = ROOT_DIR,
     config_path: Path = DEFAULT_CONFIG_PATH,
     db_paths: list[Path] | None = None,
     dry_run: bool = False,
     notify: bool = True,
+    notify_db_path: Path = DEFAULT_DB_PATH,
+    notify_profile: str = NOTIFY_PROFILE,
     floor_iq: float = IQ_FLOOR,
     threshold: float = SWITCH_THRESHOLD,
     catalog_models: dict[str, dict] | None = None,
@@ -435,25 +500,31 @@ def run_auto_route_switch(
             total_sessions += cnt
     result["sessions_updated"] = total_sessions
 
-    # 3. Notification
-    if notify and config_path.exists():
-        bot_token = get_bot_token(config_path)
-        if bot_token:
-            gain_pct = ((best.value - current.value) / current.value * 100) if (current and current.value > 0) else 0.0
-            msg = (
-                f"🔀 *Inferhub Route Auto-Switched*\n\n"
-                f"• *Old Model:* `{current_model}` (IQ={current.iq if current else 0:.1f}, In=${current.ask_in if current else 0:.5f}, Out=${current.ask_out if current else 0:.5f}, Val={current.value if current else 0:.1f})\n"
-                f"• *New Model:* `{best.route}` (IQ={best.iq:.1f}, In=${best.ask_in:.5f}, Out=${best.ask_out:.5f}, Val={best.value:.1f})\n"
-                f"• *Value Gain:* `+{gain_pct:.1f}%`\n"
-                f"• *Active Sessions Migrated:* `{total_sessions}`\n"
-                f"• *Config Updated:* `{config_path}`"
+    # 3. Notification via opencrabs session notify (Issue #14).
+    if notify:
+        gain_pct = ((best.value - current.value) / current.value * 100) if (current and current.value > 0) else 0.0
+        msg = (
+            f"🔀 *Inferhub Route Auto-Switched*\n\n"
+            f"• *Old Model:* `{current_model}` (IQ={current.iq if current else 0:.1f}, In=${current.ask_in if current else 0:.5f}, Out=${current.ask_out if current else 0:.5f}, Val={current.value if current else 0:.1f})\n"
+            f"• *New Model:* `{best.route}` (IQ={best.iq:.1f}, In=${best.ask_in:.5f}, Out=${best.ask_out:.5f}, Val={best.value:.1f})\n"
+            f"• *Value Gain:* `+{gain_pct:.1f}%`\n"
+            f"• *Active Sessions Migrated:* `{total_sessions}`\n"
+            f"• *Config Updated:* `{config_path}`"
+        )
+        try:
+            target_session = resolve_notify_session(config_path, db_path=notify_db_path)
+        except RuntimeError as exc:
+            # Fail loudly, but the switch itself already happened and stands.
+            logger.error(str(exc))
+            result["notification_sent"] = False
+            result["notification_error"] = str(exc)
+        else:
+            result["notify_session"] = target_session
+            sent, detail = send_session_notification(
+                target_session, msg, title=NOTIFY_TITLE, profile=notify_profile
             )
-            # Default admin chat / monitoring chat
-            with config_path.open("rb") as f:
-                cfg_data = tomllib.load(f)
-            admin_chat = cfg_data.get("channels", {}).get("telegram", {}).get("admin_chat_id", 133526395)
-            sent = send_telegram_notification(bot_token, admin_chat, msg)
             result["notification_sent"] = sent
+            result["notification_detail"] = detail
 
     return result
 

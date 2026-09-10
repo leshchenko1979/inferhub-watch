@@ -9,15 +9,16 @@ import pytest
 import tomllib
 
 from scripts.auto_route_switch import (
+    INFERHUB_WATCH_CHAT_ID,
     RouteCandidate,
     calculate_value,
     evaluate_candidates,
     find_best_route,
-    get_bot_token,
     get_current_model,
     is_qualified,
+    resolve_notify_session,
     run_auto_route_switch,
-    send_telegram_notification,
+    send_session_notification,
     update_active_sessions,
     update_opencrabs_config,
 )
@@ -156,16 +157,42 @@ def test_update_active_sessions(tmp_path):
     assert rows[3] == ("s4", "openrouter_model", None)
 
 
-@patch("urllib.request.urlopen")
-def test_send_telegram_notification(mock_urlopen):
-    mock_resp = MagicMock()
-    mock_resp.status = 200
-    mock_resp.__enter__.return_value = mock_resp
-    mock_urlopen.return_value = mock_resp
+def _make_bindings_db(db_file, rows):
+    """Create a tmp DB with sessions + session_bindings tables.
 
-    res = send_telegram_notification("token123", 133526395, "test message")
-    assert res is True
-    assert mock_urlopen.called
+    rows: list of (binding_session_id, chat_id, updated_at, archived_at_or_None)
+    """
+    conn = sqlite3.connect(str(db_file))
+    with conn:
+        conn.execute("""
+            CREATE TABLE sessions (
+                id TEXT PRIMARY KEY,
+                model TEXT,
+                provider_name TEXT,
+                archived_at INTEGER,
+                updated_at INTEGER
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE session_bindings (
+                session_id TEXT PRIMARY KEY,
+                channel TEXT NOT NULL,
+                chat_id TEXT NOT NULL,
+                thread_id INTEGER,
+                updated_at INTEGER NOT NULL
+            )
+        """)
+        for sid, chat, binding_ts, archived_at in rows:
+            conn.execute(
+                "INSERT INTO sessions VALUES (?, 'm', 'custom:inferhub', ?, ?)",
+                (sid, archived_at, binding_ts),
+            )
+            conn.execute(
+                "INSERT INTO session_bindings VALUES (?, 'telegram', ?, 1, ?)",
+                (sid, chat, binding_ts),
+            )
+    conn.close()
+
 
 
 def test_run_auto_route_switch_end_to_end(tmp_path):
@@ -242,57 +269,137 @@ models = ["current/m1"]
     conn.close()
 
 
-# --- Issue #13: keys.toml fallback for bot_token ---
+# --- Issue #14: opencrabs session notify alerts ---
 
 
-def test_get_bot_token_from_config_toml(tmp_path):
-    # Token present in config.toml takes priority
+def test_resolve_notify_session_override(tmp_path):
+    # Explicit override key wins even when bindings exist
     cfg = tmp_path / "config.toml"
-    cfg.write_text('[channels.telegram]\ntoken = "cfg-token"\n')
-    assert get_bot_token(cfg) == "cfg-token"
+    cfg.write_text('notify_session = "override-session"\n')
+    db = tmp_path / "opencrabs.db"
+    _make_bindings_db(db, [("bound-session", INFERHUB_WATCH_CHAT_ID, 100, None)])
+    assert resolve_notify_session(cfg, db_path=db) == "override-session"
 
 
-def test_get_bot_token_fallback_keys_toml_telegram_channel(tmp_path):
-    # config.toml omits the token; keys.toml has channels.telegram.token
+def test_resolve_notify_session_override_notifications_section(tmp_path):
     cfg = tmp_path / "config.toml"
-    cfg.write_text("[agent]\ndefault_model = \"m\"\n")
-    (tmp_path / "keys.toml").write_text('[channels.telegram]\ntoken = "keys-channel-token"\n')
-    assert get_bot_token(cfg) == "keys-channel-token"
+    cfg.write_text('[notifications]\nnotify_session = "notif-override"\n')
+    assert resolve_notify_session(cfg, db_path=tmp_path / "missing.db") == "notif-override"
 
 
-def test_get_bot_token_fallback_keys_toml_bot_token(tmp_path):
-    # config.toml omits the token; keys.toml has telegram.bot_token
+def test_resolve_notify_session_bindings_lookup(tmp_path):
+    # No override: most recent ACTIVE binding for the watch chat wins
     cfg = tmp_path / "config.toml"
-    cfg.write_text("[agent]\ndefault_model = \"m\"\n")
-    (tmp_path / "keys.toml").write_text('[telegram]\nbot_token = "keys-bot-token"\n')
-    assert get_bot_token(cfg) == "keys-bot-token"
+    cfg.write_text('[agent]\ndefault_model = "m"\n')
+    db = tmp_path / "opencrabs.db"
+    _make_bindings_db(db, [
+        ("old-session", INFERHUB_WATCH_CHAT_ID, 100, None),
+        ("new-session", INFERHUB_WATCH_CHAT_ID, 200, None),
+        ("other-chat-session", "-999", 300, None),
+    ])
+    assert resolve_notify_session(cfg, db_path=db) == "new-session"
 
 
-def test_get_bot_token_config_toml_priority_over_keys_toml(tmp_path):
-    # Both files carry a token: config.toml wins
+def test_resolve_notify_session_bindings_prefers_active(tmp_path):
+    # Most recent binding points at an archived session: prefer older ACTIVE one
     cfg = tmp_path / "config.toml"
-    cfg.write_text('[channels.telegram]\ntoken = "cfg-token"\n')
-    (tmp_path / "keys.toml").write_text('[channels.telegram]\ntoken = "keys-token"\n')
-    assert get_bot_token(cfg) == "cfg-token"
+    cfg.write_text('[agent]\ndefault_model = "m"\n')
+    db = tmp_path / "opencrabs.db"
+    _make_bindings_db(db, [
+        ("archived-session", INFERHUB_WATCH_CHAT_ID, 200, 12345),
+        ("active-session", INFERHUB_WATCH_CHAT_ID, 100, None),
+    ])
+    assert resolve_notify_session(cfg, db_path=db) == "active-session"
 
 
-def test_get_bot_token_missing_everywhere(tmp_path):
+def test_resolve_notify_session_last_resort_stale_binding(tmp_path):
+    # Last resort: only binding is for an archived session -> still use it
+    # (a stale binding beats staying silent)
     cfg = tmp_path / "config.toml"
-    cfg.write_text("[agent]\ndefault_model = \"m\"\n")
-    assert get_bot_token(cfg) is None
+    cfg.write_text('[agent]\ndefault_model = "m"\n')
+    db = tmp_path / "opencrabs.db"
+    _make_bindings_db(db, [("archived-session", INFERHUB_WATCH_CHAT_ID, 200, 12345)])
+    assert resolve_notify_session(cfg, db_path=db) == "archived-session"
 
 
-def test_get_bot_token_no_files(tmp_path):
-    assert get_bot_token(tmp_path / "config.toml") is None
+def test_resolve_notify_session_loud_failure_no_bindings(tmp_path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('[agent]\ndefault_model = "m"\n')
+    db = tmp_path / "opencrabs.db"
+    _make_bindings_db(db, [("other-chat", "-999", 100, None)])
+    with pytest.raises(RuntimeError, match="No session resolvable"):
+        resolve_notify_session(cfg, db_path=db)
 
 
-@patch("scripts.auto_route_switch.send_telegram_notification")
-@patch("scripts.auto_route_switch.get_bot_token")
-def test_run_auto_route_switch_notifies_via_keys_toml_fallback(mock_get_token, mock_send, tmp_path):
-    # End-to-end: config.toml has no token, notification still sent via keys.toml
-    mock_get_token.return_value = "keys-token"
-    mock_send.return_value = True
+def test_resolve_notify_session_loud_failure_missing_db(tmp_path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('[agent]\ndefault_model = "m"\n')
+    with pytest.raises(RuntimeError, match="does not exist"):
+        resolve_notify_session(cfg, db_path=tmp_path / "missing.db")
 
+
+def _mock_notify_proc(returncode=0, stdout="woke: session delivered", stderr=""):
+    proc = MagicMock()
+    proc.returncode = returncode
+    proc.stdout = stdout
+    proc.stderr = stderr
+    return proc
+
+
+@patch("scripts.auto_route_switch.subprocess.run")
+def test_send_session_notification_success_woke(mock_run):
+    mock_run.return_value = _mock_notify_proc(0, "woke: notification delivered to session")
+    ok, detail = send_session_notification("sess-1", "hello")
+    assert ok is True
+    assert "verdict=woke" in detail
+    cmd = mock_run.call_args.args[0]
+    assert cmd[:4] == ["opencrabs", "-p", "ops", "session"]
+    assert "notify" in cmd and "sess-1" in cmd
+    assert "--confirm" in cmd and "--text" in cmd and "--title" in cmd
+
+
+@patch("scripts.auto_route_switch.subprocess.run")
+def test_send_session_notification_verdict_queued(mock_run):
+    mock_run.return_value = _mock_notify_proc(0, "queued: notification enqueued")
+    ok, detail = send_session_notification("sess-1", "hello")
+    assert ok is True
+    assert "verdict=queued" in detail
+
+
+@patch("scripts.auto_route_switch.subprocess.run")
+def test_send_session_notification_verdict_delivered(mock_run):
+    mock_run.return_value = _mock_notify_proc(0, "delivered: notification delivered")
+    ok, _ = send_session_notification("sess-1", "hello")
+    assert ok is True
+
+
+@patch("scripts.auto_route_switch.subprocess.run")
+def test_send_session_notification_nonzero_exit(mock_run):
+    # exit != 0 -> failure even if output mentions a verdict word
+    mock_run.return_value = _mock_notify_proc(2, "no_route: session does not exist")
+    ok, detail = send_session_notification("sess-1", "hello")
+    assert ok is False
+    assert "exit=2" in detail
+
+
+@patch("scripts.auto_route_switch.subprocess.run")
+def test_send_session_notification_missing_verdict(mock_run):
+    # exit 0 but no woke/queued/delivered verdict -> NOT confirmed
+    mock_run.return_value = _mock_notify_proc(0, "routed: handed off to transport")
+    ok, detail = send_session_notification("sess-1", "hello")
+    assert ok is False
+    assert "verdict=none" in detail
+
+
+@patch("scripts.auto_route_switch.subprocess.run")
+def test_send_session_notification_cli_missing(mock_run):
+    mock_run.side_effect = OSError("opencrabs: command not found")
+    ok, detail = send_session_notification("sess-1", "hello")
+    assert ok is False
+    assert detail.startswith("error:")
+
+
+def _write_switch_fixtures(tmp_path):
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "catalog.json").write_text(json.dumps({
@@ -304,15 +411,37 @@ def test_run_auto_route_switch_notifies_via_keys_toml_fallback(mock_get_token, m
     (data_dir / "intelligence.json").write_text(json.dumps({
         "models": {"m1": {"iq": 38.0}, "m2": {"iq": 40.0}}
     }))
-
     cfg_file = tmp_path / "config.toml"
     cfg_file.write_text("""
 [agent]
 default_model = "current/m1"
-
-[channels.telegram]
-admin_chat_id = 42
 """)
+    db_file = tmp_path / "opencrabs.db"
+    conn = sqlite3.connect(str(db_file))
+    with conn:
+        conn.execute("CREATE TABLE sessions (id TEXT PRIMARY KEY, model TEXT, provider_name TEXT, archived_at INTEGER, updated_at INTEGER)")
+        conn.execute("INSERT INTO sessions VALUES ('s1', 'current/m1', 'custom:inferhub', NULL, 1)")
+        conn.execute("""
+            CREATE TABLE session_bindings (
+                session_id TEXT PRIMARY KEY,
+                channel TEXT NOT NULL,
+                chat_id TEXT NOT NULL,
+                thread_id INTEGER,
+                updated_at INTEGER NOT NULL
+            )
+        """)
+        conn.execute(
+            "INSERT INTO session_bindings VALUES ('watch-session', 'telegram', ?, 1, 10)",
+            (INFERHUB_WATCH_CHAT_ID,),
+        )
+    conn.close()
+    return cfg_file, db_file
+
+
+@patch("scripts.auto_route_switch.subprocess.run")
+def test_run_auto_route_switch_notifies_via_session_notify(mock_run, tmp_path):
+    cfg_file, db_file = _write_switch_fixtures(tmp_path)
+    mock_run.return_value = _mock_notify_proc(0, "woke: notification delivered")
 
     res = run_auto_route_switch(
         root_dir=tmp_path,
@@ -320,9 +449,69 @@ admin_chat_id = 42
         db_paths=[],
         dry_run=False,
         notify=True,
+        notify_db_path=db_file,
     )
     assert res["notification_sent"] is True
-    mock_get_token.assert_called_once_with(cfg_file)
-    # chat id came from config.toml admin_chat_id, token from keys.toml
-    assert mock_send.call_args.args[0] == "keys-token"
-    assert mock_send.call_args.args[1] == 42
+    assert res["notify_session"] == "watch-session"
+    cmd = mock_run.call_args.args[0]
+    assert "watch-session" in cmd
+    assert "--confirm" in cmd
+    # No raw Bot API surface anywhere in the command
+    assert all("api.telegram.org" not in str(part) for part in cmd)
+
+
+@patch("scripts.auto_route_switch.subprocess.run")
+def test_run_auto_route_switch_notify_failure_switch_stands(mock_run, tmp_path):
+    # Receipt not confirmed (non-zero exit): notification logged as failed,
+    # but the switch itself still stands (config + sessions updated).
+    cfg_file, db_file = _write_switch_fixtures(tmp_path)
+    mock_run.return_value = _mock_notify_proc(2, "no_route: session does not exist")
+
+    res = run_auto_route_switch(
+        root_dir=tmp_path,
+        config_path=cfg_file,
+        db_paths=[db_file],
+        dry_run=False,
+        notify=True,
+        notify_db_path=db_file,
+    )
+    assert res["notification_sent"] is False
+    assert "no_route" in res["notification_detail"]
+    assert res["config_updated"] is True
+    assert res["sessions_updated"] == 1
+
+    conn = sqlite3.connect(str(db_file))
+    cur = conn.cursor()
+    cur.execute("SELECT model FROM sessions WHERE id = 's1'")
+    assert cur.fetchone()[0] == "better/m2"
+    conn.close()
+
+
+def test_run_auto_route_switch_unresolvable_session_fails_loudly(tmp_path):
+    # No override + no bindings for the watch chat: loud failure recorded,
+    # switch still stands.
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "catalog.json").write_text(json.dumps({
+        "models": {
+            "current/m1": {"ask_in": 0.004, "ask_out": 0.02, "supports_tools": True},
+            "better/m2": {"ask_in": 0.002, "ask_out": 0.01, "supports_tools": True},
+        }
+    }))
+    (data_dir / "intelligence.json").write_text(json.dumps({
+        "models": {"m1": {"iq": 38.0}, "m2": {"iq": 40.0}}
+    }))
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text('[agent]\ndefault_model = "current/m1"\n')
+
+    res = run_auto_route_switch(
+        root_dir=tmp_path,
+        config_path=cfg_file,
+        db_paths=[],
+        dry_run=False,
+        notify=True,
+        notify_db_path=tmp_path / "missing.db",
+    )
+    assert res["notification_sent"] is False
+    assert "Cannot resolve notify session" in res["notification_error"]
+    assert res["config_updated"] is True
