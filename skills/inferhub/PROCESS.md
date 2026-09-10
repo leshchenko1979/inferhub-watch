@@ -56,6 +56,14 @@ The HQ does not execute project work itself — HQ executes the PROCESS. For eve
 
 A rule without a source incident is a guess; each landed rule cites its origin (date + one-line what happened). The improvement ledger records the extraction.
 
+## HQ role boundary (owner orders 2026-09-10 05:43–05:45Z)
+
+Three hard orders, extracted from the group history same-day:
+
+1. **HQ works on the process, not in the process.** The HQ never executes project tasks itself — for every task it finds or creates a worker and dispatches per the dispatch law. HQ-owned work = process law, triage, dispatch, reports only.
+2. **All HQ work is logged for further analysis.** Every dispatch, decision, and cycle output leaves a durable trace: issues on the board, ledger entries here, and the cron report in the group. No silent work.
+3. **Worker topics via the userbot.** Workers live as forum topics in the Telegram group "Inferhub watch". Topic creation and renaming go through the userbot surface (`tg_mtproto`, e.g. `messages.CreateForumTopic` / `channels.EditForumTopic`) — never the Bot API (the bot cannot manage forum topics it didn't create).
+
 ## Self-improvement (daily cron loads this section)
 
 For now this section contains one directive:
@@ -89,4 +97,6 @@ Track proposed → landed process changes here, one line each:
 - 2026-09-10: first daily cycle executed clean — no `hq:` proposal (no process gap found); bootstrap issue #1 closed with receipt.
 - 2026-09-10: rule-extraction law landed (owner order) — extract and persist a rule from every conversation/incident; this ledger records extractions.
 - 2026-09-10: self-improvement section reseeded (owner order) — directive = "find objects in the project for self-improvement"; procedure made self-evolving (scan one object per cycle, `hq:` issue per proposal, section grows, procedure itself a valid object).
+- 2026-09-10: HQ cycle 05:5xZ — sweep healthy (scheduled run success 22.3h ago, within window; today's 02:17Z firing still pending/queued by GitHub), board 0 open, tests 468 passed. Self-improvement scan object: cron cadence mismatch — the PROCESS.md cycle law said "daily cron" but the owner retimed it to hourly (05:41Z); proposed `hq:` issue to align (pending owner 👍).
+- 2026-09-10: rule extraction — 3 owner orders (05:43–05:45Z) landed as "HQ role boundary" section: HQ on-process-not-in-process, all HQ work logged, worker topics via userbot `tg_mtproto`.
 - 2026-09-10: delegation law landed (owner order: "work on the process, not in the process") — every task dispatched to a worker, worker spawn requires a forum topic (created via userbot `messages.CreateForumTopic`), all work logged (ledger + WORKLOG.md) for further analysis.
