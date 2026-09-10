@@ -157,19 +157,23 @@ def resolve_slug(route: str, aa_map: dict, slugs: dict) -> str | None:
     return None
 
 
-def sync_route_metrics(conn) -> int:
+def sync_route_metrics(conn, live_models: dict[str, dict] | None = None) -> int:
     """D3 decision layer: upsert catalog asks + AA IQ per route into
     route_metrics, the table the dashboard's scatter/panels join against."""
     import json
 
     root = Path(__file__).resolve().parents[1]
-    catalog = json.loads((root / "data" / "catalog.json").read_text())
     intel = json.loads((root / "data" / "intelligence.json").read_text())
     toml_models = tomllib.loads((root / "models.toml").read_text()) \
         if (root / "models.toml").exists() else {}
     aa_map = toml_models.get("aa") or {}
     slugs = intel.get("models") or {}
-    models = catalog.get("models") or {}
+
+    if live_models is not None:
+        models = live_models
+    else:
+        catalog = json.loads((root / "data" / "catalog.json").read_text())
+        models = catalog.get("models") or {}
 
     with conn.cursor() as cur:
         cur.execute("""
@@ -228,14 +232,14 @@ def main() -> int:
 
     key = api_key()
 
-    # Always refresh live catalog asks into data/catalog.json on every sync
+    # Refresh live catalog asks in-memory for route_metrics and auto-route switch (issue #11)
+    # Do not overwrite tracked data/catalog.json, which is maintained by daily GitHub Actions sweeps
+    live_models = None
     try:
-        from probe.catalog import fetch_models, write_snapshot
-        root_dir = Path(__file__).resolve().parents[1]
+        from probe.catalog import fetch_models
         live_models = fetch_models(key)
         if live_models:
-            write_snapshot(live_models, root_dir)
-            print(f"catalog snapshot updated: {len(live_models)} models")
+            print(f"catalog live asks fetched in-memory: {len(live_models)} models")
     except Exception as exc:
         print(f"catalog refresh warning: {exc}")
 
@@ -256,7 +260,7 @@ def main() -> int:
     else:
         print("no new usage logs to cache")
 
-    metrics = sync_route_metrics(conn)
+    metrics = sync_route_metrics(conn, live_models=live_models)
     print(f"route_metrics upserted: {metrics}")
     with conn.cursor() as cur:
         cur.execute("select max(created_at) from usage_logs")
@@ -266,7 +270,7 @@ def main() -> int:
     # Trigger automated route switching evaluation (issue #12)
     try:
         from scripts.auto_route_switch import run_auto_route_switch
-        switch_res = run_auto_route_switch()
+        switch_res = run_auto_route_switch(catalog_models=live_models)
         if switch_res.get("should_switch"):
             print(f"auto_route_switch: switched to {switch_res.get('best_model')}")
         else:

@@ -337,6 +337,7 @@ def run_auto_route_switch(
     notify: bool = True,
     floor_iq: float = IQ_FLOOR,
     threshold: float = SWITCH_THRESHOLD,
+    catalog_models: dict[str, dict] | None = None,
 ) -> dict[str, Any]:
     """Main pipeline execution for auto route switching."""
     if db_paths is None:
@@ -346,16 +347,20 @@ def run_auto_route_switch(
     intel_path = root_dir / "data" / "intelligence.json"
     models_toml_path = root_dir / "models.toml"
 
-    if not catalog_path.exists() or not intel_path.exists():
-        return {"status": "error", "message": "Catalog or intelligence data missing"}
+    if catalog_models is None:
+        if not catalog_path.exists() or not intel_path.exists():
+            return {"status": "error", "message": "Catalog or intelligence data missing"}
+        catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+        catalog_models = catalog.get("models", {})
+    else:
+        if not intel_path.exists():
+            return {"status": "error", "message": "Intelligence data missing"}
 
-    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     intel = json.loads(intel_path.read_text(encoding="utf-8"))
     aa_map: dict[str, Any] = {}
     if models_toml_path.exists():
         aa_map = tomllib.loads(models_toml_path.read_text(encoding="utf-8")).get("aa", {})
 
-    catalog_models = catalog.get("models", {})
     intel_slugs = intel.get("models", {})
 
     current_model = get_current_model(config_path)

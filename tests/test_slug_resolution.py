@@ -129,6 +129,38 @@ class LiveCatalogTests(unittest.TestCase):
         self.assertGreaterEqual(
             share, 0.90, f"only {hits}/{len(models)} routes have iq")
 
+    def test_sync_route_metrics_with_live_models(self) -> None:
+        """Verify sync_route_metrics accepts live_models in-memory without error."""
+        class DummyCursor:
+            def __init__(self):
+                self.executed = []
+
+            def execute(self, sql, params=None):
+                self.executed.append((sql, params))
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        class DummyConn:
+            def cursor(self):
+                return DummyCursor()
+
+        conn = DummyConn()
+        mock_live_models = {
+            "mock/model-1": {
+                "ask_in": 0.001,
+                "ask_out": 0.002,
+                "official_in": 0.01,
+                "official_out": 0.02,
+                "supports_cache": True,
+            }
+        }
+        res = sync.sync_route_metrics(conn, live_models=mock_live_models)
+        self.assertEqual(res, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
