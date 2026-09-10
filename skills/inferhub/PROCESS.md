@@ -21,6 +21,15 @@ Banned synonyms (enforced by `tests/test_ontology.py` in code; by review in pros
 - Open issues are re-triaged at every daily cycle (see Self-improvement): close stale, re-scope drifting ones, escalate blocked ones to the owner in the Telegram group.
 - Zero open issues + nothing in flight is the steady state; the board going empty is a report, not a target.
 
+## Delegation law (hard, owner order 2026-09-10: "You work on the process, not in the process")
+
+The HQ does not execute project work itself — HQ executes the PROCESS. For every task:
+
+- **Find or create a worker.** A task landing on the HQ is dispatched, never done inline. HQ hands = process edits (this file, ONTOLOGY.md, issues, cron config), nothing else.
+- **Creating a worker → create a forum topic.** Every worker gets a dedicated forum topic in the "Inferhub watch" group at spawn time. Topic is the worker's lane: brief, receipts, and result report land there. Created via the userbot (`tg_mtproto`, `messages.CreateForumTopic` with `peer` arg — NOT the bot API: bot got `chat not found`; NOT `channels.CreateForumTopic`: wrong TL namespace) and the topic name is recorded on the dispatching issue.
+- **Log everything for further analysis.** Every task — inline HQ process edit, dispatch, worker result — leaves a trace: a ledger line (Improvement ledger below for process work, the issue itself for task work). No work without a log entry; the log is the analysis substrate. (Owner order 2026-09-10.)
+- HQ exception: the hourly cycle itself (pull, sweep check, site check, report) is HQ-owned process work — its logs are the cycle reports + ledger. Task-shaped findings discovered mid-cycle (a failed sweep, a stale site) are still dispatched, not fixed inline.
+
 ## Worker dispatch law (hard)
 
 - Any task that outgrows a single reply becomes an issue first, then a dispatch.
@@ -80,3 +89,4 @@ Track proposed → landed process changes here, one line each:
 - 2026-09-10: first daily cycle executed clean — no `hq:` proposal (no process gap found); bootstrap issue #1 closed with receipt.
 - 2026-09-10: rule-extraction law landed (owner order) — extract and persist a rule from every conversation/incident; this ledger records extractions.
 - 2026-09-10: self-improvement section reseeded (owner order) — directive = "find objects in the project for self-improvement"; procedure made self-evolving (scan one object per cycle, `hq:` issue per proposal, section grows, procedure itself a valid object).
+- 2026-09-10: delegation law landed (owner order: "work on the process, not in the process") — every task dispatched to a worker, worker spawn requires a forum topic (created via userbot `messages.CreateForumTopic`), all work logged (ledger + WORKLOG.md) for further analysis.
