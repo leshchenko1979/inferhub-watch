@@ -12,3 +12,4 @@
 - 2026-09-10 06:16Z — cleanliness law (owner): hygiene audit run — 26 subagent branches (all merged) + gh-pages-fresh (stale 08-27 experiment, local-only) deleted, orphan worktree 6477167e removed, remote refs pruned, .ruff_cache/ gitignored. Law persisted in PROCESS.md §Cleanliness law.
 - 2026-09-10 06:2xZ — Law: laws themselves are self-improvement objects (owner 06:22Z); scan step 6 amended, seed phrase immutable.
 - 2026-09-10 06:3xZ: HQ — research-before-process law (5b65651) + SKILL.md format adoption: frontmatter added, PROCESS.md→SKILL.md rename, refs updated, hourly cron prompt rewired (912411e). Source: owner directive 06:25Z.
+| 2026-09-10 06:3xZ | HQ | Cron execution law: hourly cron is now a thin session_notify trigger to HQ (359fe71b), HQ executes the cycle — skill 7e4228b, cron prompt rewired, test-fired |
