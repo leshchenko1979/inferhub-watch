@@ -23,3 +23,4 @@
 - 2026-09-10: self-improvement section reseeded (owner order) — directive = "find objects in the project for self-improvement"; procedure made self-evolving (scan one object per cycle, `hq:` issue per proposal, section grows, procedure itself a valid object).
 - 2026-09-10 07:1xZ — mission law landed (owner: "provide timely updates on routes with bigger IQ per projected price", commit 9cb81a2). First act: found route_metrics.iq NULL for all rows (slug-mapping defect) → issue #6 filed, self-approved, dispatched to worker topic "Worker — HQ cycles". Value table (discount vs official ask) reported to owner.
 - 2026-09-10 09:15Z: [issue #7](https://github.com/leshchenko1979/inferhub-watch/issues/7) landed — grounded step 5(b) probe currency command in SKILL.md with verified apps docker container snippet.
+| 2026-09-10 10:07 UTC | Codified minimum charge floor invariant in ONTOLOGY.md | #8 | closed |
