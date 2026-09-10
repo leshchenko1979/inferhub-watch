@@ -100,23 +100,32 @@ def _pick_candidate(cands: list[str], slugs: dict) -> str | None:
     return sorted(pool, key=lambda s: (len(s), s))[0]
 
 
+def _digit_tokens(name: str) -> set[str]:
+    """Tokens that carry a digit ('v2', '4', '1m') — the version identity of
+    a model name. Used to stop the fuzzy fallback from crossing versions."""
+    return {t for t in name.split("-") if any(c.isdigit() for c in t)}
+
+
 def resolve_slug(route: str, aa_map: dict, slugs: dict) -> str | None:
-    """Map a catalog route (publisher/model or publisher/v/model) to an
+    """Map a catalog route (publisher/model or publisher/vendor/model) to an
     intelligence.json model slug.
 
     Order (issue #6):
       1. models.toml [aa] override — explicit, wins over everything.
-      2. Exact normalized tail ('deepseek-v4-flash' style).
-      3. Trailing date dropped ('deepseek-v4-flash-0731' ->
-         'deepseek-v4-flash').
-      4. Trailing qualifier dropped ('muse-spark-1-2-contributor' ->
-         'muse-spark-1-2').
-      5. Prefix match ('gemini-3-6-flash-high' -> 'gemini-3-6-flash',
-         'qwen3-6-max-preview' -> 'qwen3-6-max').
-      6. Word-order-insensitive index ('claude-haiku-4-5' route tail vs
+      2. Exact normalized tail (dots/underscores -> dashes).
+      3. A known slug extends the tail ('kimi-k2-7' -> 'kimi-k2-7-code',
+         'mimo-v2-5' -> 'mimo-v2-5-pro').
+      4. A known slug is a prefix of the tail — the route appended a
+         qualifier, context tag or date ('claude-opus-4-7-1m' ->
+         'claude-opus-4-7', 'gemini-3-6-flash-high' -> 'gemini-3-6-flash',
+         'deepseek-v4-flash-0731' -> 'deepseek-v4-flash'). Longest match
+         wins — it is the most specific model.
+      5. Word-order-insensitive index ('claude-haiku-4-5' route tail vs
          'claude-4-5-haiku' slug).
-      7. Fuzzy (difflib, 0.75 cutoff): 'kimi-k2-7' -> 'kimi-k2-7-code',
-         'mimo-v2-5' -> 'mimo-v2-5-0424'.
+      6. Fuzzy (difflib, 0.75 cutoff) as a last resort, guarded so a
+         candidate can never drop a version token — 'claude-opus-4-7-1m'
+         must not fuzzy to 'claude-opus-5' (difflib rates it 0.77); it is
+         resolved by (4) instead.
     """
     tail = route.rsplit("/", 1)[-1]
     direct = aa_map.get(route) or _norm_slug(tail)
@@ -124,29 +133,25 @@ def resolve_slug(route: str, aa_map: dict, slugs: dict) -> str | None:
         return direct
 
     parts = direct.split("-")
-    # trailing date variant: deepseek-v4-flash-0731
-    if len(parts) > 1 and parts[-1].isdigit() and len(parts[-1]) == 4:
-        cand = "-".join(parts[:-1])
+    # the tail is a prefix of a known slug: kimi-k2-7 -> kimi-k2-7-code
+    extension = [s for s in slugs if s.startswith(direct + "-")]
+    if extension:
+        return _pick_candidate(extension, slugs)
+    # a known slug is a prefix of the tail: claude-opus-4-7-1m ->
+    # claude-opus-4-7, gemini-3-6-flash-high -> gemini-3-6-flash
+    for i in range(len(parts) - 1, 0, -1):
+        cand = "-".join(parts[:i])
         if cand in slugs:
             return cand
-    # suffix-qualified variant: muse-spark-1-2-contributor
-    if (len(parts) > 2 and len(parts[-1]) >= 4
-            and not parts[-1][0].isdigit()):
-        cand = "-".join(parts[:-1])
-        if cand in slugs:
-            return cand
-    # prefix candidates: gemini-3-6-flash-high -> gemini-3-6-flash
-    prefix = [s for s in slugs if s.startswith(direct + "-")]
-    if prefix:
-        return _pick_candidate(prefix, slugs)
     # word-order-insensitive: claude-haiku-4-5 -> claude-4-5-haiku
     key = "-".join(sorted(parts))
     swapped = [s for s in slugs
                if "-".join(sorted(s.split("-"))) == key and s != direct]
     if swapped:
         return _pick_candidate(swapped, slugs)
-    # fuzzy: kimi-k2-7 -> kimi-k2-7-code, mimo-v2-5 -> mimo-v2-5-0424
+    # fuzzy last resort, version-guarded (see docstring step 6)
     close = difflib.get_close_matches(direct, list(slugs), n=5, cutoff=0.75)
+    close = [s for s in close if _digit_tokens(direct) <= _digit_tokens(s)]
     if close:
         return _pick_candidate(close, slugs)
     return None

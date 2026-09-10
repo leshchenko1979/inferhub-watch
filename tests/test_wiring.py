@@ -154,7 +154,10 @@ class WiringTests(unittest.TestCase):
         self.assertIn(f"<code>{expected_first}</code>", results)
         self.assertIn('class="fam-head"', results)
         self.assertIn('class="chip', results)
-        self.assertIn('class="pill in-use"', results)
+        # in-use marker renders on every ranked route; the exact variant is
+        # data-driven (full pill at >= IN_USE_MIN_REQS billed reqs in the
+        # newest 24h, muted 'light use' below it), so assert the family.
+        self.assertIn('class="pill in-use', results)
         self.assertIn('data-label="tests"', results)
         self.assertNotIn("info · not ranked", html)
         self.assertNotIn('class="timeline"', html)
