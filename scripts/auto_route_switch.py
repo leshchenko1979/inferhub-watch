@@ -51,7 +51,17 @@ INFERHUB_WATCH_CHAT_ID = "-1004379632866"
 NOTIFY_PROFILE = "ops"
 NOTIFY_TITLE = "Inferhub Route Auto-Switched"
 # Receipt verdicts accepted from `opencrabs session notify --confirm` (Issue #14).
-NOTIFY_VERDICTS = ("woke", "queued", "delivered")
+# The CLI's text output renders the confirm verdict as prose in the detail
+# line (daemon confirm_route): "Confirmed end-to-end" = woke, "Confirmed
+# queued" = queued_pending_drain, "no wake was observed" = delivered. The
+# state names themselves are never printed, so matching is on the prose.
+# NOTE: exit code 0 alone is NOT enough — parked (channel not claimed since
+# boot, #1206) also exits 0 but carries no confirm verdict.
+CONFIRM_VERDICTS = (
+    ("woke", "Confirmed end-to-end"),
+    ("queued_pending_drain", "Confirmed queued"),
+    ("delivered", "no wake was observed"),
+)
 
 
 # Models or publishers known not to support standard chat/tool calling
@@ -381,8 +391,8 @@ def send_session_notification(
     Runs: opencrabs -p <profile> session notify <session_id> --text ... --title ... --confirm
 
     Success requires BOTH: subprocess exit code 0 AND a --confirm verdict
-    (woke / queued / delivered) in the CLI output. Both are logged. No silent
-    HTTP fire: the notified session owns the Telegram card.
+    (woke / queued_pending_drain / delivered) in the CLI output. Both are
+    logged. No silent HTTP fire: the notified session owns the Telegram card.
     """
     cmd = [
         "opencrabs",
@@ -400,7 +410,8 @@ def send_session_notification(
 
     output = ((proc.stdout or "") + (proc.stderr or "")).strip()
     logger.info(f"session notify exit={proc.returncode} output={output!r}")
-    verdict = next((v for v in NOTIFY_VERDICTS if re.search(rf"\b{v}\b", output, re.IGNORECASE)), None)
+    # The confirm verdict is prose in the CLI detail line (see CONFIRM_VERDICTS).
+    verdict = next((name for name, prose in CONFIRM_VERDICTS if prose in output), None)
     detail = f"exit={proc.returncode} verdict={verdict or 'none'} output={output!r}"
 
     if proc.returncode != 0 or verdict is None:

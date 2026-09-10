@@ -348,7 +348,11 @@ def _mock_notify_proc(returncode=0, stdout="woke: session delivered", stderr="")
 
 @patch("scripts.auto_route_switch.subprocess.run")
 def test_send_session_notification_success_woke(mock_run):
-    mock_run.return_value = _mock_notify_proc(0, "woke: notification delivered to session")
+    # CLI text output for a confirm wake: outcome "delivered" + detail prose
+    # "Confirmed end-to-end" (daemon confirm_route). Verdict reported = woke.
+    mock_run.return_value = _mock_notify_proc(
+        0, "✅ delivered: Confirmed end-to-end: the target was idle and has started a turn on the message."
+    )
     ok, detail = send_session_notification("sess-1", "hello")
     assert ok is True
     assert "verdict=woke" in detail
@@ -359,24 +363,33 @@ def test_send_session_notification_success_woke(mock_run):
 
 
 @patch("scripts.auto_route_switch.subprocess.run")
-def test_send_session_notification_verdict_queued(mock_run):
-    mock_run.return_value = _mock_notify_proc(0, "queued: notification enqueued")
+def test_send_session_notification_verdict_queued_pending_drain(mock_run):
+    # Mid-turn target: outcome "delivered" + detail prose "Confirmed queued".
+    # Verdict must be reported as queued_pending_drain, not a bare "queued".
+    mock_run.return_value = _mock_notify_proc(
+        0, "✅ delivered: Confirmed queued: the target is mid-turn; the message injects at its next tool-loop boundary."
+    )
     ok, detail = send_session_notification("sess-1", "hello")
     assert ok is True
-    assert "verdict=queued" in detail
+    assert "verdict=queued_pending_drain" in detail
 
 
 @patch("scripts.auto_route_switch.subprocess.run")
 def test_send_session_notification_verdict_delivered(mock_run):
-    mock_run.return_value = _mock_notify_proc(0, "delivered: notification delivered")
-    ok, _ = send_session_notification("sess-1", "hello")
+    # Routed but no wake observed within cap: detail prose "no wake was
+    # observed" — still an accepted confirm verdict (delivered).
+    mock_run.return_value = _mock_notify_proc(
+        0, "✅ delivered: Routed to session sess-1, but no wake was observed within 10s — the target may be parked."
+    )
+    ok, detail = send_session_notification("sess-1", "hello")
     assert ok is True
+    assert "verdict=delivered" in detail
 
 
 @patch("scripts.auto_route_switch.subprocess.run")
 def test_send_session_notification_nonzero_exit(mock_run):
     # exit != 0 -> failure even if output mentions a verdict word
-    mock_run.return_value = _mock_notify_proc(2, "no_route: session does not exist")
+    mock_run.return_value = _mock_notify_proc(2, "❌ no_route: 'x' is not a valid session UUID (exit 2)")
     ok, detail = send_session_notification("sess-1", "hello")
     assert ok is False
     assert "exit=2" in detail
@@ -384,8 +397,12 @@ def test_send_session_notification_nonzero_exit(mock_run):
 
 @patch("scripts.auto_route_switch.subprocess.run")
 def test_send_session_notification_missing_verdict(mock_run):
-    # exit 0 but no woke/queued/delivered verdict -> NOT confirmed
-    mock_run.return_value = _mock_notify_proc(0, "routed: handed off to transport")
+    # exit 0 but no confirm verdict prose: a PARKED outcome (#1206, channel
+    # not claimed since boot) exits 0 yet carries no woke/queued_pending_drain/
+    # delivered verdict — must NOT be treated as confirmed.
+    mock_run.return_value = _mock_notify_proc(
+        0, "✅ parked: queued for session sess-1: its channel has not claimed it since the last restart (#1206)"
+    )
     ok, detail = send_session_notification("sess-1", "hello")
     assert ok is False
     assert "verdict=none" in detail
@@ -441,7 +458,9 @@ default_model = "current/m1"
 @patch("scripts.auto_route_switch.subprocess.run")
 def test_run_auto_route_switch_notifies_via_session_notify(mock_run, tmp_path):
     cfg_file, db_file = _write_switch_fixtures(tmp_path)
-    mock_run.return_value = _mock_notify_proc(0, "woke: notification delivered")
+    mock_run.return_value = _mock_notify_proc(
+        0, "✅ delivered: Confirmed end-to-end: the target was idle and has started a turn on the message."
+    )
 
     res = run_auto_route_switch(
         root_dir=tmp_path,
@@ -465,7 +484,7 @@ def test_run_auto_route_switch_notify_failure_switch_stands(mock_run, tmp_path):
     # Receipt not confirmed (non-zero exit): notification logged as failed,
     # but the switch itself still stands (config + sessions updated).
     cfg_file, db_file = _write_switch_fixtures(tmp_path)
-    mock_run.return_value = _mock_notify_proc(2, "no_route: session does not exist")
+    mock_run.return_value = _mock_notify_proc(2, "❌ no_route: 'x' is not a valid session UUID (exit 2)")
 
     res = run_auto_route_switch(
         root_dir=tmp_path,
