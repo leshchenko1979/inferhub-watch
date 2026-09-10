@@ -14,3 +14,10 @@
 - 2026-09-10 06:3xZ: HQ — research-before-process law (5b65651) + SKILL.md format adoption: frontmatter added, PROCESS.md→SKILL.md rename, refs updated, hourly cron prompt rewired (912411e). Source: owner directive 06:25Z.
 | 2026-09-10 06:3xZ | HQ | Cron execution law: hourly cron is now a thin session_notify trigger to HQ (359fe71b), HQ executes the cycle — skill 7e4228b, cron prompt rewired, test-fired |
 - 2026-09-10 06:34Z: HQ hourly cycle — sweep healthy (schedule 34323731790, 23.1h), Grafana 200, board 0 open, tests 468 passed. Scan → issue #4 (step-5 Grafana check lacked probe-data-currency leg); self-approved + landed same cycle. Commit follows.
+
+## Archived improvement-ledger entries (2026-09-10)
+
+- 2026-09-10: skill created — initial process law (issues, dispatch, ontology, daily self-improvement).
+- 2026-09-10: first daily cycle executed clean — no `hq:` proposal (no process gap found); bootstrap issue #1 closed with receipt.
+- 2026-09-10: rule-extraction law landed (owner order) — extract and persist a rule from every conversation/incident; this ledger records extractions.
+- 2026-09-10: self-improvement section reseeded (owner order) — directive = "find objects in the project for self-improvement"; procedure made self-evolving (scan one object per cycle, `hq:` issue per proposal, section grows, procedure itself a valid object).
