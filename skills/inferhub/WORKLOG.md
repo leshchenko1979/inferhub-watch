@@ -13,3 +13,4 @@
 - 2026-09-10 06:2xZ — Law: laws themselves are self-improvement objects (owner 06:22Z); scan step 6 amended, seed phrase immutable.
 - 2026-09-10 06:3xZ: HQ — research-before-process law (5b65651) + SKILL.md format adoption: frontmatter added, PROCESS.md→SKILL.md rename, refs updated, hourly cron prompt rewired (912411e). Source: owner directive 06:25Z.
 | 2026-09-10 06:3xZ | HQ | Cron execution law: hourly cron is now a thin session_notify trigger to HQ (359fe71b), HQ executes the cycle — skill 7e4228b, cron prompt rewired, test-fired |
+- 2026-09-10 06:34Z: HQ hourly cycle — sweep healthy (schedule 34323731790, 23.1h), Grafana 200, board 0 open, tests 468 passed. Scan → issue #4 (step-5 Grafana check lacked probe-data-currency leg); self-approved + landed same cycle. Commit follows.
