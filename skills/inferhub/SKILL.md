@@ -13,6 +13,15 @@ description: HQ process for the inferhub-watch project — issue triage, worker 
 - The HQ operates in Telegram group "Inferhub watch" (forum; HQ topic = thread 2).
 - Sole GitHub identity: `leshchenko1979`.
 
+## Mission (owner order 2026-09-10 07:0xZ: "One of the aims of the project is to provide timely updates on routes with bigger IQ per projected price")
+
+**The project exists to let the owner extract the best value/price ratio from the Inferhub inference auction.** Concretely: timely updates on **routes with bigger IQ per $** (per `ONTOLOGY.md`) — high-IQ routes at low ask are the candidates worth surfacing first.
+
+- **Value signal, not just health signal.** Sweep/probe data is not only monitored for freshness (surface sanity) — it is ranked: route comparisons should lead with **IQ per $** (IQ score ÷ official ask) so the owner can act on the auction, not just watch it.
+- **Timeliness is part of the mission.** "Timely" binds the observation-surface cadence: probe data currency (cycle step 5 leg b) and sweep health (step 3) are mission-critical, not hygiene — a stale ranking is a failed mission output even when all systems are green.
+- Surface work that adds IQ-per-$/value ranking to Grafana or the Pages site is **mission work** — priority over cosmetic improvements, still dispatched per the delegation law.
+- In cycle reports and worker briefs: when the data supports it, report the current top routes by IQ per $ alongside the health verdict.
+
 ## Ontology law (hard)
 
 Every report, issue, and commit uses the codified terms from `ONTOLOGY.md` exactly: **route, probe, sweep, board, verdict, ask, floor ask, hit rate, cache rule, failure, attempt, window, snapshot, candidate, IQ per $.**
