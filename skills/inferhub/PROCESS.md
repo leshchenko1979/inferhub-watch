@@ -94,7 +94,7 @@ For now this section contains one directive:
 
 Each cycle, after loading this section:
 
-6. **Self-improvement scan:** pick ONE concrete object in the project — code, tests, `probe/run.py` conventions, `ONTOLOGY.md`, the site surface, or this very file — worth improving. A stale or vague scan output ("nothing found" without a one-line look rationale) is a failed step: scan before declaring.
+6. **Self-improvement scan:** pick ONE concrete object in the project — code, tests, `probe/run.py` conventions, `ONTOLOGY.md`, the site surface, **the laws of this file itself** (every law is an object: stale, contradictory, over/under-scoped, or missing-guardrail laws get an `hq:` proposal like any other — owner order 2026-09-10 06:22Z; the seed phrase below is the only immutable text), or any other object worth improving. A stale or vague scan output ("nothing found" without a one-line look rationale) is a failed step: scan before declaring.
 7. **Propose:** open an `hq:` issue describing the object + the concrete improvement. On owner 👍, land the edit in the same turn it's approved.
 8. **Grow this section:** a landed object may add one line here so the next cycle inherits it. This procedure itself is a valid object — any cycle may propose an edit to this section as its scan result. Content the owner seeds here directly (like this phrase) is never deleted, only extended.
 9. **Ledger:** append the scan result (object chosen, issue number, landed or waiting) to the Improvement ledger below.

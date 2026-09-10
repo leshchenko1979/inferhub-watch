@@ -10,3 +10,4 @@
 - 2026-09-10 06:00Z HQ hourly cycle: sweep healthy (schedule 34323731790, 22.6h), Grafana 200 (main surface, probe data fresh), site 200 secondary, board 1 open (#2 pending 👍). Scan → issue #3 (step-3 sweep check must filter --event schedule; push runs mask missed sweeps).
 - 2026-09-10 06:1xZ — Self-approval law received; HQ approved + executed issue #3 (step-3 sweep-health --event schedule filter), commit beef488, issue closed with receipt. No board items remain.
 - 2026-09-10 06:16Z — cleanliness law (owner): hygiene audit run — 26 subagent branches (all merged) + gh-pages-fresh (stale 08-27 experiment, local-only) deleted, orphan worktree 6477167e removed, remote refs pruned, .ruff_cache/ gitignored. Law persisted in PROCESS.md §Cleanliness law.
+- 2026-09-10 06:2xZ — Law: laws themselves are self-improvement objects (owner 06:22Z); scan step 6 amended, seed phrase immutable.
