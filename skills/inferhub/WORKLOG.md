@@ -6,3 +6,4 @@
 |---|---|---|---|
 | 2026-09-10 | Delegation law landed: HQ works on the process; workers via forum topics; work logging mandated | (this edit, process) | committed |
 - 2026-09-10 06:0xZ HQ: surface law (grafana main) + object-link law landed, commit 8738266; cron prompt rewired. Pending dispatch: issue #2 (hourly cadence law, awaiting owner 👍).
+- 2026-09-10 06:00Z HQ hourly cycle: sweep healthy (schedule 34323731790, 22.6h), Grafana 200 (main surface, probe data fresh), site 200 secondary, board 1 open (#2 pending 👍). Scan → issue #3 (step-3 sweep check must filter --event schedule; push runs mask missed sweeps).
