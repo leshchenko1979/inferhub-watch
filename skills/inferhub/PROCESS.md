@@ -44,6 +44,10 @@ The HQ does not execute project work itself — HQ executes the PROCESS. For eve
 
 Every reference to a GitHub object — issue, PR, commit, run, file — carries a full URL in the same sentence: `https://github.com/leshchenko1979/inferhub-watch/issues/<n>`, `/commit/<sha>`, `/actions/runs/<id>`, `/blob/main/<path>`. Bare numbers ("issue #2", "commit cfa6dfa") are for the board's internal grep, not for reports the owner reads. Applies to Telegram reports, issue comments, and dispatch prompts alike.
 
+## Research-before-process law (owner order 2026-09-10 06:25Z: "When setting up a new process, research best practices and ready skill.md files on the web")
+
+Before persisting ANY new process law, skill section, or workflow design in this repo, HQ (or the worker tasked with it) FIRST researches the web: existing best practices, mature SKILL.md / agent-skill formats (e.g. Anthropic's agent-skills repo, OpenAI swarm patterns), and prior art for the exact problem domain. The draft then cites what was found and either adopts the ready pattern or documents why it deviates. Never design from scratch what the ecosystem has already hardened. Scope: NEW processes only — a one-line owner directive landing in this file is persisted first (same-turn law) and may be refined by research afterward, not gated by it.
+
 ## Worker dispatch law (hard)
 
 - Any task that outgrows a single reply becomes an issue first, then a dispatch.
