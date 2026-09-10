@@ -44,7 +44,7 @@
         "h": 5,
         "w": 6,
         "x": 0,
-        "y": 33
+        "y": 39
       },
       "id": 2,
       "options": {
@@ -103,7 +103,7 @@
         "h": 5,
         "w": 6,
         "x": 12,
-        "y": 33
+        "y": 39
       },
       "id": 3,
       "options": {
@@ -160,7 +160,7 @@
         "h": 5,
         "w": 6,
         "x": 6,
-        "y": 33
+        "y": 39
       },
       "id": 4,
       "options": {
@@ -616,7 +616,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 36
+        "y": 44
       },
       "id": 6,
       "options": {
@@ -677,7 +677,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 36
+        "y": 44
       },
       "id": 7,
       "options": {
@@ -738,7 +738,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 45
+        "y": 53
       },
       "id": 8,
       "options": {
@@ -799,7 +799,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 45
+        "y": 53
       },
       "id": 9,
       "options": {
@@ -906,10 +906,10 @@
         ]
       },
       "gridPos": {
-        "h": 6,
+        "h": 14,
         "w": 12,
         "x": 0,
-        "y": 16
+        "y": 15
       },
       "id": 20,
       "options": {
@@ -931,8 +931,8 @@
         },
         "xField": "route",
         "xTickLabelMaxGap": 0,
-        "xTickLabelRotation": 45,
-        "xTickLabelSkip": 1
+        "xTickLabelRotation": 0,
+        "xTickLabelSkip": 0
       },
       "pluginVersion": "11.6.0",
       "targets": [
@@ -942,11 +942,11 @@
             "type": "grafana-postgresql-datasource",
             "uid": "inferhub-pg"
           },
-          "rawSql": "WITH u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.ask_in IS NOT NULL\n)\nSELECT route AS \"route\",\n  CASE WHEN tier='in use'  THEN ask_in END AS \"in use\",\n  CASE WHEN tier='probed'  THEN ask_in END AS \"probed\",\n  CASE WHEN tier='catalog' THEN ask_in END AS \"catalog\"\nFROM base\nWHERE true\nORDER BY ask_in\nLIMIT 48",
+          "rawSql": "WITH u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.ask_in IS NOT NULL\n)\nSELECT route AS \"route\",\n  CASE WHEN tier='in use'  THEN ask_in END AS \"in use\",\n  CASE WHEN tier='probed'  THEN ask_in END AS \"probed\",\n  CASE WHEN tier='catalog' THEN ask_in END AS \"catalog\"\nFROM base\nWHERE true\nORDER BY ask_in\nLIMIT 40",
           "format": "table"
         }
       ],
-      "title": "Catalog ask-in $/M \u2014 colored by tier, cheapest first within tier",
+      "title": "Catalog Ask-In $/M \u2014 colored by tier, cheapest first",
       "type": "barchart"
     },
     {
@@ -1031,18 +1031,6 @@
           },
           {
             "matcher": {
-              "id": "byFrameRefID",
-              "options": "A"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "in use: cbcn/glm-5.3-flash, zai/glm-5.3-flash"
-              }
-            ]
-          },
-          {
-            "matcher": {
               "id": "byName",
               "options": "Reqs 24h"
             },
@@ -1055,14 +1043,85 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "projected $/M"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Projected Price"
+              },
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              },
+              {
+                "id": "custom.scaleDistribution",
+                "value": {
+                  "log": 10,
+                  "type": "log"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "AA IQ"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "AA IQ Score"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Reqs 24h"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "24h Requests"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Route"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Model Route"
+              }
+            ]
           }
         ]
       },
       "gridPos": {
-        "h": 6,
+        "h": 14,
         "w": 12,
         "x": 12,
-        "y": 16
+        "y": 15
       },
       "id": 21,
       "options": {
@@ -1075,22 +1134,10 @@
         "mapping": "manual",
         "series": [
           {
-            "color": {
+            "name": {
               "matcher": {
                 "id": "byName",
-                "options": "Tier"
-              }
-            },
-            "frame": {
-              "matcher": {
-                "id": "byIndex",
-                "options": 0
-              }
-            },
-            "size": {
-              "matcher": {
-                "id": "byName",
-                "options": "Reqs 24h"
+                "options": "Route"
               }
             },
             "x": {
@@ -1104,18 +1151,36 @@
                 "id": "byName",
                 "options": "AA IQ"
               }
+            },
+            "size": {
+              "matcher": {
+                "id": "byName",
+                "options": "Reqs 24h"
+              }
+            },
+            "color": {
+              "matcher": {
+                "id": "byName",
+                "options": "Tier"
+              }
+            },
+            "frame": {
+              "matcher": {
+                "id": "byIndex",
+                "options": 0
+              }
             }
           }
         ],
         "tooltip": {
-          "mode": "multi"
+          "mode": "single"
         },
         "xAxis": {
-          "label": "projected $/M (log)",
+          "label": "Projected Price ($/1M tokens, log scale)",
           "mode": "linear"
         },
         "yAxis": {
-          "label": "AA IQ",
+          "label": "Quality Index (AA IQ)",
           "mode": "linear"
         }
       },
@@ -1132,7 +1197,7 @@
           "refId": "A"
         }
       ],
-      "title": "Catalog: projected $/M vs AA IQ (log X)",
+      "title": "Catalog: Projected $/M vs AA IQ (Value Map)",
       "type": "xychart"
     },
     {
@@ -1141,7 +1206,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 38
       },
       "id": 30,
       "pluginVersion": "11.6.0",
@@ -1385,7 +1450,7 @@
         "h": 5,
         "w": 6,
         "x": 18,
-        "y": 33
+        "y": 39
       },
       "id": 31,
       "options": {
@@ -1432,10 +1497,10 @@
       "type": "row",
       "title": "Price history",
       "gridPos": {
-        "x": 0,
-        "y": 22,
+        "h": 1,
         "w": 24,
-        "h": 1
+        "x": 0,
+        "y": 29
       },
       "collapsed": false
     },
@@ -1448,10 +1513,10 @@
         "uid": "inferhub-pg"
       },
       "gridPos": {
-        "x": 0,
-        "y": 23,
+        "h": 8,
         "w": 12,
-        "h": 8
+        "x": 0,
+        "y": 30
       },
       "targets": [
         {
@@ -1512,10 +1577,10 @@
         "uid": "inferhub-pg"
       },
       "gridPos": {
-        "x": 12,
-        "y": 23,
+        "h": 8,
         "w": 12,
-        "h": 8
+        "x": 12,
+        "y": 30
       },
       "targets": [
         {
