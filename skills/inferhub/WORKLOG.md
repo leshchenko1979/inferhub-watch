@@ -11,3 +11,4 @@
 - 2026-09-10 06:1xZ — Self-approval law received; HQ approved + executed issue #3 (step-3 sweep-health --event schedule filter), commit beef488, issue closed with receipt. No board items remain.
 - 2026-09-10 06:16Z — cleanliness law (owner): hygiene audit run — 26 subagent branches (all merged) + gh-pages-fresh (stale 08-27 experiment, local-only) deleted, orphan worktree 6477167e removed, remote refs pruned, .ruff_cache/ gitignored. Law persisted in PROCESS.md §Cleanliness law.
 - 2026-09-10 06:2xZ — Law: laws themselves are self-improvement objects (owner 06:22Z); scan step 6 amended, seed phrase immutable.
+- 2026-09-10 06:3xZ: HQ — research-before-process law (5b65651) + SKILL.md format adoption: frontmatter added, PROCESS.md→SKILL.md rename, refs updated, hourly cron prompt rewired (912411e). Source: owner directive 06:25Z.
