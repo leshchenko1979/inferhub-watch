@@ -108,7 +108,9 @@ Each cycle, after loading this section:
 8. **Grow this section:** a landed object may add one line here so the next cycle inherits it. This procedure itself is a valid object — any cycle may propose an edit to this section as its scan result. Content the owner seeds here directly (like this phrase) is never deleted, only extended.
 9. **Ledger:** append the scan result (object chosen, issue number, landed or waiting) to the Improvement ledger below.
 
-The rest of the cycle is the loop that carries this scan:
+The rest of the cycle is the loop that carries this scan — **executed by the HQ session, not by the cron**:
+
+> **Cron execution law (owner order 2026-09-10 06:35Z):** the hourly cron does NOT perform the cycle itself. Its prompt is a thin trigger: `session_notify` the HQ session (currently `359fe71b-c7a1-420b-b856-acfb49939a7b`, the "Inferhub watch / Auditor" lane) with a one-line instruction to run the hourly cycle per this skill. The HQ session performs every step below and delivers the report. The cron session executes zero project commands. If the HQ session id changes (new lane), update it here and in the cron prompt in the same edit.
 
 1. `git -C /root/inferhub-watch pull --ff-only` (report failure; continue if possible).
 2. Load this skill file (`skills/inferhub/SKILL.md`) and re-read the Self-improvement section.
