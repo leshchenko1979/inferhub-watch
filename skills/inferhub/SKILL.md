@@ -63,6 +63,20 @@ Every reference to a GitHub object — issue, PR, commit, run, file — carries 
 
 Before persisting ANY new process law, skill section, or workflow design in this repo, HQ (or the worker tasked with it) FIRST researches the web: existing best practices, mature SKILL.md / agent-skill formats (e.g. Anthropic's agent-skills repo, OpenAI swarm patterns), and prior art for the exact problem domain. The draft then cites what was found and either adopts the ready pattern or documents why it deviates. Never design from scratch what the ecosystem has already hardened. Scope: NEW processes only — a one-line owner directive landing in this file is persisted first (same-turn law) and may be refined by research afterward, not gated by it.
 
+## Proactive object discovery law (owner order 2026-09-10 08:53Z)
+
+**HQ proactively discovers and catalogs all objects in the project ecosystem.** HQ does not passively wait for an object to fail or for the owner to highlight it. HQ actively maintains an inventory of all project objects and systematically rotates its hourly self-improvement scan across this inventory.
+
+The discovered objects span 7 concrete classes:
+
+1. **Repository & CI/CD:** Repo `leshchenko1979/inferhub-watch`, branches (`main`, deploy branch `gh-pages`), workflow `.github/workflows/watch.yml` (daily 02:00Z sweep), and GitHub issue tracker.
+2. **Data & Storage:** Local data artifacts (`data/catalog.json`, `data/intelligence.json`, `data/pricing/*.json`, `data/radar.json`), Postgres `inferhub_logs` on host `apps` (tables `route_metrics`, `usage_logs`).
+3. **Surfaces:** Primary observation surface = Grafana (`https://grafana.l1979.ru`, dashboard `inferhub-watch`, datasource `inferhub-pg`); Secondary = GitHub Pages (`https://leshchenko1979.github.io/inferhub-watch/`); Ops alerts = Telegram forum topics in group `-1004379632866`.
+4. **Schedulers & Triggers:** GitHub Actions daily sweep cron; OpenCrabs scheduler jobs (`inferhub-watch-hq-hourly` silent trigger, `inferhub-daily-report`).
+5. **Code & Config:** `probe/` measurement engine, `scripts/sync_usage_logs.py`, `site/` static generator, `models.toml` (publisher config & `[aa]` slug overrides), and `tests/` pytest suite.
+6. **Process & Vocabulary:** `ONTOLOGY.md` (domain single source of truth), `skills/inferhub/SKILL.md`, `skills/inferhub/WORKLOG.md`.
+7. **Agent Workspaces:** HQ session (`359fe71b-c7a1-420b-b856-acfb49939a7b`), visible Telegram worker topics (created via userbot), and ephemeral review subagents.
+
 ## Worker dispatch law (hard)
 
 - Any task that outgrows a single reply becomes an issue first, then a dispatch.
