@@ -97,7 +97,7 @@ def _pick_candidate(cands: list[str], slugs: dict) -> str | None:
     lexically for determinism."""
     with_iq = [s for s in cands if (slugs.get(s) or {}).get("iq") is not None]
     pool = with_iq or cands
-    return sorted(pool, key=lambda s: (len(s), s))[0]
+    return min(pool, key=lambda s: (len(s), s))
 
 
 def _digit_tokens(name: str) -> set[str]:
