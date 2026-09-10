@@ -1,3 +1,8 @@
+---
+name: inferhub-watch-hq
+description: HQ process for the inferhub-watch project — issue triage, worker dispatch, hourly self-improvement cycles, cleanliness audits, Grafana observation. Load this skill when working any task in the inferhub-watch repo, responding to a HQ cycle report, or acting as a worker dispatched from an issue.
+---
+
 # InferHub Watch — HQ Process (canonical)
 
 **Owns:** the HQ process for the inferhub-watch project — task intake, issue law, worker dispatch, and self-improvement. All workers AND the HQ follow this file.
@@ -51,7 +56,7 @@ Before persisting ANY new process law, skill section, or workflow design in this
 ## Worker dispatch law (hard)
 
 - Any task that outgrows a single reply becomes an issue first, then a dispatch.
-- Dispatch = spawn the worker with a thin prompt: the issue number + "read skills/inferhub/PROCESS.md, follow it" — the process lives here, not in the prompt.
+- Dispatch = spawn the worker with a thin prompt: the issue number + "read skills/inferhub/SKILL.md, follow it" — the process lives here, not in the prompt.
 - Workers commit to `main` only via small, single-concern commits (repo convention: `data:`, `probe:`, `site:`, `scripts:`, `sync:` prefixes seen in git log). One change per commit.
 - Workers NEVER push to `gh-pages` — the site deploys via the sweep workflow only.
 - Workers `git pull --ff-only` before touching anything; a stale checkout is a clobbered sweep.
@@ -106,7 +111,7 @@ Each cycle, after loading this section:
 The rest of the cycle is the loop that carries this scan:
 
 1. `git -C /root/inferhub-watch pull --ff-only` (report failure; continue if possible).
-2. Load this skill file (`skills/inferhub/PROCESS.md`) and re-read the Self-improvement section.
+2. Load this skill file (`skills/inferhub/SKILL.md`) and re-read the Self-improvement section.
 3. **Sweep health:** check the latest SCHEDULED `watch.yml` run on GitHub (`gh run list -R leshchenko1979/inferhub-watch --workflow watch.yml --event schedule --limit 1 --json conclusion,displayTitle,createdAt` — the `--event schedule` filter is mandatory: push runs never execute the probe, so a "success" push run masks a missed sweep, per issue #3). If it failed or hasn't run in 26h → open an `ops:` issue, run `python3 -m pytest tests/ -x -q` locally if code is suspected, report to the owner in the group.
 4. **Issue triage:** `gh issue list -R leshchenko1979/inferhub-watch --state open`. For each: progress made in 7+ days → nudge/comment; resolved silently → close with a receipt comment; done criteria met → close. Empty list → nothing.
 5. **Surface sanity (Grafana):** fetch `https://grafana.l1979.ru/api/health` (expect 200) — Grafana is the main observation surface per the law above. The GitHub Pages site (`https://leshchenko1979.github.io/inferhub-watch/`) is checked as secondary; stale >36h → treat as sweep failure (step 3 path).
