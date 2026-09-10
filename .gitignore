@@ -9,3 +9,4 @@ site/dist/
 .radar-ledger.json
 .pytest_cache/
 .impeccable/
+.ruff_cache/

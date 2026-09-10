@@ -109,6 +109,16 @@ The rest of the cycle is the loop that carries this scan:
 6. **Self-improvement scan:** execute the scan defined at the top of this section (find objects in the project for self-improvement → propose → land on 👍).
 7. **Report:** one compact message to the Telegram group (deliver per cron config): sweep verdict, issue count, site freshness, scan object + proposal status. Beeps optional, noise not.
 
+### Cleanliness law (owner order 2026-09-10 06:16Z)
+
+Every object in the project is kept clean and ordered — no accumulation of dead weight, no unordered drift:
+
+- **Every cycle's hygiene check:** `git branch -a` and `git worktree list` — stale merged branches and orphaned worktrees are deleted the same cycle (rule of thumb: anything matching `subagent/*` that is ancestor of main, older than 24h, and not actively claimed). `git status` must be clean.
+- **Repo content:** dated files in `reports/`, `research/`, `data/` stay tidy — no temp files, no `*.orig`/`*.rej`/`*~`, no unexplained debris. Build/cache dirs must be gitignored.
+- **Surfaces:** issue board at 0 open unless work is genuinely pending; cron jobs scoped to this project stay lean and relevant (one-shots are disabled or deleted after firing).
+- **Telegram topics:** worker topics are renamed or marked done when their task closes; idle topics are not left dangling (rename via userbot `tg_mtproto` per the topic law).
+- Work is done by the process (worker dispatch per the delegation law; mechanical hygiene like branch deletion is not task-shaped and may be done inline by HQ).
+
 ### Improvement ledger
 
 Track proposed → landed process changes here, one line each, with a **cycle timestamp** (`YYYY-MM-DD HH:MMZ`) so hourly entries stay distinct:
