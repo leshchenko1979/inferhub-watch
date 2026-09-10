@@ -71,9 +71,10 @@ class PredictedPriceTests(unittest.TestCase):
         self.assertEqual(market.token_weights({"tok_in": 300, "tok_out": 100}), (0.75, 0.25))
 
     def test_token_weights_fallback(self) -> None:
-        self.assertEqual(market.token_weights({}), (0.75, 0.25))
-        self.assertEqual(market.token_weights({"tok_in": 0, "tok_out": 0}), (0.75, 0.25))
-        self.assertEqual(market.token_weights({"tok_in": "junk"}), (0.75, 0.25))
+        expected = (market.FALLBACK_W_IN, 1 - market.FALLBACK_W_IN)
+        self.assertEqual(market.token_weights({}), expected)
+        self.assertEqual(market.token_weights({"tok_in": 0, "tok_out": 0}), expected)
+        self.assertEqual(market.token_weights({"tok_in": "junk"}), expected)
 
 
 class IncumbentBarTests(unittest.TestCase):
@@ -95,15 +96,17 @@ class IncumbentBarTests(unittest.TestCase):
 
 class AskBarTests(unittest.TestCase):
     def test_worst_case_billing_of_asks(self) -> None:
-        # cache 0, fallback 75/25 mix — the incumbent's raw asks
+        # cache 0, fallback real mix — the incumbent's raw asks
         catalog = {"zai/glm-5.3-flash": (0.0135, 0.045)}
         bar = market.ask_bar(catalog, ["zai/glm-5.3-flash"])
-        self.assertAlmostEqual(bar, 0.0135 * 0.75 + 0.045 * 0.25)
+        w_in, w_out = market.FALLBACK_W_IN, 1.0 - market.FALLBACK_W_IN
+        self.assertAlmostEqual(bar, 0.0135 * w_in + 0.045 * w_out)
 
     def test_cheapest_incumbent_wins(self) -> None:
         catalog = {"a/m": (0.02, 0.06), "b/m": (0.01, 0.03)}
+        w_in, w_out = market.FALLBACK_W_IN, 1.0 - market.FALLBACK_W_IN
         self.assertAlmostEqual(
-            market.ask_bar(catalog, ["a/m", "b/m"]), 0.01 * 0.75 + 0.03 * 0.25
+            market.ask_bar(catalog, ["a/m", "b/m"]), 0.01 * w_in + 0.03 * w_out
         )
 
     def test_incumbent_absent_from_catalog(self) -> None:
@@ -129,7 +132,8 @@ class FamilyContextBarTests(unittest.TestCase):
             catalog={"ali/deepseek-v4-flash-0731": (0.0130, 0.0389)},
         )
         info = ctx["deepseek-v4-flash"]
-        self.assertAlmostEqual(info["bar"], 0.0130 * 0.75 + 0.0389 * 0.25)
+        w_in, w_out = market.FALLBACK_W_IN, 1.0 - market.FALLBACK_W_IN
+        self.assertAlmostEqual(info["bar"], 0.0130 * w_in + 0.0389 * w_out)
         self.assertEqual(info["bar_source"], "ask")
         self.assertEqual(info["cache_rate"], 0.0)
 

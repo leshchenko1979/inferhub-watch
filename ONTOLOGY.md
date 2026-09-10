@@ -27,7 +27,7 @@ enforced by `tests/test_ontology.py`.
 | Term | Definition | Realized as |
 |---|---|---|
 | **Ask** | $/Mtok actually billed on a route. Two sources, strictly ranked: **billed ask** (from usage logs — real money, always wins) over **floor ask** (cheapest catalog price point; rendered with `*` when a route has no billed traffic yet) | `ask_in` / `ask_out`; `*` mark title "floor ask" |
-| **Blended eff** | Cache-adjusted effective price of a route: per-M input+output blended with the route's real hit rate | `official_compare.blended_eff` |
+| **Blended eff** | Cache-adjusted effective price of a route: per-M input+output blended with the route's real hit rate. For routes without billed history, fallback weights use the fleet empirical ratio of 99.4% input / 0.6% output (`w_in=0.99, w_out=0.01`), reflecting agentic multi-turn prompt loads | `official_compare.blended_eff`, `models.toml [market].fallback_w_in` |
 | **Hit rate** | Cached fraction of input tokens on a route | `official_compare._hit_rate` |
 | **Cache rule** | The invariant: cached input bills at flat **10% of the input ask**, every route, every era. Verified per-row at snapshot time as `hit_ask_ratio` | `catalog.CACHE_RATE`, `cache_rule_stats` |
 | **Drift flag** | Fires when a route's `hit_ask_ratio` wanders beyond ±0.02 from 0.1 — the cache rule is breaking for that route | `official_compare.drift_flag` |

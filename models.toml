@@ -7,6 +7,7 @@ aliases = [
   "cx/gpt-5.6-terra",
   "cx/gpt-5.6-sol",
   "cx/gpt-5.6-luna",
+  "ag/gemini-3.7-flash-high",
   "ag/gemini-3.8-flash-high",
 ]
 
@@ -22,6 +23,7 @@ aliases = [
 "cx/gpt-5.6-terra" = "gpt-5-6-terra"
 "cx/gpt-5.6-sol" = "gpt-5-6-sol"
 "cx/gpt-5.6-luna" = "gpt-5-6-luna"
+"ag/gemini-3.7-flash-high" = "gemini-3-7-flash"
 "ag/gemini-3.8-flash-high" = "gemini-3-8-flash"
 "ali/tie-high-iq" = "tie-high-iq"
 "ali/tie-low-iq" = "tie-low-iq"
@@ -31,7 +33,7 @@ aliases = [
 min_advantage = 0.80   # predicted must be >=20% under the incumbent bar
 quality_floor = 0.90   # candidate iq >= 0.9x the family incumbent's
 speed_multiple = 3.0   # skip when prior ttft > 3x the incumbent's
-fallback_w_in = 0.75   # input-token weight when no billed mix is known
+fallback_w_in = 0.99   # input-token weight when no billed mix is known (real traffic: 99.4% in / 0.6% out)
 
 # Dated-snapshot tails -> board family they rank inside (P2c: from
 # market.py). glm-5.3-flash deliberately absent — its own family.
