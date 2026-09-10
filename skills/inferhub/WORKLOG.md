@@ -21,3 +21,4 @@
 - 2026-09-10: first daily cycle executed clean — no `hq:` proposal (no process gap found); bootstrap issue #1 closed with receipt.
 - 2026-09-10: rule-extraction law landed (owner order) — extract and persist a rule from every conversation/incident; this ledger records extractions.
 - 2026-09-10: self-improvement section reseeded (owner order) — directive = "find objects in the project for self-improvement"; procedure made self-evolving (scan one object per cycle, `hq:` issue per proposal, section grows, procedure itself a valid object).
+- 2026-09-10 07:1xZ — mission law landed (owner: "provide timely updates on routes with bigger IQ per projected price", commit 9cb81a2). First act: found route_metrics.iq NULL for all rows (slug-mapping defect) → issue #6 filed, self-approved, dispatched to worker topic "Worker — HQ cycles". Value table (discount vs official ask) reported to owner.
