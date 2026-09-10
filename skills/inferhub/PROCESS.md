@@ -49,15 +49,28 @@ A rule without a source incident is a guess; each landed rule cites its origin (
 
 ## Self-improvement (daily cron loads this section)
 
-Each daily cycle, the firing session MUST execute all of:
+For now this section contains one directive:
+
+**Find objects in the project for self-improvement.**
+
+### Procedure (self-evolving)
+
+Each cycle, after loading this section:
+
+6. **Self-improvement scan:** pick ONE concrete object in the project — code, tests, `probe/run.py` conventions, `ONTOLOGY.md`, the site surface, or this very file — worth improving. A stale or vague scan output ("nothing found" without a one-line look rationale) is a failed step: scan before declaring.
+7. **Propose:** open an `hq:` issue describing the object + the concrete improvement. On owner 👍, land the edit in the same turn it's approved.
+8. **Grow this section:** a landed object may add one line here so the next cycle inherits it. This procedure itself is a valid object — any cycle may propose an edit to this section as its scan result. Content the owner seeds here directly (like this phrase) is never deleted, only extended.
+9. **Ledger:** append the scan result (object chosen, issue number, landed or waiting) to the Improvement ledger below.
+
+The rest of the cycle is the loop that carries this scan:
 
 1. `git -C /root/inferhub-watch pull --ff-only` (report failure; continue if possible).
 2. Load this skill file (`skills/inferhub/PROCESS.md`) and re-read the Self-improvement section.
 3. **Sweep health:** check the latest `watch.yml` run on GitHub (`gh run list -R leshchenko1979/inferhub-watch --workflow watch.yml --limit 1 --json conclusion,displayTitle,createdAt`). If it failed or hasn't run in 26h → open an `ops:` issue, run `python3 -m pytest tests/ -x -q` locally if code is suspected, report to the owner in the group.
 4. **Issue triage:** `gh issue list -R leshchenko1979/inferhub-watch --state open`. For each: progress made in 7+ days → nudge/comment; resolved silently → close with a receipt comment; done criteria met → close. Empty list → nothing.
 5. **Site sanity:** fetch `https://leshchenko1979.github.io/inferhub-watch/` (HTTP GET). Confirm the page renders and carries a fresh sweep date. Stale >36h → treat as sweep failure (step 3 path).
-6. **Self-improvement proposal:** reflect on the past day: what broke, what triage caught late, what a worker had to ask twice. If a process gap exists → propose a concrete edit to THIS file as an issue (`hq:` prefix) and, on owner 👍, land it.
-7. **Report:** one compact message to the Telegram group (deliver per cron config): sweep verdict, issue count, site freshness, any proposal. Beeps optional, noise not.
+6. **Self-improvement scan:** execute the scan defined at the top of this section (find objects in the project for self-improvement → propose → land on 👍).
+7. **Report:** one compact message to the Telegram group (deliver per cron config): sweep verdict, issue count, site freshness, scan object + proposal status. Beeps optional, noise not.
 
 ### Improvement ledger
 
@@ -66,3 +79,4 @@ Track proposed → landed process changes here, one line each:
 - 2026-09-10: skill created — initial process law (issues, dispatch, ontology, daily self-improvement).
 - 2026-09-10: first daily cycle executed clean — no `hq:` proposal (no process gap found); bootstrap issue #1 closed with receipt.
 - 2026-09-10: rule-extraction law landed (owner order) — extract and persist a rule from every conversation/incident; this ledger records extractions.
+- 2026-09-10: self-improvement section reseeded (owner order) — directive = "find objects in the project for self-improvement"; procedure made self-evolving (scan one object per cycle, `hq:` issue per proposal, section grows, procedure itself a valid object).
