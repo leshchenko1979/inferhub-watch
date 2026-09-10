@@ -329,6 +329,38 @@ def get_current_model(config_path: Path) -> str:
     )
 
 
+def get_bot_token(config_path: Path) -> str | None:
+    """Resolve the Telegram bot token.
+
+    Order:
+      1. config.toml: channels.telegram.token
+      2. keys.toml (sibling of config.toml): channels.telegram.token
+      3. keys.toml: telegram.bot_token
+
+    In OpenCrabs profiles sensitive credentials live in keys.toml and
+    config.toml often omits channels.telegram.token entirely.
+    """
+    if config_path.exists():
+        with config_path.open("rb") as f:
+            cfg_data = tomllib.load(f)
+        token = cfg_data.get("channels", {}).get("telegram", {}).get("token")
+        if token:
+            return token
+
+    keys_path = config_path.parent / "keys.toml"
+    if keys_path.exists():
+        with keys_path.open("rb") as f:
+            keys_data = tomllib.load(f)
+        token = keys_data.get("channels", {}).get("telegram", {}).get("token")
+        if token:
+            return token
+        token = keys_data.get("telegram", {}).get("bot_token")
+        if token:
+            return token
+
+    return None
+
+
 def run_auto_route_switch(
     root_dir: Path = ROOT_DIR,
     config_path: Path = DEFAULT_CONFIG_PATH,
@@ -405,9 +437,7 @@ def run_auto_route_switch(
 
     # 3. Notification
     if notify and config_path.exists():
-        with config_path.open("rb") as f:
-            cfg_data = tomllib.load(f)
-        bot_token = cfg_data.get("channels", {}).get("telegram", {}).get("token")
+        bot_token = get_bot_token(config_path)
         if bot_token:
             gain_pct = ((best.value - current.value) / current.value * 100) if (current and current.value > 0) else 0.0
             msg = (
@@ -419,6 +449,8 @@ def run_auto_route_switch(
                 f"• *Config Updated:* `{config_path}`"
             )
             # Default admin chat / monitoring chat
+            with config_path.open("rb") as f:
+                cfg_data = tomllib.load(f)
             admin_chat = cfg_data.get("channels", {}).get("telegram", {}).get("admin_chat_id", 133526395)
             sent = send_telegram_notification(bot_token, admin_chat, msg)
             result["notification_sent"] = sent

@@ -13,6 +13,7 @@ from scripts.auto_route_switch import (
     calculate_value,
     evaluate_candidates,
     find_best_route,
+    get_bot_token,
     get_current_model,
     is_qualified,
     run_auto_route_switch,
@@ -239,3 +240,89 @@ models = ["current/m1"]
     cur.execute("SELECT model FROM sessions WHERE id = 's1'")
     assert cur.fetchone()[0] == "better/m2"
     conn.close()
+
+
+# --- Issue #13: keys.toml fallback for bot_token ---
+
+
+def test_get_bot_token_from_config_toml(tmp_path):
+    # Token present in config.toml takes priority
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('[channels.telegram]\ntoken = "cfg-token"\n')
+    assert get_bot_token(cfg) == "cfg-token"
+
+
+def test_get_bot_token_fallback_keys_toml_telegram_channel(tmp_path):
+    # config.toml omits the token; keys.toml has channels.telegram.token
+    cfg = tmp_path / "config.toml"
+    cfg.write_text("[agent]\ndefault_model = \"m\"\n")
+    (tmp_path / "keys.toml").write_text('[channels.telegram]\ntoken = "keys-channel-token"\n')
+    assert get_bot_token(cfg) == "keys-channel-token"
+
+
+def test_get_bot_token_fallback_keys_toml_bot_token(tmp_path):
+    # config.toml omits the token; keys.toml has telegram.bot_token
+    cfg = tmp_path / "config.toml"
+    cfg.write_text("[agent]\ndefault_model = \"m\"\n")
+    (tmp_path / "keys.toml").write_text('[telegram]\nbot_token = "keys-bot-token"\n')
+    assert get_bot_token(cfg) == "keys-bot-token"
+
+
+def test_get_bot_token_config_toml_priority_over_keys_toml(tmp_path):
+    # Both files carry a token: config.toml wins
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('[channels.telegram]\ntoken = "cfg-token"\n')
+    (tmp_path / "keys.toml").write_text('[channels.telegram]\ntoken = "keys-token"\n')
+    assert get_bot_token(cfg) == "cfg-token"
+
+
+def test_get_bot_token_missing_everywhere(tmp_path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text("[agent]\ndefault_model = \"m\"\n")
+    assert get_bot_token(cfg) is None
+
+
+def test_get_bot_token_no_files(tmp_path):
+    assert get_bot_token(tmp_path / "config.toml") is None
+
+
+@patch("scripts.auto_route_switch.send_telegram_notification")
+@patch("scripts.auto_route_switch.get_bot_token")
+def test_run_auto_route_switch_notifies_via_keys_toml_fallback(mock_get_token, mock_send, tmp_path):
+    # End-to-end: config.toml has no token, notification still sent via keys.toml
+    mock_get_token.return_value = "keys-token"
+    mock_send.return_value = True
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "catalog.json").write_text(json.dumps({
+        "models": {
+            "current/m1": {"ask_in": 0.004, "ask_out": 0.02, "supports_tools": True},
+            "better/m2": {"ask_in": 0.002, "ask_out": 0.01, "supports_tools": True},
+        }
+    }))
+    (data_dir / "intelligence.json").write_text(json.dumps({
+        "models": {"m1": {"iq": 38.0}, "m2": {"iq": 40.0}}
+    }))
+
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text("""
+[agent]
+default_model = "current/m1"
+
+[channels.telegram]
+admin_chat_id = 42
+""")
+
+    res = run_auto_route_switch(
+        root_dir=tmp_path,
+        config_path=cfg_file,
+        db_paths=[],
+        dry_run=False,
+        notify=True,
+    )
+    assert res["notification_sent"] is True
+    mock_get_token.assert_called_once_with(cfg_file)
+    # chat id came from config.toml admin_chat_id, token from keys.toml
+    assert mock_send.call_args.args[0] == "keys-token"
+    assert mock_send.call_args.args[1] == 42
