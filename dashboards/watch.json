@@ -242,7 +242,7 @@
             "uid": "inferhub-pg"
           },
           "format": "table",
-          "rawSql": "SELECT count(DISTINCT model) FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at)",
+          "rawSql": "SELECT count(*) FROM (SELECT model FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY model HAVING count(*) >= 100) s",
           "refId": "A"
         }
       ],
