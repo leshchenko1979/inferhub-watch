@@ -7,6 +7,7 @@ aliases = [
   "cx/gpt-5.6-terra",
   "cx/gpt-5.6-sol",
   "cx/gpt-5.6-luna",
+  "ag/gemini-3.8-flash-high",
 ]
 
 # Route -> Artificial Analysis slug (identity strings, stable; data fetched
@@ -21,6 +22,7 @@ aliases = [
 "cx/gpt-5.6-terra" = "gpt-5-6-terra"
 "cx/gpt-5.6-sol" = "gpt-5-6-sol"
 "cx/gpt-5.6-luna" = "gpt-5-6-luna"
+"ag/gemini-3.8-flash-high" = "gemini-3-8-flash"
 "ali/tie-high-iq" = "tie-high-iq"
 "ali/tie-low-iq" = "tie-low-iq"
 
