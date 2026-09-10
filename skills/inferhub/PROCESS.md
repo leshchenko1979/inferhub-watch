@@ -13,6 +13,13 @@
 Every report, issue, and commit uses the codified terms from `ONTOLOGY.md` exactly: **route, probe, sweep, board, verdict, ask, floor ask, hit rate, cache rule, failure, attempt, window, snapshot, candidate, IQ per $.**
 Banned synonyms (enforced by `tests/test_ontology.py` in code; by review in prose): "error" → **failure**, "price" → **ask** / **official ask**, "list price" → **floor ask**, "hit ratio / cache rate" → **hit rate**. A route with red cells is not "down" — the JSON missed the documented [OI] shape.
 
+## Observation surface law (owner order 2026-09-10 ~06:0xZ: "Our main surface for now is grafana")
+
+**Grafana is the project's main observation surface** — `https://grafana.l1979.ru`, dashboard uid `inferhub-watch` ("InferHub Watch", datasource `inferhub-pg` → Postgres `inferhub_logs`, dashboard source `/root/vds-servers/apps/services/grafana/dashboards/inferhub/watch.json`). The GitHub Pages site (`leshchenko1979.github.io/inferhub-watch`) is secondary/legacy until the owner says otherwise.
+
+- Cycle reports check **Grafana freshness** (dashboard reachable + probe data current), not site freshness, as the primary step.
+- Any surface work (dashboard panels, alerts, annotations) is task work → `site:` issue + worker dispatch.
+
 ## Issue law (hard)
 
 - Every HQ task, worker dispatch, and multi-step job is tracked as a GitHub issue on `leshchenko1979/inferhub-watch` — the issue board IS the task list. No parallel shadow trackers.
@@ -29,6 +36,10 @@ The HQ does not execute project work itself — HQ executes the PROCESS. For eve
 - **Creating a worker → create a forum topic.** Every worker gets a dedicated forum topic in the "Inferhub watch" group at spawn time. Topic is the worker's lane: brief, receipts, and result report land there. Created via the userbot (`tg_mtproto`, `messages.CreateForumTopic` with `peer` arg — NOT the bot API: bot got `chat not found`; NOT `channels.CreateForumTopic`: wrong TL namespace) and the topic name is recorded on the dispatching issue.
 - **Log everything for further analysis.** Every task — inline HQ process edit, dispatch, worker result — leaves a trace: a ledger line (Improvement ledger below for process work, the issue itself for task work). No work without a log entry; the log is the analysis substrate. (Owner order 2026-09-10.)
 - HQ exception: the hourly cycle itself (pull, sweep check, site check, report) is HQ-owned process work — its logs are the cycle reports + ledger. Task-shaped findings discovered mid-cycle (a failed sweep, a stale site) are still dispatched, not fixed inline.
+
+## Object-link law (hard, owner order 2026-09-10: "When referencing a gh object, give a link")
+
+Every reference to a GitHub object — issue, PR, commit, run, file — carries a full URL in the same sentence: `https://github.com/leshchenko1979/inferhub-watch/issues/<n>`, `/commit/<sha>`, `/actions/runs/<id>`, `/blob/main/<path>`. Bare numbers ("issue #2", "commit cfa6dfa") are for the board's internal grep, not for reports the owner reads. Applies to Telegram reports, issue comments, and dispatch prompts alike.
 
 ## Worker dispatch law (hard)
 
@@ -85,7 +96,7 @@ The rest of the cycle is the loop that carries this scan:
 2. Load this skill file (`skills/inferhub/PROCESS.md`) and re-read the Self-improvement section.
 3. **Sweep health:** check the latest `watch.yml` run on GitHub (`gh run list -R leshchenko1979/inferhub-watch --workflow watch.yml --limit 1 --json conclusion,displayTitle,createdAt`). If it failed or hasn't run in 26h → open an `ops:` issue, run `python3 -m pytest tests/ -x -q` locally if code is suspected, report to the owner in the group.
 4. **Issue triage:** `gh issue list -R leshchenko1979/inferhub-watch --state open`. For each: progress made in 7+ days → nudge/comment; resolved silently → close with a receipt comment; done criteria met → close. Empty list → nothing.
-5. **Site sanity:** fetch `https://leshchenko1979.github.io/inferhub-watch/` (HTTP GET). Confirm the page renders and carries a fresh sweep date. Stale >36h → treat as sweep failure (step 3 path).
+5. **Surface sanity (Grafana):** fetch `https://grafana.l1979.ru/api/health` (expect 200) — Grafana is the main observation surface per the law above. The GitHub Pages site (`https://leshchenko1979.github.io/inferhub-watch/`) is checked as secondary; stale >36h → treat as sweep failure (step 3 path).
 6. **Self-improvement scan:** execute the scan defined at the top of this section (find objects in the project for self-improvement → propose → land on 👍).
 7. **Report:** one compact message to the Telegram group (deliver per cron config): sweep verdict, issue count, site freshness, scan object + proposal status. Beeps optional, noise not.
 
