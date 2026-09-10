@@ -29,7 +29,7 @@ Banned synonyms (enforced by `tests/test_ontology.py` in code; by review in pros
 
 ## Observation surface law (owner order 2026-09-10 ~06:0xZ: "Our main surface for now is grafana")
 
-**Grafana is the project's main observation surface** — `https://grafana.l1979.ru`, dashboard uid `inferhub-watch` ("InferHub Watch", datasource `inferhub-pg` → Postgres `inferhub_logs`, dashboard source `/root/vds-servers/apps/services/grafana/dashboards/inferhub/watch.json`). The GitHub Pages site (`leshchenko1979.github.io/inferhub-watch`) is secondary/legacy until the owner says otherwise.
+**Grafana is the project's main observation surface** — `https://grafana.l1979.ru`, dashboard uid `inferhub-watch` ("InferHub Watch", datasource `inferhub-pg` → Postgres `inferhub_logs`, dashboard source `/root/vds-servers/apps/services/grafana/dashboards/inferhub/watch.json`). Public link (no auth required): `https://grafana.l1979.ru/public-dashboards/79b4145fd2f44396908e96e4368906ac`. The GitHub Pages site (`leshchenko1979.github.io/inferhub-watch`) is secondary/legacy until the owner says otherwise.
 
 - Cycle reports check **Grafana freshness** (dashboard reachable + probe data current), not site freshness, as the primary step.
 - Any surface work (dashboard panels, alerts, annotations) is task work → `site:` issue + worker dispatch.
