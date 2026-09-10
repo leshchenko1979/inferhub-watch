@@ -65,3 +65,4 @@ Track proposed → landed process changes here, one line each:
 
 - 2026-09-10: skill created — initial process law (issues, dispatch, ontology, daily self-improvement).
 - 2026-09-10: first daily cycle executed clean — no `hq:` proposal (no process gap found); bootstrap issue #1 closed with receipt.
+- 2026-09-10: rule-extraction law landed (owner order) — extract and persist a rule from every conversation/incident; this ledger records extractions.
