@@ -133,7 +133,7 @@ For now this section contains one directive:
 
 **Cadence law (owner retimed the cron to hourly, 2026-09-10 05:41Z; aligned via [issue #2](https://github.com/leshchenko1979/inferhub-watch/issues/2), owner 👍 "Go #2" 06:00Z):**
 
-- The HQ cron is **daily** — the cycle below runs once per day at 07:30 MSK (04:30 UTC), following the 02:17 UTC GitHub Actions probe sweep and the 04:00 UTC usage logs sync.
+- The HQ cron is **hourly** — every cycle below runs once per hour, not once per day.
 - Each cycle scans **one concrete object** and dedupes against the Improvement ledger: an object may be proposed **once**. A re-scan of an already-proposed object cites the prior issue instead of filing a new one.
 - **A quiet cycle is a valid outcome: report the object checked and why no proposal follows. Forced proposals are noise.**
 
@@ -146,7 +146,7 @@ Each cycle, after loading this section:
 
 The rest of the cycle is the loop that carries this scan — **executed by the HQ session, not by the cron**:
 
-> **Cron execution law (owner orders 2026-09-10 06:35Z, 08:45Z, 12:03Z):** all project crons run on a **daily cadence** (`inferhub-usage-logs-sync` at 04:00 UTC, `inferhub-watch-hq-daily` at 07:30 MSK, `inferhub-daily-report` at 08:00 MSK). The HQ cron does NOT perform the cycle itself and runs **completely silent** (`deliver_to = none`, owner order 08:45Z: "This can be silent"). Its prompt is a thin trigger: `session_notify` the HQ session (currently `359fe71b-c7a1-420b-b856-acfb49939a7b`, the "Inferhub watch / Auditor" lane) with a one-line instruction to run the daily cycle per this skill. The cron posts zero messages/cards to Telegram. The HQ session performs every step below and delivers the report. The cron session executes zero project commands. If the HQ session id changes (new lane), update it here and in the cron prompt in the same edit.
+> **Cron execution law (owner orders 2026-09-10 06:35Z, 08:45Z):** the hourly cron does NOT perform the cycle itself and runs **completely silent** (`deliver_to = none`, owner order 08:45Z: "This can be silent"). Its prompt is a thin trigger: `session_notify` the HQ session (currently `359fe71b-c7a1-420b-b856-acfb49939a7b`, the "Inferhub watch / Auditor" lane) with a one-line instruction to run the hourly cycle per this skill. The cron posts zero messages/cards to Telegram. The HQ session performs every step below and delivers the report. The cron session executes zero project commands. If the HQ session id changes (new lane), update it here and in the cron prompt in the same edit.
 
 1. `git -C /root/inferhub-watch pull --ff-only` (report failure; continue if possible).
 2. Load this skill file (`skills/inferhub/SKILL.md`) and re-read the Self-improvement section.

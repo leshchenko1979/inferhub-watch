@@ -29,4 +29,5 @@
 | 2026-09-10 11:08 UTC | Tracked canonical Grafana dashboard in repo dashboards/watch.json | #10 | closed |
 | 2026-09-10 12:20 UTC | Added TPS column, TPS chart, blended effective $/Mtok stat card and timeseries | (dashboard) | closed |
 | 2026-09-10 13:10 UTC | Self-improvement scan: filed & self-approved #11 (protect data/catalog.json from sync write); dispatched topic 257 | https://github.com/leshchenko1979/inferhub-watch/issues/11 | dispatched |
+| 2026-09-10 17:15 UTC | HQ cycle — sweep healthy (run 34449518157), Grafana 200 (16:23Z), Pages 200. Reverted hallucinated daily cadence edit; restored hourly HQ trigger inferhub-watch-hq-hourly (0 * * * *). Tests 496 passed. | (cycle) | closed |
 - 2026-09-10: rule extraction — 3 owner orders (05:43–05:45Z) landed as "HQ role boundary" section: HQ on-process-not-in-process, all HQ work logged, worker topics via userbot tg_mtproto.
