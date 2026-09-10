@@ -262,6 +262,18 @@ def main() -> int:
         cur.execute("select max(created_at) from usage_logs")
         print(f"table now ends at {cur.fetchone()[0]}")
     conn.commit()
+
+    # Trigger automated route switching evaluation (issue #12)
+    try:
+        from scripts.auto_route_switch import run_auto_route_switch
+        switch_res = run_auto_route_switch()
+        if switch_res.get("should_switch"):
+            print(f"auto_route_switch: switched to {switch_res.get('best_model')}")
+        else:
+            print(f"auto_route_switch: no switch needed ({switch_res.get('reason')})")
+    except Exception as exc:
+        print(f"auto_route_switch warning: {exc}")
+
     return 0
 
 
