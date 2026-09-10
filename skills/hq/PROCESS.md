@@ -36,6 +36,17 @@ Banned synonyms (enforced by `tests/test_ontology.py` in code; by review in pros
 2. **After every sweep** (02:00Z daily): check `gh run list -R leshchenko1979/inferhub-watch` for the latest run; a failed sweep = open `ops:` issue + investigate or report to the owner.
 3. **Never** commit, push, or open PRs to the upstream repo from the agents box without an issue + explicit owner ask.
 
+## Rule-extraction law (hard, owner order 2026-09-10)
+
+**Try to extract a rule from every conversation and every incident.** After each conversation (or owner directive/incident), the HQ asks: did something here generalize — a repeated mistake, an owner preference, a process gap, a lesson a worker would need? If yes, the rule is persisted in the same turn:
+
+- **General HQ process rule** → this file, under the most relevant section (or a new section if none fits).
+- **Ontology terminology drift** (a banned synonym spotted in the wild) → ONTOLOGY.md via an `hq:` issue.
+- **Sweep/probe/data lesson** → the code or `probe/run.py` conventions via an issue (`probe:` prefix).
+- **One-off, no generalization** → note it in the daily report and move on; forced rules are noise.
+
+A rule without a source incident is a guess; each landed rule cites its origin (date + one-line what happened). The improvement ledger records the extraction.
+
 ## Self-improvement (daily cron loads this section)
 
 Each daily cycle, the firing session MUST execute all of:
