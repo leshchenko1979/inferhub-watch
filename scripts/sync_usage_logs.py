@@ -12,6 +12,7 @@ Usage: python3 scripts/sync_usage_logs.py [--days N]
 from __future__ import annotations
 
 import argparse
+import difflib
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -84,6 +85,73 @@ def tag_probe_windows(conn) -> int:
     return tagged
 
 
+def _norm_slug(name: str) -> str:
+    """Normalize a model tail to intelligence.json slug style: lowercase,
+    underscores/dots -> dashes."""
+    return name.strip().lower().replace("_", "-").replace(".", "-")
+
+
+def _pick_candidate(cands: list[str], slugs: dict) -> str | None:
+    """Choose among slug candidates: prefer one that actually carries an
+    iq score, then the shortest (closest to the base model), then
+    lexically for determinism."""
+    with_iq = [s for s in cands if (slugs.get(s) or {}).get("iq") is not None]
+    pool = with_iq or cands
+    return sorted(pool, key=lambda s: (len(s), s))[0]
+
+
+def resolve_slug(route: str, aa_map: dict, slugs: dict) -> str | None:
+    """Map a catalog route (publisher/model or publisher/v/model) to an
+    intelligence.json model slug.
+
+    Order (issue #6):
+      1. models.toml [aa] override — explicit, wins over everything.
+      2. Exact normalized tail ('deepseek-v4-flash' style).
+      3. Trailing date dropped ('deepseek-v4-flash-0731' ->
+         'deepseek-v4-flash').
+      4. Trailing qualifier dropped ('muse-spark-1-2-contributor' ->
+         'muse-spark-1-2').
+      5. Prefix match ('gemini-3-6-flash-high' -> 'gemini-3-6-flash',
+         'qwen3-6-max-preview' -> 'qwen3-6-max').
+      6. Word-order-insensitive index ('claude-haiku-4-5' route tail vs
+         'claude-4-5-haiku' slug).
+      7. Fuzzy (difflib, 0.75 cutoff): 'kimi-k2-7' -> 'kimi-k2-7-code',
+         'mimo-v2-5' -> 'mimo-v2-5-0424'.
+    """
+    tail = route.rsplit("/", 1)[-1]
+    direct = aa_map.get(route) or _norm_slug(tail)
+    if direct in slugs:
+        return direct
+
+    parts = direct.split("-")
+    # trailing date variant: deepseek-v4-flash-0731
+    if len(parts) > 1 and parts[-1].isdigit() and len(parts[-1]) == 4:
+        cand = "-".join(parts[:-1])
+        if cand in slugs:
+            return cand
+    # suffix-qualified variant: muse-spark-1-2-contributor
+    if (len(parts) > 2 and len(parts[-1]) >= 4
+            and not parts[-1][0].isdigit()):
+        cand = "-".join(parts[:-1])
+        if cand in slugs:
+            return cand
+    # prefix candidates: gemini-3-6-flash-high -> gemini-3-6-flash
+    prefix = [s for s in slugs if s.startswith(direct + "-")]
+    if prefix:
+        return _pick_candidate(prefix, slugs)
+    # word-order-insensitive: claude-haiku-4-5 -> claude-4-5-haiku
+    key = "-".join(sorted(parts))
+    swapped = [s for s in slugs
+               if "-".join(sorted(s.split("-"))) == key and s != direct]
+    if swapped:
+        return _pick_candidate(swapped, slugs)
+    # fuzzy: kimi-k2-7 -> kimi-k2-7-code, mimo-v2-5 -> mimo-v2-5-0424
+    close = difflib.get_close_matches(direct, list(slugs), n=5, cutoff=0.75)
+    if close:
+        return _pick_candidate(close, slugs)
+    return None
+
+
 def sync_route_metrics(conn) -> int:
     """D3 decision layer: upsert catalog asks + AA IQ per route into
     route_metrics, the table the dashboard's scatter/panels join against."""
@@ -113,9 +181,8 @@ def sync_route_metrics(conn) -> int:
         """)
         n = 0
         for route, m in models.items():
-            slug = aa_map.get(route) or route.rsplit("/", 1)[-1].lower() \
-                .replace(".", "-")
-            iq = (slugs.get(slug) or {}).get("iq")
+            slug = resolve_slug(route, aa_map, slugs)
+            iq = (slugs.get(slug) or {}).get("iq") if slug else None
             cur.execute("""
                 insert into route_metrics
                     (route, ask_in, ask_out, official_in, official_out,
