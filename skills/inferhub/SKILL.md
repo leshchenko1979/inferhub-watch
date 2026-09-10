@@ -63,6 +63,17 @@ Every reference to a GitHub object — issue, PR, commit, run, file — carries 
 
 Before persisting ANY new process law, skill section, or workflow design in this repo, HQ (or the worker tasked with it) FIRST researches the web: existing best practices, mature SKILL.md / agent-skill formats (e.g. Anthropic's agent-skills repo, OpenAI swarm patterns), and prior art for the exact problem domain. The draft then cites what was found and either adopts the ready pattern or documents why it deviates. Never design from scratch what the ecosystem has already hardened. Scope: NEW processes only — a one-line owner directive landing in this file is persisted first (same-turn law) and may be refined by research afterward, not gated by it.
 
+## Review research law (owner order 2026-09-10 09:12Z: "When reviewing, research web and accumulate best practices for different aspects that aroused your suspicion")
+
+**Review tasks accumulate empirical web evidence, not opinions.** When a reviewer (HQ or a fresh-context sub-agent review lane) encounters code, architecture, prompt design, pricing formulas, or process patterns that arouse suspicion:
+1. **Never judge by intuition or mental heuristics alone.** If a pattern looks suboptimal, fragile, or unusual, conduct web research (`exa_search` / `web_search` / official docs) to investigate the state of the art and standard industry practices.
+2. **Accumulate best practices across different aspects:**
+   - *Code & testing patterns* (e.g., resilient fuzzy matching, version-boundary guards, async telemetry sync).
+   - *Probe & auction math* (e.g., token pricing metrics, cache hit rate calculations, blended rates, benchmark alignment).
+   - *Grafana & observability schemas* (e.g., panel query optimization, time-series windowing).
+   - *Agent skills & workflows* (e.g., skill frontmatter, execution discipline, task topic delegation).
+3. **Cite concrete references in the review output:** Every finding or suspicion in a review must link to the accumulated best practice or documentation source, comparing our current implementation against the external standard.
+
 ## Proactive object discovery law (owner order 2026-09-10 08:53Z)
 
 **HQ proactively discovers and catalogs all objects in the project ecosystem.** HQ does not passively wait for an object to fail or for the owner to highlight it. HQ actively maintains an inventory of all project objects and systematically rotates its hourly self-improvement scan across this inventory.
@@ -169,3 +180,4 @@ Track proposed → landed process changes here, one line each, with a **cycle ti
 - 2026-09-10 08:00Z hourly cycle — sweep healthy ([run 34449518157](https://github.com/leshchenko1979/inferhub-watch/actions/runs/34449518157) completed success at 07:21Z, fresh), Grafana 200 ok + probe data fresh (updated_at 07:27Z). Board: 1 open ([issue #6](https://github.com/leshchenko1979/inferhub-watch/issues/6)). Rules landed: subagents strictly for review tasks (fresh context required); cron trigger updated to `delivery: mode: quiet`. Scan object: cron notify noise & subagent role boundary. Landed.
 - 2026-09-10 08:45Z: silent cron trigger law landed (owner order: "This can be silent") — cleared `deliver_to` on `inferhub-watch-hq-hourly` so the thin trigger job no longer dumps an execution card into Telegram; only HQ delivers the real cycle report. Landed.
 - 2026-09-10 09:15Z hourly cycle — sweep healthy ([run 34449518157](https://github.com/leshchenko1979/inferhub-watch/actions/runs/34449518157)), Grafana 200 ok, probe data fresh (08:24Z). Board 0 open, hygiene clean. Scan object: step 5(b) probe data currency command grounded with verified apps docker snippet ([issue #7](https://github.com/leshchenko1979/inferhub-watch/issues/7)), self-approved and landed same cycle. Landed.
+- 2026-09-10 09:12Z: review research law landed (owner order: "When reviewing, research web and accumulate best practices for different aspects that aroused your suspicion") — review lanes must research suspicious patterns on the web and cite empirical best practices across code, auction math, Grafana, and agent skills. Landed.
