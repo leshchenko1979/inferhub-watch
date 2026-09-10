@@ -27,3 +27,4 @@
 | 2026-09-10 10:07 UTC | Codified minimum charge floor invariant in ONTOLOGY.md | #8 | closed |
 | 2026-09-10 10:14 UTC | Made Grafana dashboard public and resolved template variable no-data error | #9 | closed |
 | 2026-09-10 11:08 UTC | Tracked canonical Grafana dashboard in repo dashboards/watch.json | #10 | closed |
+| 2026-09-10 12:20 UTC | Added TPS column, TPS chart, blended effective $/Mtok stat card and timeseries | (dashboard) | closed |
