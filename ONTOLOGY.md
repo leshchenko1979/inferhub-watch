@@ -41,6 +41,7 @@ enforced by `tests/test_ontology.py`.
 | **Floor ask** | The `*`-marked ask: catalog minimum, shown only when the route has no billed traffic in the window | `ask-mark` span; legend |
 | **Intelligence (IQ)** | Artificial Analysis Intelligence Index for a route's model — composite of 9 public evals, fetched fresh from artificialanalysis.ai every sweep into `data/intelligence.json`; effort level pinned to (max). Never hardcoded | `probe/intelligence.py`, models.toml `[aa]` slug map |
 | **IQ per $** | Intelligence ÷ the route's effective $/M — the smarter-per-dollar verdict column. Higher is better | board `IQ per $` column |
+| **Minimum charge floor** | Minimum charge of **$0.000010** (10 microcents) per successful request enforced by Inferhub when calculated cost is below $0.000010 | `cost_usdc` lower bound in `usage_logs` |
 
 ## Failures
 
@@ -61,6 +62,9 @@ enforced by `tests/test_ontology.py`.
    gap honest.
 4. **Nothing hardcoded.** Every number on the site is recomputed from live data
    each sweep — no historical figures baked into copy (anti-staleness law).
+5. **Minimum charge floor ($0.000010 / request).** Inferhub billing enforces a
+   minimum charge of $0.000010 per successful request regardless of how few
+   tokens were processed or how high the cache hit rate was.
 
 ## Naming law
 
