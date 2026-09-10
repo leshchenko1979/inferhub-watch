@@ -1527,7 +1527,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(created_at,'1d'), round(avg(ask_input_per_mtok)::numeric,5) AS avg_price, model AS metric FROM usage_logs WHERE $__timeFilter(created_at) AND is_probe = false AND ask_input_per_mtok > 0 GROUP BY 1, model ORDER BY 1",
+          "rawSql": "SELECT $__timeGroupAlias(created_at,'1d'), round(avg(ask_input_per_mtok)::numeric,5) AS avg_price, model AS metric FROM usage_logs WHERE $__timeFilter(created_at) AND is_probe = false AND ask_input_per_mtok > 0 AND model NOT LIKE '%grok%' GROUP BY 1, model ORDER BY 1",
           "refId": "A"
         }
       ],
@@ -1591,7 +1591,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(created_at,'1d'), round(avg(ask_output_per_mtok)::numeric,5) AS avg_price, model AS metric FROM usage_logs WHERE $__timeFilter(created_at) AND is_probe = false AND ask_output_per_mtok > 0 GROUP BY 1, model ORDER BY 1",
+          "rawSql": "SELECT $__timeGroupAlias(created_at,'1d'), round(avg(ask_output_per_mtok)::numeric,5) AS avg_price, model AS metric FROM usage_logs WHERE $__timeFilter(created_at) AND is_probe = false AND ask_output_per_mtok > 0 AND model NOT LIKE '%grok%' GROUP BY 1, model ORDER BY 1",
           "refId": "A"
         }
       ],
