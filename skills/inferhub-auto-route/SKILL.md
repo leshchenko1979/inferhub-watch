@@ -37,6 +37,6 @@ This package follows the [Agent Skills specification](https://agentskills.io/spe
 
 ## Example dry run
 
-`python3 scripts/auto_route_switch.py --dry-run --config /path/to/profile/config.toml --floor-iq 35 --threshold 0.15`
+Invoke the user's configured helper in dry-run mode, for example: `python3 /path/to/route-helper.py --dry-run --config /path/to/profile/config.toml --floor-iq 35 --threshold 0.15`. The bundled `scripts/validate_skill.py --dry-run` validates the package and demonstrates the no-write decision shape; it is not a production mutator.
 
 Expected output is an auditable JSON verdict with `dry_run: true`, `should_switch`, current/best route, source timestamp, gain, and no config/session writes.
