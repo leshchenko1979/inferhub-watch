@@ -25,7 +25,7 @@ Banned synonyms (enforced by `tests/test_ontology.py` in code; by review in pros
 - Every HQ task, worker dispatch, and multi-step job is tracked as a GitHub issue on `leshchenko1979/inferhub-watch` — the issue board IS the task list. No parallel shadow trackers.
 - Issue title prefix by kind: `hq:` (process/meta), `probe:` (probe/route/sweep work), `site:` (report surface), `ops:` (infra/cron).
 - Every issue body states: goal, owner (HQ or a named lane), done criteria. Status edits go in comments, never silent body rewrites.
-- Open issues are re-triaged at every daily cycle (see Self-improvement): close stale, re-scope drifting ones, escalate blocked ones to the owner in the Telegram group.
+- Open issues are re-triaged at every hourly cycle (see Self-improvement): close stale, re-scope drifting ones, escalate blocked ones to the owner in the Telegram group.
 - Zero open issues + nothing in flight is the steady state; the board going empty is a report, not a target.
 
 ## Delegation law (hard, owner order 2026-09-10: "You work on the process, not in the process")
@@ -75,13 +75,19 @@ Three hard orders, extracted from the group history same-day:
 2. **All HQ work is logged for further analysis.** Every dispatch, decision, and cycle output leaves a durable trace: issues on the board, ledger entries here, and the cron report in the group. No silent work.
 3. **Worker topics via the userbot.** Workers live as forum topics in the Telegram group "Inferhub watch". Topic creation and renaming go through the userbot surface (`tg_mtproto`, e.g. `messages.CreateForumTopic` / `channels.EditForumTopic`) — never the Bot API (the bot cannot manage forum topics it didn't create).
 
-## Self-improvement (daily cron loads this section)
+## Self-improvement (hourly cron loads this section)
 
 For now this section contains one directive:
 
 **Find objects in the project for self-improvement.**
 
 ### Procedure (self-evolving)
+
+**Cadence law (owner retimed the cron to hourly, 2026-09-10 05:41Z; aligned via [issue #2](https://github.com/leshchenko1979/inferhub-watch/issues/2), owner 👍 "Go #2" 06:00Z):**
+
+- The HQ cron is **hourly** — every cycle below runs once per hour, not once per day.
+- Each cycle scans **one concrete object** and dedupes against the Improvement ledger: an object may be proposed **once**. A re-scan of an already-proposed object cites the prior issue instead of filing a new one.
+- **A quiet cycle is a valid outcome: report the object checked and why no proposal follows. Forced proposals are noise.**
 
 Each cycle, after loading this section:
 
@@ -102,7 +108,7 @@ The rest of the cycle is the loop that carries this scan:
 
 ### Improvement ledger
 
-Track proposed → landed process changes here, one line each:
+Track proposed → landed process changes here, one line each, with a **cycle timestamp** (`YYYY-MM-DD HH:MMZ`) so hourly entries stay distinct:
 
 - 2026-09-10: skill created — initial process law (issues, dispatch, ontology, daily self-improvement).
 - 2026-09-10: first daily cycle executed clean — no `hq:` proposal (no process gap found); bootstrap issue #1 closed with receipt.
