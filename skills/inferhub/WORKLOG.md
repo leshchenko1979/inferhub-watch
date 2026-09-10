@@ -21,6 +21,9 @@
 - 2026-09-10: first daily cycle executed clean — no `hq:` proposal (no process gap found); bootstrap issue #1 closed with receipt.
 - 2026-09-10: rule-extraction law landed (owner order) — extract and persist a rule from every conversation/incident; this ledger records extractions.
 - 2026-09-10: self-improvement section reseeded (owner order) — directive = "find objects in the project for self-improvement"; procedure made self-evolving (scan one object per cycle, `hq:` issue per proposal, section grows, procedure itself a valid object).
+- 2026-09-10: HQ cycle 05:5xZ — sweep healthy (scheduled run success 22.3h ago, within window; today's 02:17Z firing still pending/queued by GitHub), board 0 open, tests 468 passed. Self-improvement scan object: cron cadence mismatch — the PROCESS.md cycle law said "daily cron" but the owner retimed it to hourly (05:41Z); proposed `hq:` issue to align (pending owner 👍).
 - 2026-09-10 07:1xZ — mission law landed (owner: "provide timely updates on routes with bigger IQ per projected price", commit 9cb81a2). First act: found route_metrics.iq NULL for all rows (slug-mapping defect) → issue #6 filed, self-approved, dispatched to worker topic "Worker — HQ cycles". Value table (discount vs official ask) reported to owner.
 - 2026-09-10 09:15Z: [issue #7](https://github.com/leshchenko1979/inferhub-watch/issues/7) landed — grounded step 5(b) probe currency command in SKILL.md with verified apps docker container snippet.
 | 2026-09-10 10:07 UTC | Codified minimum charge floor invariant in ONTOLOGY.md | #8 | closed |
+| 2026-09-10 10:14 UTC | Made Grafana dashboard public and resolved template variable no-data error | #9 | closed |
+| 2026-09-10 11:08 UTC | Tracked canonical Grafana dashboard in repo dashboards/watch.json | #10 | closed |
