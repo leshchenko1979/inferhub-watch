@@ -42,7 +42,7 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 6,
+        "w": 5,
         "x": 0,
         "y": 39
       },
@@ -101,8 +101,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 6,
-        "x": 12,
+        "w": 5,
+        "x": 5,
         "y": 39
       },
       "id": 3,
@@ -138,6 +138,65 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
+      "description": "Blended effective price per 1M total tokens (cost * 1M / total tokens) across non-probe traffic.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 10,
+        "y": 39
+      },
+      "id": 32,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawSql": "SELECT round((sum(cost_usdc)*1000000.0 / NULLIF(sum(prompt_tokens)+sum(completion_tokens), 0))::numeric, 4) FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at)",
+          "refId": "A"
+        }
+      ],
+      "title": "Effective $/Mtok (blended)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
       "description": "All traffic except probe runs (is_probe=false), over the dashboard time range.",
       "fieldConfig": {
         "defaults": {
@@ -158,8 +217,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 6,
-        "x": 6,
+        "w": 4,
+        "x": 15,
         "y": 39
       },
       "id": 4,
@@ -797,7 +856,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 24,
+        "w": 12,
         "x": 0,
         "y": 60
       },
@@ -821,6 +880,71 @@
         }
       ],
       "title": "Cache hit % by model (in use)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "Effective price per 1M total tokens (cost * 1M / total tokens) over time per model (in-use only).",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              },
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 5
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 60
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round((sum(u.cost_usdc)*1000000.0 / NULLIF(sum(u.prompt_tokens)+sum(u.completion_tokens), 0))::numeric, 5) AS eff_px FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model WHERE u.is_probe = false AND $__timeFilter(u.created_at) GROUP BY 1, 2 HAVING sum(u.prompt_tokens)+sum(u.completion_tokens) > 0 ORDER BY 1"
+        }
+      ],
+      "title": "Effective $/Mtok by model (in use)",
       "type": "timeseries"
     },
     {
@@ -1509,8 +1633,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 6,
-        "x": 18,
+        "w": 5,
+        "x": 19,
         "y": 39
       },
       "id": 31,

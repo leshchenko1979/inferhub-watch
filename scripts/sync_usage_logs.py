@@ -227,6 +227,18 @@ def main() -> int:
         after = newest - OVERLAP
 
     key = api_key()
+
+    # Always refresh live catalog asks into data/catalog.json on every sync
+    try:
+        from probe.catalog import fetch_models, write_snapshot
+        root_dir = Path(__file__).resolve().parents[1]
+        live_models = fetch_models(key)
+        if live_models:
+            write_snapshot(live_models, root_dir)
+            print(f"catalog snapshot updated: {len(live_models)} models")
+    except Exception as exc:
+        print(f"catalog refresh warning: {exc}")
+
     print(f"syncing rows newer than {after.isoformat()} ...")
     rows = fetch_log_rows(key, range_="30d", after=after, max_pages=60,
                           pace_s=1.0)
@@ -236,14 +248,14 @@ def main() -> int:
     # cutoff; keep only rows newer than after minus a margin.
     cutoff = after - OVERLAP
     rows = [r for r in rows if parse_ts(r["ts"]) > cutoff]
-    if not rows:
-        print("nothing to cache")
-        return 0
+    if rows:
+        cached = pgstore.upsert_rows(_dedupe(rows), conn=conn)
+        print(f"upserted {cached} rows")
+        tagged = tag_probe_windows(conn)
+        print(f"tagged {tagged} probe rows")
+    else:
+        print("no new usage logs to cache")
 
-    cached = pgstore.upsert_rows(_dedupe(rows), conn=conn)
-    print(f"upserted {cached} rows")
-    tagged = tag_probe_windows(conn)
-    print(f"tagged {tagged} probe rows")
     metrics = sync_route_metrics(conn)
     print(f"route_metrics upserted: {metrics}")
     with conn.cursor() as cur:
