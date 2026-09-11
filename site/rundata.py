@@ -423,20 +423,12 @@ def cache_bar_pct(raw: object) -> float:
 
 
 def load_dated_pricing(root: Path) -> list[tuple[str, dict]]:
-    """data/pricing/*.json as (YYYY-MM-DD, payload), oldest first; skips broken files."""
-    directory = root / "data" / "pricing"
-    if not directory.is_dir():
-        return []
-    dated: list[tuple[str, dict]] = []
-    for path in sorted(directory.glob("*.json")):
-        try:
-            payload = json.loads(path.read_text())
-        except (OSError, ValueError):
-            continue
-        if not isinstance(payload, dict) or not isinstance(payload.get("routes"), dict):
-            continue
-        dated.append((path.stem, payload))
-    return dated
+    """data/pricing/*.json as (YYYY-MM-DD, payload), oldest first; skips broken files.
+
+    Delegates to the probe-side owner (probe.pricing.dated_snapshots) so the
+    projection gate, the marginal cutoff and the site read one loader.
+    """
+    return pricing.dated_snapshots(root)
 
 
 def prior_pricing(dated: list[tuple[str, dict]], current: dict | None) -> dict | None:

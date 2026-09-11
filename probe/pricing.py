@@ -362,6 +362,29 @@ def route_entry(stats: dict | None, catalog: dict, alias: str, *, candidate: boo
     return entry
 
 
+def dated_snapshots(root: Path | None = None) -> list[tuple[str, dict]]:
+    """data/pricing/*.json as (YYYY-MM-DD, payload), oldest first.
+
+    The single owner of the dated-snapshot read (site.rundata delegates
+    here): the projection gate backtest, the marginal cutoff and the site's
+    day series all consume the same history. Broken/unusable files are
+    skipped, never raised — a half-written snapshot must not break a render.
+    """
+    root = root or repo_root()
+    directory = root / "data" / "pricing"
+    if not directory.is_dir():
+        return []
+    dated: list[tuple[str, dict]] = []
+    for path in sorted(directory.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if not isinstance(payload, dict) or not isinstance(payload.get("routes"), dict):
+            continue
+        dated.append((path.stem, payload))
+    return dated
+
 def prior_snapshot_cutoff(root: Path | None = None) -> str | None:
     """generated_at of the latest dated snapshot strictly before today.
 
