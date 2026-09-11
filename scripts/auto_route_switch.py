@@ -1,8 +1,11 @@
-"""Automated route switching pipeline for Inferhub Watch (Issue #12).
+"""Automated route switching pipeline for Inferhub Watch (Issue #12, #22).
 
-Evaluates candidate routes against the current model using Artificial Analysis IQ
-and live auction ask prices. Automatically switches the active route when a qualified
-alternative offers >15% higher Value = IQ / (0.99 * ask_in + 0.01 * ask_out).
+Evaluates candidate routes against the current model using Artificial Analysis IQ,
+gated projected effective price (matching the board crown, probe/basis.py), and
+empirical throughput (TPS) weighting. Automatically switches the active route when a qualified
+alternative offers >15% higher Value:
+
+    Value = (IQ / eff_price) * (tps / 50.0) ** 0.25
 
 Criteria:
 - AA IQ >= 35.0 (hard floor)
@@ -36,6 +39,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from probe import basis, official_compare, pricing
 from scripts.sync_usage_logs import resolve_slug
 
 logger = logging.getLogger("auto_route_switch")
@@ -45,6 +49,8 @@ DEFAULT_DB_PATH = Path("/root/.opencrabs/profiles/ops/opencrabs.db")
 DEFAULT_ROOT_DB_PATH = Path("/root/.opencrabs/opencrabs.db")
 IQ_FLOOR = 35.0
 SWITCH_THRESHOLD = 0.15  # >15% higher value
+TPS_REF = 50.0  # Reference baseline TPS for fleet
+TPS_WEIGHT_EXPONENT = 0.25  # Sub-linear power-law exponent for TPS weight
 
 # Inferhub Watch Telegram group whose bound session receives switch alerts (Issue #14).
 INFERHUB_WATCH_CHAT_ID = "-1004379632866"
@@ -82,19 +88,121 @@ class RouteCandidate:
     iq: float
     ask_in: float
     ask_out: float
+    eff_price: float
+    tps: float
     value: float
     supports_tools: bool
     supports_cache: bool
 
 
-def calculate_value(iq: float, ask_in: float | None, ask_out: float | None) -> float:
-    """Calculate empirical value metric = IQ / (0.99 * ask_in + 0.01 * ask_out)."""
-    if ask_in is None or ask_out is None:
+def calculate_value(
+    iq: float,
+    eff_price: float | None = None,
+    ask_in: float | None = None,
+    ask_out: float | None = None,
+    tps: float | None = None,
+    tps_ref: float = TPS_REF,
+    weight_exp: float = TPS_WEIGHT_EXPONENT,
+) -> float:
+    """Calculate empirical value metric:
+    Value = (IQ / eff_price) * (tps / tps_ref) ** weight_exp
+
+    Backwards compatibility: If eff_price is not provided, computes raw ask mix:
+    denom = 0.99 * ask_in + 0.01 * ask_out.
+    """
+    if eff_price is None:
+        if ask_in is None or ask_out is None:
+            return 0.0
+        denom = (0.99 * ask_in) + (0.01 * ask_out)
+        if denom <= 0:
+            return 0.0
+        eff_price = denom
+
+    if eff_price <= 0 or iq is None or iq <= 0:
         return 0.0
-    denom = (0.99 * ask_in) + (0.01 * ask_out)
-    if denom <= 0:
+
+    base_val = iq / eff_price
+
+    if tps is None or tps <= 0:
+        tps = tps_ref
+
+    tps_multiplier = (tps / tps_ref) ** weight_exp
+    return base_val * tps_multiplier
+
+
+def resolve_effective_price(
+    route: str,
+    info: dict[str, Any],
+    pricing_payload: dict[str, Any] | None = None,
+    dated_snapshots: list | None = None,
+    use_proj: bool = True,
+) -> float:
+    """Resolve effective price matching board crown basis (probe/basis.py).
+
+    If the route has billed history and projection gate passes, uses board_basis().
+    Fallback for cold-start/unbilled catalog routes: uses catalog asks with fleet hit prior.
+    """
+    if pricing_payload is not None:
+        dated = dated_snapshots if dated_snapshots is not None else []
+        b_price = basis.board_basis(pricing_payload, route, dated, use_proj=use_proj)
+        if b_price is not None and b_price > 0:
+            return float(b_price)
+
+    # Cold start fallback using catalog asks and fleet prior hit rate
+    try:
+        ask_in = float(info.get("ask_in") or 0.0)
+        ask_out = float(info.get("ask_out") or 0.0)
+    except (ValueError, TypeError):
         return 0.0
-    return iq / denom
+
+    if ask_in <= 0.0 or ask_out <= 0.0:
+        return 0.0
+
+    # If cache supported, apply fleet prior hit rate (official_compare.fleet_hit_prior)
+    supports_cache = bool(info.get("supports_cache", False))
+    if supports_cache:
+        # 50% discount on cached input tokens per InferHub standard
+        routes_dict = (pricing_payload or {}).get("routes", {})
+        prior = official_compare.fleet_hit_prior(routes_dict) if routes_dict else None
+        hit_factor = prior if prior is not None else 0.0
+        eff_in = ask_in * (1.0 - 0.5 * hit_factor)
+    else:
+        eff_in = ask_in
+
+    return (0.99 * eff_in) + (0.01 * ask_out)
+
+
+def resolve_route_tps(
+    route: str,
+    pricing_payload: dict[str, Any] | None = None,
+    qual_runs: dict[str, Any] | None = None,
+    default_tps: float = TPS_REF,
+) -> float:
+    """Resolve route TPS hierarchically:
+    1. 24h rolling production perf_stats from pricing_payload (n >= 5)
+    2. Qualified sustained TPS probe from qual_runs (1.0 <= tps <= 500.0)
+    3. Fleet reference baseline (default_tps = 50.0)
+    """
+    # Tier 1: Production 24h perf stats
+    if pricing_payload is not None:
+        perf = pricing_payload.get("perf") or {}
+        models_perf = perf.get("models") or {}
+        model_stats = models_perf.get(route) or {}
+        tps_mean = model_stats.get("tps_mean")
+        n_req = model_stats.get("n", 0)
+        if tps_mean is not None and n_req >= 5 and 1.0 <= float(tps_mean) <= 500.0:
+            return float(tps_mean)
+
+    # Tier 2: Candidate qualification probe runs
+    if qual_runs is not None:
+        qual_models = qual_runs.get("models") or {}
+        qual_stat = qual_models.get(route) or {}
+        q_tps = qual_stat.get("tps")
+        if q_tps is not None and 1.0 <= float(q_tps) <= 500.0:
+            return float(q_tps)
+
+    # Tier 3: Fleet reference default
+    return default_tps
 
 
 def is_qualified(
@@ -151,6 +259,10 @@ def evaluate_candidates(
     intel_slugs: dict[str, Any],
     aa_map: dict[str, Any],
     floor_iq: float = IQ_FLOOR,
+    pricing_payload: dict[str, Any] | None = None,
+    dated_snapshots: list | None = None,
+    qual_runs: dict[str, Any] | None = None,
+    use_proj: bool = True,
 ) -> dict[str, RouteCandidate]:
     """Evaluate and build RouteCandidate objects for all catalog models."""
     candidates: dict[str, RouteCandidate] = {}
@@ -168,13 +280,23 @@ def evaluate_candidates(
         except (ValueError, TypeError):
             ask_in, ask_out = 0.0, 0.0
 
-        val = calculate_value(iq, ask_in, ask_out) if iq is not None else 0.0
+        eff_price = resolve_effective_price(
+            route,
+            info,
+            pricing_payload=pricing_payload,
+            dated_snapshots=dated_snapshots,
+            use_proj=use_proj,
+        )
+        tps = resolve_route_tps(route, pricing_payload=pricing_payload, qual_runs=qual_runs)
+        val = calculate_value(iq or 0.0, eff_price=eff_price, tps=tps) if (iq is not None and eff_price > 0) else 0.0
 
         candidates[route] = RouteCandidate(
             route=route,
             iq=iq or 0.0,
             ask_in=ask_in,
             ask_out=ask_out,
+            eff_price=eff_price,
+            tps=tps,
             value=val,
             supports_tools=supports_tools,
             supports_cache=supports_cache,
@@ -189,13 +311,26 @@ def find_best_route(
     current_model: str,
     floor_iq: float = IQ_FLOOR,
     threshold: float = SWITCH_THRESHOLD,
+    pricing_payload: dict[str, Any] | None = None,
+    dated_snapshots: list | None = None,
+    qual_runs: dict[str, Any] | None = None,
+    use_proj: bool = True,
 ) -> tuple[bool, RouteCandidate | None, RouteCandidate | None, str]:
     """Determine if a route switch is needed.
 
     Returns:
         (should_switch, best_candidate, current_candidate, reason)
     """
-    candidates = evaluate_candidates(catalog_models, intel_slugs, aa_map, floor_iq=floor_iq)
+    candidates = evaluate_candidates(
+        catalog_models,
+        intel_slugs,
+        aa_map,
+        floor_iq=floor_iq,
+        pricing_payload=pricing_payload,
+        dated_snapshots=dated_snapshots,
+        qual_runs=qual_runs,
+        use_proj=use_proj,
+    )
     current_cand = candidates.get(current_model)
 
     qualified_candidates = [
@@ -485,6 +620,17 @@ def run_auto_route_switch(
 
     intel_slugs = intel.get("models", {})
 
+    # Load pricing payload and snapshots if available
+    pricing_path = root_dir / "data" / "pricing.json"
+    pricing_payload = json.loads(pricing_path.read_text(encoding="utf-8")) if pricing_path.exists() else None
+    dated_snapshots = pricing.dated_snapshots(root_dir)
+    qual_path = root_dir / "data" / "qual_runs.json"
+    qual_runs = json.loads(qual_path.read_text(encoding="utf-8")) if qual_path.exists() else None
+
+    # Check projection gate
+    gate = official_compare.projection_gate(dated_snapshots)
+    use_proj = gate.get("pass", False)
+
     current_model = get_current_model(config_path)
     should_switch, best, current, reason = find_best_route(
         catalog_models,
@@ -493,6 +639,10 @@ def run_auto_route_switch(
         current_model=current_model,
         floor_iq=floor_iq,
         threshold=threshold,
+        pricing_payload=pricing_payload,
+        dated_snapshots=dated_snapshots,
+        qual_runs=qual_runs,
+        use_proj=use_proj,
     )
 
     result: dict[str, Any] = {
