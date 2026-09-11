@@ -45,7 +45,7 @@ def projected(payload: dict, route: str, dated: list) -> float | None:
 def board_basis(payload: dict, route: str, dated: list, *,
                 use_proj: bool) -> float | None:
     """The $/M the board ranks a route on: realized, or projected once
-    the backtest gate passes. This is THE decision price."""
+    the rank gate passes. This is THE decision price."""
     if use_proj:
         proj = projected(payload, route, dated)
         if proj is not None:

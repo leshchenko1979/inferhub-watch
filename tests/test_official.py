@@ -5,6 +5,7 @@ from typing import ClassVar
 from unittest import mock
 
 from probe.official_compare import (
+    _spearman,
     blended_eff,
     cache_rule_stats,
     comparison_rows,
@@ -197,46 +198,116 @@ class HitSeriesHygieneTest(unittest.TestCase):
         self.assertGreater(hit, 0.93)  # was 0.779 with the poison in
 
 
-    """projection_gate: backtest transitions against the next snapshot."""
+    """projection_gate: backtest the projected route RANKING, not the numbers."""
 
-    @staticmethod
-    def _dated(days: int, realized_scale: float = 1.0) -> list:
-        """Dated snapshots for one route; day t+1 stamps the realized eff."""
-        st = {
-            "ask_in": 0.14, "ask_out": 0.42, "cache_pct": 50.0,
+    ROUTES: ClassVar[tuple] = ("r/a", "r/b", "r/c", "r/d")
+    MULTS: ClassVar[tuple] = (1.0, 2.0, 3.0, 4.0)
+
+    @classmethod
+    def _route_stats(cls, mult: float) -> dict:
+        """One route's stats; its projection scales with `mult`."""
+        return {
+            "ask_in": 0.14 * mult, "ask_out": 0.42 * mult, "cache_pct": 50.0,
             "reqs": 200, "tok_in": 1_000_000, "tok_out": 100_000,
             "cached": 500_000,
         }
-        proj = inferhub_eff(st)
+
+    @classmethod
+    def _dated(cls, days: int, realized_scale: float = 1.0,
+               reversed_days=frozenset(), routes=None) -> list:
+        """Dated snapshots over distinct routes; the newer side stamps realized.
+
+        Each route carries a distinct projection, so every transition has a
+        ranking to score. A snapshot whose index is in `reversed_days` stamps
+        its realized eff in the REVERSED route order, which degrades the rho of
+        the pair ending on it to -1 - the gate must fail on that.
+        """
+        routes = cls.ROUTES if routes is None else routes
+        mults = cls.MULTS
         out = []
         for i in range(days):
-            day_st = dict(st)
-            if i > 0:  # realized eff only matters on the newer side of a pair
-                day_st["eff_per_mtok"] = round(proj * realized_scale, 4)
-            out.append((f"2026-08-{i + 1:02d}", {"routes": {"r/x": day_st}}))
+            day_routes = {}
+            for j, route in enumerate(routes):
+                st = cls._route_stats(mults[j % len(mults)])
+                if i > 0:  # realized eff only matters on the newer side of a pair
+                    k = len(routes) - 1 - j if i in reversed_days else j
+                    st["eff_per_mtok"] = round(
+                        inferhub_eff(cls._route_stats(mults[k % len(mults)]))
+                        * realized_scale, 6)
+                day_routes[route] = st
+            out.append((f"2026-08-{i + 1:02d}", {"routes": day_routes}))
         return out
 
-    def test_passes_when_transitions_land_within_tolerance(self):
-        gate = projection_gate(self._dated(21, realized_scale=1.0))
-        self.assertEqual(gate["n"], 20)
-        self.assertEqual(gate["within"], 20)
+    def test_passes_when_the_ranking_is_preserved(self):
+        gate = projection_gate(self._dated(12))
+        self.assertEqual(gate["n"], 11)
+        self.assertEqual(gate["land"], 11)
+        self.assertEqual(gate["share"], 1.0)
+        self.assertEqual(gate["bar"], 0.8)
+        self.assertEqual(gate["rho_median"], 1.0)
         self.assertTrue(gate["pass"])
 
-    def test_fails_when_projections_miss(self):
-        gate = projection_gate(self._dated(21, realized_scale=2.0))
-        self.assertEqual(gate["n"], 20)
-        self.assertEqual(gate["within"], 0)
+    def test_uniform_bias_does_not_break_the_ranking(self):
+        """The gate scores order, not accuracy: a constant factor is a no-op."""
+        gate = projection_gate(self._dated(12, realized_scale=2.0))
+        self.assertEqual(gate["land"], 11)
+        self.assertTrue(gate["pass"])
+
+    def test_fails_when_the_ranking_is_degraded(self):
+        """A reversed order never lands - the gate keeps its teeth."""
+        gate = projection_gate(
+            self._dated(12, reversed_days=frozenset(range(1, 12))))
+        self.assertEqual(gate["n"], 11)
+        self.assertEqual(gate["land"], 0)
+        self.assertEqual(gate["share"], 0.0)
         self.assertFalse(gate["pass"])
 
+    def test_fails_when_share_falls_below_the_bar(self):
+        gate = projection_gate(
+            self._dated(12, reversed_days=frozenset({1, 2, 3})))
+        self.assertEqual(gate["n"], 11)
+        self.assertEqual(gate["land"], 8)
+        self.assertAlmostEqual(gate["share"], 0.727, places=3)
+        self.assertFalse(gate["pass"])
+
+    def test_one_degraded_transition_still_clears_the_bar(self):
+        gate = projection_gate(self._dated(12, reversed_days=frozenset({1})))
+        self.assertEqual(gate["land"], 10)
+        self.assertAlmostEqual(gate["share"], 0.909, places=3)
+        self.assertTrue(gate["pass"])
+
     def test_thin_history_never_passes(self):
-        gate = projection_gate(self._dated(3))
-        self.assertLess(gate["n"], 20)
+        gate = projection_gate(self._dated(4))
+        self.assertLess(gate["n"], 10)
+        self.assertFalse(gate["pass"])
+
+    def test_undefined_ranking_never_counts_as_a_transition(self):
+        """Under three comparable routes -> rho undefined -> no transition."""
+        gate = projection_gate(self._dated(12, routes=("r/a",)))
+        self.assertEqual(gate["n"], 0)
         self.assertFalse(gate["pass"])
 
     def test_empty_or_malformed_history_is_an_honest_fail(self):
         self.assertFalse(projection_gate([])["pass"])
         self.assertFalse(projection_gate({})["pass"])
         self.assertFalse(projection_gate([("d", "not-a-payload")])["pass"])
+
+
+class SpearmanTest(unittest.TestCase):
+    """The gate's own rank math (no scipy dependency)."""
+
+    def test_perfect_and_reversed(self):
+        self.assertAlmostEqual(_spearman([1, 2, 3], [1, 2, 3]), 1.0)
+        self.assertAlmostEqual(_spearman([1, 2, 3], [3, 2, 1]), -1.0)
+
+    def test_ties_are_averaged(self):
+        # y = [1, 2, 2] -> ranks [1, 2.5, 2.5]; Pearson-on-ranks = 1.5/sqrt(3).
+        self.assertAlmostEqual(_spearman([1, 2, 3], [1, 2, 2]), 1.5 / (3 ** 0.5))
+
+    def test_undefined_series_return_none(self):
+        self.assertIsNone(_spearman([1, 2], [1, 2]))          # under 3 pairs
+        self.assertIsNone(_spearman([1, 1, 1], [1, 2, 3]))    # zero variance
+        self.assertIsNone(_spearman([1, 2, 3], [5, 5, 5]))    # zero variance
 
 
 class ComparisonRowsTest(unittest.TestCase):
