@@ -68,7 +68,8 @@ class VerdictTest(unittest.TestCase):
     def test_gate_pass_flips_ranking_to_projection(self):
         import probe.official_compare as oc
 
-        gate = {"pass": True, "n": 20, "within": 20, "share": 1.0, "tol": 0.2}
+        gate = {"pass": True, "n": 11, "land": 11, "share": 1.0, "bar": 0.8,
+                "min_n": 10, "rho_median": 1.0}
         # production payload always carries routes (load_pricing enforces
         # it) and _proj_eff reads stats from it — mirror that shape here
         payload = {"range": "30d", "requests_scanned": 100,

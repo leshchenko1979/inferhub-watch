@@ -217,10 +217,10 @@ def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
     guide = f'<a class="guide-link" href="{docs_href("how-to-read-the-board")}">reading guide</a>'
     return (
         "Basis: "
-        f"{'projection' if use_proj else 'realized'}, backtest gate "
-        f"{'passed' if use_proj else 'not passed'}: {gate.get('within')}/"
-        f"{gate.get('n')} transitions within "
-        f"{int((gate.get('tol') or 0.2) * 100)}%. Column meanings, "
+        f"{'projection' if use_proj else 'realized'}, rank gate "
+        f"{'passed' if use_proj else 'not passed'}: {gate.get('land')}/"
+        f"{gate.get('n')} transitions landed at rho &#8805; {gate.get('bar')}, "
+        f"median rho {gate.get('rho_median')}. Column meanings, "
         f"the * floor-ask mark, and the plumbing key: {guide}."
     )
 

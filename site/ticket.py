@@ -24,7 +24,7 @@ def verdict_section(payload: dict | None) -> str:
     Answers the site's one question — where to route bulk workload today —
     from the same sweep data as the board: the best IQ-per-$ route, its
     reason (ask trend, cache hit), the runner-up as the stamped alternate.
-    IQ per $ ranks on the projection once the backtest gate passes
+    IQ per $ ranks on the projection once the rank gate passes
     (projection_gate), on the realized 30d eff before that. Never
     hardcodes a model; '' when intelligence or effective prices are
     missing so the plain board stands alone.

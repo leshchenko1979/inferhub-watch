@@ -396,7 +396,8 @@ class PricingSectionTests(unittest.TestCase):
         # this history) with the projection as the dimmed alternate
         self.assertIn('class="pair-main"', page)
         self.assertIn('class="pair-alt"', page)
-        self.assertIn("backtest gate", page)
+        self.assertIn("rank gate", page)
+        self.assertIn("transitions landed at rho", page)
         self.assertIn('data-label="cache hit"', page)  # candidates table
         # plumbing: 'more' sits in its own route-row cell (owner 2026-09-07
         # 21:xxZ — never shares the iq/$ line); on open the word flips to
