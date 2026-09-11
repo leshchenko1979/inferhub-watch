@@ -18,10 +18,11 @@ is the basis IQ per $ ranks on.
 Effective bars are log-scaled from the cheapest to the priciest route on
 the board (priciest = full bar) and colored teal ≤ $0.02, amber above.
 
-The rate basis is decided by the projection rank gate: when the gate
+The rate basis is decided by the projection crown gate: when the gate
 passes, IQ per $ ranks on the "now" projection; when it does not, ranks
 on the realized "30d" figure. The board's caption carries the live gate
-state (transitions landed at the rank bar) on every sweep.
+state (transitions crowned within the tolerance of the cheapest realized
+route) on every sweep.
 
 "Show plumbing" folds each route's ask movement (the color key sits
 under the table), ask source, ask history, cache hit, failures, window

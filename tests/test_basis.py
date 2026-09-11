@@ -88,8 +88,8 @@ class GateStateTests(unittest.TestCase):
     """gate_state: one verdict, read through the money-basis owner."""
 
     def test_reads_committed_snapshots(self) -> None:
-        verdict = {"n": 14, "land": 9, "share": 0.643, "bar": 0.8,
-                   "min_n": 10, "rho_median": 0.9, "pass": False}
+        verdict = {"n": 14, "land": 12, "share": 0.857, "tol": 0.15,
+                   "min_n": 10, "pass": True}
         with unittest.mock.patch.object(basis.pricing, "dated_snapshots",
                                         return_value=[("2026-09-11", {})]), \
                 unittest.mock.patch.object(basis.official_compare,

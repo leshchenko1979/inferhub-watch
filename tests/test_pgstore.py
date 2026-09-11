@@ -108,13 +108,14 @@ class PublishTests(unittest.TestCase):
         self.assertIn("projection_gate", pgstore.GATE_DDL)
         self.assertIn("route_basis", pgstore.ROUTE_BASIS_DDL)
 
-    def test_gate_ddl_retires_the_deviation_columns(self) -> None:
-        # The verdict is rank fidelity now, so the old deviation columns are
-        # superseded and dropped - no stale deviation-tolerance schema survives.
+    def test_gate_ddl_retires_the_rank_fidelity_columns(self) -> None:
+        # The verdict is the top-1 crown backtest now, so the rank-fidelity
+        # columns are superseded and dropped - no stale bar/rho schema survives.
         self.assertNotIn("within integer", pgstore.GATE_DDL)
-        self.assertNotIn("tol numeric", pgstore.GATE_DDL)
+        self.assertNotIn("bar numeric", pgstore.GATE_DDL)
+        self.assertNotIn("rho_median numeric", pgstore.GATE_DDL)
         self.assertIn("land integer", pgstore.GATE_DDL)
-        self.assertIn("rho_median numeric", pgstore.GATE_DDL)
+        self.assertIn("tol numeric", pgstore.GATE_DDL)
 
     def test_ensure_schema_executes_every_ddl(self) -> None:
         conn = self._conn()
@@ -137,14 +138,14 @@ class PublishTests(unittest.TestCase):
     def test_gate_upsert_passes_verdict_and_commits(self) -> None:
         conn = self._conn()
         pgstore.publish_projection_gate(conn, {
-            "n": 14, "land": 9, "share": 0.643, "bar": 0.8, "min_n": 10,
-            "rho_median": 0.9, "pass": False})
+            "n": 14, "land": 12, "share": 0.857, "tol": 0.15, "min_n": 10,
+            "pass": True})
         cur = conn.cursor.return_value.__enter__.return_value
         sql, params = cur.execute.call_args.args
         self.assertIn("insert into projection_gate", sql)
         self.assertIn("on conflict (id) do update", sql)
         self.assertEqual(
-            params, ("projection_gate", False, 14, 9, 0.643, 0.8, 10, 0.9))
+            params, ("projection_gate", True, 14, 12, 0.857, 0.15, 10))
         conn.commit.assert_called_once()
 
     def test_gate_upsert_defaults_missing_pass_to_false(self) -> None:

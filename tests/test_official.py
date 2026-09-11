@@ -4,8 +4,9 @@ import unittest
 from typing import ClassVar
 from unittest import mock
 
+from probe import pricing
 from probe.official_compare import (
-    _spearman,
+    _crown_regrets,
     blended_eff,
     cache_rule_stats,
     comparison_rows,
@@ -198,7 +199,14 @@ class HitSeriesHygieneTest(unittest.TestCase):
         self.assertGreater(hit, 0.93)  # was 0.779 with the poison in
 
 
-    """projection_gate: backtest the projected route RANKING, not the numbers."""
+class ProjectionGateTest(unittest.TestCase):
+    """projection_gate: the top-1 CROWN backtest, not a whole-ranking score.
+
+    The gate certifies what the BOARD shows: per transition it crowns the
+    lowest projected $/M route and asks whether that crown's realized cost
+    landed within GATE_TOL of the true cheapest realized route. These
+    fixtures carry distinct projections so every transition has a crown.
+    """
 
     ROUTES: ClassVar[tuple] = ("r/a", "r/b", "r/c", "r/d")
     MULTS: ClassVar[tuple] = (1.0, 2.0, 3.0, 4.0)
@@ -218,9 +226,10 @@ class HitSeriesHygieneTest(unittest.TestCase):
         """Dated snapshots over distinct routes; the newer side stamps realized.
 
         Each route carries a distinct projection, so every transition has a
-        ranking to score. A snapshot whose index is in `reversed_days` stamps
-        its realized eff in the REVERSED route order, which degrades the rho of
-        the pair ending on it to -1 - the gate must fail on that.
+        crown - the lowest projected $/M route, r/a. A snapshot whose index is
+        in `reversed_days` stamps its realized eff in the REVERSED route order,
+        so the crowned route realizes the priciest cost - the gate must fail
+        on that.
         """
         routes = cls.ROUTES if routes is None else routes
         mults = cls.MULTS
@@ -238,23 +247,36 @@ class HitSeriesHygieneTest(unittest.TestCase):
             out.append((f"2026-08-{i + 1:02d}", {"routes": day_routes}))
         return out
 
-    def test_passes_when_the_ranking_is_preserved(self):
+    @classmethod
+    def _pair(cls, realized: dict) -> list:
+        """One transition: crown r/a (projections r/a<r/b<r/c), explicit realized.
+
+        The realized eff is stamped verbatim so a test can place the crown at a
+        chosen distance above the cheapest realized route.
+        """
+        mults = {"r/a": 1.0, "r/b": 2.0, "r/c": 3.0}
+        old = {r: cls._route_stats(m) for r, m in mults.items()}
+        new = {r: dict(old[r], eff_per_mtok=v) for r, v in realized.items()}
+        return [("2026-08-01", {"routes": old}),
+                ("2026-08-02", {"routes": new})]
+
+    def test_passes_when_the_crown_realizes_cheapest(self):
         gate = projection_gate(self._dated(12))
         self.assertEqual(gate["n"], 11)
         self.assertEqual(gate["land"], 11)
         self.assertEqual(gate["share"], 1.0)
-        self.assertEqual(gate["bar"], 0.8)
-        self.assertEqual(gate["rho_median"], 1.0)
+        self.assertEqual(gate["tol"], 0.15)
+        self.assertEqual(gate["min_n"], 10)
         self.assertTrue(gate["pass"])
 
-    def test_uniform_bias_does_not_break_the_ranking(self):
-        """The gate scores order, not accuracy: a constant factor is a no-op."""
+    def test_a_uniform_bias_leaves_the_crown_and_its_regret_intact(self):
+        """The gate scores the crown's RELATIVE cost: a constant factor cancels."""
         gate = projection_gate(self._dated(12, realized_scale=2.0))
         self.assertEqual(gate["land"], 11)
         self.assertTrue(gate["pass"])
 
-    def test_fails_when_the_ranking_is_degraded(self):
-        """A reversed order never lands - the gate keeps its teeth."""
+    def test_a_reversed_order_never_lands(self):
+        """The crowned route realizes the priciest cost - the gate keeps teeth."""
         gate = projection_gate(
             self._dated(12, reversed_days=frozenset(range(1, 12))))
         self.assertEqual(gate["n"], 11)
@@ -270,7 +292,7 @@ class HitSeriesHygieneTest(unittest.TestCase):
         self.assertAlmostEqual(gate["share"], 0.727, places=3)
         self.assertFalse(gate["pass"])
 
-    def test_one_degraded_transition_still_clears_the_bar(self):
+    def test_one_bad_crown_still_clears_the_bar(self):
         gate = projection_gate(self._dated(12, reversed_days=frozenset({1})))
         self.assertEqual(gate["land"], 10)
         self.assertAlmostEqual(gate["share"], 0.909, places=3)
@@ -281,33 +303,65 @@ class HitSeriesHygieneTest(unittest.TestCase):
         self.assertLess(gate["n"], 10)
         self.assertFalse(gate["pass"])
 
-    def test_undefined_ranking_never_counts_as_a_transition(self):
-        """Under three comparable routes -> rho undefined -> no transition."""
+    def test_fewer_than_three_comparable_routes_never_counts(self):
+        """Degenerate transitions are skipped, not scored: n stays 0."""
         gate = projection_gate(self._dated(12, routes=("r/a",)))
         self.assertEqual(gate["n"], 0)
         self.assertFalse(gate["pass"])
+
+    def test_crown_just_over_tolerance_does_not_land(self):
+        """Teeth: a crown 16% over the cheapest realized route MUST fail."""
+        gate = projection_gate(
+            self._pair({"r/a": 1.16, "r/b": 1.0, "r/c": 1.2}))
+        self.assertEqual(gate["n"], 1)
+        self.assertEqual(gate["land"], 0)
+        self.assertFalse(gate["pass"])
+
+    def test_crown_just_under_tolerance_lands(self):
+        """The 15% tolerance is inclusive at the boundary: 14% lands."""
+        gate = projection_gate(
+            self._pair({"r/a": 1.14, "r/b": 1.0, "r/c": 1.2}))
+        self.assertEqual(gate["n"], 1)
+        self.assertEqual(gate["land"], 1)
 
     def test_empty_or_malformed_history_is_an_honest_fail(self):
         self.assertFalse(projection_gate([])["pass"])
         self.assertFalse(projection_gate({})["pass"])
         self.assertFalse(projection_gate([("d", "not-a-payload")])["pass"])
 
+class CrownLadderTest(unittest.TestCase):
+    """The owner's 15% ruling, reproduced on the committed crown history.
 
-class SpearmanTest(unittest.TestCase):
-    """The gate's own rank math (no scipy dependency)."""
+    Frozen to the snapshots through 2026-09-10 - the 14 scorable transitions
+    the owner measured. The crown regret is bimodal: 11 transitions crown the
+    true cheapest (0% regret), then 10.8%, 55.7% and 113.2%. That ladder is
+    exactly why the tolerance is 15%: 0% fails (11/14), 15% passes (12/14), and
+    the tail would need 60%/120% to certify a projection that crowns a
+    113%-over route. Asserting the frozen prefix keeps the test stable as the
+    sweep appends new snapshots.
+    """
 
-    def test_perfect_and_reversed(self):
-        self.assertAlmostEqual(_spearman([1, 2, 3], [1, 2, 3]), 1.0)
-        self.assertAlmostEqual(_spearman([1, 2, 3], [3, 2, 1]), -1.0)
+    @staticmethod
+    def _through(day: str) -> list:
+        return [pair for pair in pricing.dated_snapshots() if pair[0] <= day]
 
-    def test_ties_are_averaged(self):
-        # y = [1, 2, 2] -> ranks [1, 2.5, 2.5]; Pearson-on-ranks = 1.5/sqrt(3).
-        self.assertAlmostEqual(_spearman([1, 2, 3], [1, 2, 2]), 1.5 / (3 ** 0.5))
+    def test_the_ladder_reproduces_the_owners_evidence(self):
+        regrets = _crown_regrets(self._through("2026-09-10"))
+        self.assertEqual(len(regrets), 14)
+        ladder = {
+            tol: sum(1 for r in regrets if r <= tol)
+            for tol in (0.0, 0.15, 0.60, 1.20)
+        }
+        self.assertEqual(ladder, {0.0: 11, 0.15: 12, 0.60: 13, 1.20: 14})
 
-    def test_undefined_series_return_none(self):
-        self.assertIsNone(_spearman([1, 2], [1, 2]))          # under 3 pairs
-        self.assertIsNone(_spearman([1, 1, 1], [1, 2, 3]))    # zero variance
-        self.assertIsNone(_spearman([1, 2, 3], [5, 5, 5]))    # zero variance
+    def test_gate_passes_at_the_fifteen_percent_ruling(self):
+        gate = projection_gate(self._through("2026-09-10"))
+        self.assertEqual(gate["n"], 14)
+        self.assertEqual(gate["land"], 12)
+        self.assertAlmostEqual(gate["share"], 0.857, places=3)
+        self.assertEqual(gate["tol"], 0.15)
+        self.assertTrue(gate["pass"])
+
 
 
 class ComparisonRowsTest(unittest.TestCase):

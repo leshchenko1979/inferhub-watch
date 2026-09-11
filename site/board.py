@@ -215,12 +215,14 @@ def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
     All static explanation moved to the docs page (owner order
     2026-09-08); the caption keeps only what changes per sweep."""
     guide = f'<a class="guide-link" href="{docs_href("how-to-read-the-board")}">reading guide</a>'
+    tol = gate.get("tol")
+    tol_label = f"{tol:.0%}" if isinstance(tol, (int, float)) else "the crown tolerance"
     return (
         "Basis: "
-        f"{'projection' if use_proj else 'realized'}, rank gate "
+        f"{'projection' if use_proj else 'realized'}, crown gate "
         f"{'passed' if use_proj else 'not passed'}: {gate.get('land')}/"
-        f"{gate.get('n')} transitions landed at rho &#8805; {gate.get('bar')}, "
-        f"median rho {gate.get('rho_median')}. Column meanings, "
+        f"{gate.get('n')} transitions crowned within {tol_label} of the "
+        f"cheapest realized route. Column meanings, "
         f"the * floor-ask mark, and the plumbing key: {guide}."
     )
 

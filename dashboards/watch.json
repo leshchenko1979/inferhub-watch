@@ -1403,7 +1403,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "Cheapest in-use route by the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the rank gate is closed, projected once it passes. The value names the basis in use.",
+      "description": "Cheapest in-use route by the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the crown gate is closed, projected once it passes. The value names the basis in use.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1455,7 +1455,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "AA IQ per $ for the best value route, on the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the rank gate is closed, projected once it passes. The value names the basis in use.",
+      "description": "AA IQ per $ for the best value route, on the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the crown gate is closed, projected once it passes. The value names the basis in use.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1507,7 +1507,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "Runner-up in-use route by the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the rank gate is closed, projected once it passes. The value names the basis in use.",
+      "description": "Runner-up in-use route by the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the crown gate is closed, projected once it passes. The value names the basis in use.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1559,7 +1559,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "AA IQ per $ for the alternate route, on the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the rank gate is closed, projected once it passes. The value names the basis in use.",
+      "description": "AA IQ per $ for the alternate route, on the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the crown gate is closed, projected once it passes. The value names the basis in use.",
       "fieldConfig": {
         "defaults": {
           "color": {
