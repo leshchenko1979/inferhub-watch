@@ -317,6 +317,21 @@ class ProjectionGateTest(unittest.TestCase):
         self.assertEqual(gate["land"], 0)
         self.assertFalse(gate["pass"])
 
+    def test_a_crown_at_twice_the_cheapest_never_lands(self):
+        """Teeth, far tail: a crown at 2x the true cheapest MUST not land.
+
+        `land` is the load-bearing assertion - `pass` is false here for two
+        independent reasons (the missed landing and n=1 < GATE_MIN_N), so a
+        loud teeth test needs the aggregate too:
+        `test_a_reversed_order_never_lands` drives 11 transitions with the
+        crown priciest and gets land=0, share=0.0, pass=False.
+        """
+        gate = projection_gate(
+            self._pair({"r/a": 2.0, "r/b": 1.0, "r/c": 1.2}))
+        self.assertEqual(gate["n"], 1)
+        self.assertEqual(gate["land"], 0)
+        self.assertFalse(gate["pass"])
+
     def test_crown_just_under_tolerance_lands(self):
         """The 15% tolerance is inclusive at the boundary: 14% lands."""
         gate = projection_gate(
