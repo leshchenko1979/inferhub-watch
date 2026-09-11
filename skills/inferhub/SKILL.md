@@ -1,6 +1,9 @@
 ---
 name: inferhub-watch-hq
 description: HQ process for the inferhub-watch project — issue triage, worker dispatch, hourly self-improvement cycles, cleanliness audits, Grafana observation. Load this skill when working any task in the inferhub-watch repo, responding to a HQ cycle report, or acting as a worker dispatched from an issue.
+globs:
+  - "/root/inferhub-watch/**"
+  - "~/.opencrabs/profiles/*/skills/inferhub/**"
 ---
 
 # InferHub Watch — HQ Process (canonical)
