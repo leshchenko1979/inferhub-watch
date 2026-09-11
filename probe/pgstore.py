@@ -49,11 +49,22 @@ create table if not exists projection_gate (
     id text primary key,
     pass boolean not null,
     n integer,
-    within integer,
+    land integer,
     share numeric,
-    tol numeric,
+    bar numeric,
+    min_n integer,
+    rho_median numeric,
     computed_at timestamptz not null default now()
 );
+-- The verdict was re-tuned from absolute deviation (within / tol) onto rank
+-- fidelity (land / bar), so an existing table's stale columns are superseded
+-- in place and dropped. Guarded so a fresh database stays a no-op.
+alter table projection_gate add column if not exists land integer;
+alter table projection_gate add column if not exists bar numeric;
+alter table projection_gate add column if not exists min_n integer;
+alter table projection_gate add column if not exists rho_median numeric;
+alter table projection_gate drop column if exists within;
+alter table projection_gate drop column if exists tol;
 """
 
 # Per-route money bases, published from the committed snapshot so the
@@ -129,27 +140,30 @@ GATE_ID = "projection_gate"
 def publish_projection_gate(conn, gate: dict) -> None:
     """Upsert the projection gate verdict the dashboard reads.
 
-    `gate` is official_compare.projection_gate output: n / within / share /
-    tol / pass. The single row is rewritten in place — the dashboard needs
-    the current verdict, not a history (the history is the committed
-    snapshots the verdict is recomputed from).
+    `gate` is official_compare.projection_gate output: n / land / share /
+    bar / min_n / rho_median / pass. The single row is rewritten in place —
+    the dashboard needs the current verdict, not a history (the history is
+    the committed snapshots the verdict is recomputed from).
     """
     with conn.cursor() as cur:
         cur.execute(
             """
             insert into projection_gate
-                (id, pass, n, within, share, tol, computed_at)
-            values (%s, %s, %s, %s, %s, %s, now())
+                (id, pass, n, land, share, bar, min_n, rho_median, computed_at)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, now())
             on conflict (id) do update set
                 pass = excluded.pass,
                 n = excluded.n,
-                within = excluded.within,
+                land = excluded.land,
                 share = excluded.share,
-                tol = excluded.tol,
+                bar = excluded.bar,
+                min_n = excluded.min_n,
+                rho_median = excluded.rho_median,
                 computed_at = now()
             """,
-            (GATE_ID, bool(gate.get("pass")), gate.get("n"), gate.get("within"),
-             gate.get("share"), gate.get("tol")),
+            (GATE_ID, bool(gate.get("pass")), gate.get("n"), gate.get("land"),
+             gate.get("share"), gate.get("bar"), gate.get("min_n"),
+             gate.get("rho_median")),
         )
     conn.commit()
 
