@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -84,6 +85,15 @@ def measure(client: InferHubClient, alias: str, blocks: int) -> dict:
     return row
 
 
+def output_path(when: datetime | None = None) -> Path:
+    """data/cache_ramp_<YYYYMMDD>.json for the run date (UTC).
+
+    Dated like every other artifact (probe/run.py, probe/pricing.py), so a
+    re-run on a later day never overwrites a record named for another date.
+    """
+    stamp = (when or datetime.now(timezone.utc)).strftime("%Y%m%d")
+    return Path(__file__).resolve().parent.parent / "data" / f"cache_ramp_{stamp}.json"
+
 def main() -> None:
     import os
 
@@ -101,7 +111,7 @@ def main() -> None:
             print(f"{alias} blocks={blocks}: {json.dumps(row)}", flush=True)
             time.sleep(1.0)
         results[alias] = rows
-    out = Path(__file__).resolve().parent.parent / "data" / "cache_ramp_20260905.json"
+    out = output_path()
     atomic_write_text(out, json.dumps(results, indent=1, ensure_ascii=False))
     print(f"saved {out}")
 
