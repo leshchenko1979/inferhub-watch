@@ -296,8 +296,8 @@ def main() -> int:
     print(f"route_metrics upserted: {metrics}")
     gate = sync_projection_gate(conn)
     print(f"projection gate published: pass={gate.get('pass')} "
-          f"{gate.get('within')}/{gate.get('n')} within "
-          f"{int(float(gate.get('tol') or 0) * 100)}%")
+          f"{gate.get('land')}/{gate.get('n')} transitions landed at "
+          f"rho >= {gate.get('bar')} (median {gate.get('rho_median')})")
     print(f"route basis published: {sync_route_basis(conn)} routes")
     with conn.cursor() as cur:
         cur.execute("select max(created_at) from usage_logs")
