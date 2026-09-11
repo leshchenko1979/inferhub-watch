@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-10T07:26:38Z",
+ "generated_at": "2026-09-11T07:26:12Z",
  "source": "artificialanalysis.ai",
  "endpoint": "https://artificialanalysis.ai/api/v2/data/llms/models",
  "models": {
@@ -7,8 +7,8 @@
    "name": "GPT-6 Astra (Non-reasoning)",
    "iq": 45.2,
    "coding": 76.2,
-   "aa_in": 10,
-   "aa_out": 50
+   "aa_in": 0,
+   "aa_out": 0
   },
   "gpt-6-astra-high": {
    "name": "GPT-6 Astra (high)",
@@ -75,10 +75,17 @@
   },
   "qwen3-8-flash-next": {
    "name": "Qwen3.8-Flash-Next",
-   "iq": 42.2,
+   "iq": 39.9,
    "coding": 73.1,
    "aa_in": 0.15,
    "aa_out": 0.47
+  },
+  "deepseek-v4-1-flash": {
+   "name": "DeepSeek V4.1 Flash (Reasoning, Max Effort)",
+   "iq": 39.5,
+   "coding": null,
+   "aa_in": 0.3,
+   "aa_out": 1.2
   },
   "quasar-438b": {
    "name": "Quasar 438B (max, based on GLM-5.2)",
@@ -87,9 +94,16 @@
    "aa_in": 0.6,
    "aa_out": 1.8
   },
+  "ling-3-0-flash-vl": {
+   "name": "Ling-3.0-flash-VL",
+   "iq": 24.8,
+   "coding": 57,
+   "aa_in": 0,
+   "aa_out": 0
+  },
   "minicpm5-2b": {
    "name": "MiniCPM5-2B",
-   "iq": 14.3,
+   "iq": 13.1,
    "coding": 14.5,
    "aa_in": 0,
    "aa_out": 0
@@ -117,7 +131,7 @@
   },
   "gpt-5-6-terra-medium": {
    "name": "GPT-5.6 Terra (medium)",
-   "iq": 32.8,
+   "iq": 30.4,
    "coding": 64.7,
    "aa_in": 2,
    "aa_out": 12
@@ -243,7 +257,7 @@
   },
   "gpt-5-6-luna-high": {
    "name": "GPT-5.6 Luna (high)",
-   "iq": 32.9,
+   "iq": 32.4,
    "coding": 63.3,
    "aa_in": 0.2,
    "aa_out": 1.2
@@ -586,7 +600,7 @@
   },
   "claude-sonnet-5-high": {
    "name": "Claude Sonnet 5 (Adaptive Reasoning, High Effort)",
-   "iq": null,
+   "iq": 32,
    "coding": null,
    "aa_in": 2,
    "aa_out": 10
@@ -745,7 +759,7 @@
    "aa_in": 0.435,
    "aa_out": 0.87
   },
-  "deepseek-v4-flash-non-reasoning": {
+  "deepseek-v4-flash-0420-non-reasoning": {
    "name": "DeepSeek V4 Flash (Non-reasoning)",
    "iq": 18.9,
    "coding": null,
@@ -1307,7 +1321,7 @@
   },
   "granite-4-2-8b": {
    "name": "Granite 4.2 8B",
-   "iq": 12.4,
+   "iq": 11.8,
    "coding": 22.4,
    "aa_in": 0.06,
    "aa_out": 0.25
@@ -1631,8 +1645,8 @@
    "name": "LongCat 2.0",
    "iq": 19.7,
    "coding": 45.3,
-   "aa_in": 0.75,
-   "aa_out": 2.95
+   "aa_in": 0.3,
+   "aa_out": 1.2
   },
   "longcat-flash-lite": {
    "name": "LongCat Flash Lite",
@@ -1867,14 +1881,14 @@
   },
   "qwen3-8-27b-low": {
    "name": "Qwen3.8 27B (low)",
-   "iq": 29.2,
+   "iq": 26.5,
    "coding": 58.2,
    "aa_in": 0.5,
    "aa_out": 3
   },
   "qwen3-6-35b-a3b": {
    "name": "Qwen3.6 35B A3B (Reasoning)",
-   "iq": 22.3,
+   "iq": 18.8,
    "coding": 41.9,
    "aa_in": 0.375,
    "aa_out": 2.25
@@ -2042,7 +2056,7 @@
   },
   "qwen3-8-27b-medium": {
    "name": "Qwen3.8 27B (medium)",
-   "iq": 30.7,
+   "iq": 27.8,
    "coding": 56.1,
    "aa_in": 0.5,
    "aa_out": 3
@@ -3911,7 +3925,7 @@
   },
   "glm-5-1": {
    "name": "GLM-5.1 (Reasoning)",
-   "iq": 27.4,
+   "iq": 26.4,
    "coding": 55.8,
    "aa_in": 1.2,
    "aa_out": 4.4
