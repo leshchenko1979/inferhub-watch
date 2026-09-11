@@ -10,6 +10,7 @@ import tomllib
 
 from scripts.auto_route_switch import (
     INFERHUB_WATCH_CHAT_ID,
+    INFERHUB_WATCH_HQ_THREAD_ID,
     RouteCandidate,
     calculate_value,
     evaluate_candidates,
@@ -157,10 +158,11 @@ def test_update_active_sessions(tmp_path):
     assert rows[3] == ("s4", "openrouter_model", None)
 
 
-def _make_bindings_db(db_file, rows):
+def _make_bindings_db(db_file, rows, thread_id=INFERHUB_WATCH_HQ_THREAD_ID):
     """Create a tmp DB with sessions + session_bindings tables.
 
     rows: list of (binding_session_id, chat_id, updated_at, archived_at_or_None)
+    thread_id: forum topic the bindings belong to (defaults to the HQ topic).
     """
     conn = sqlite3.connect(str(db_file))
     with conn:
@@ -188,8 +190,8 @@ def _make_bindings_db(db_file, rows):
                 (sid, archived_at, binding_ts),
             )
             conn.execute(
-                "INSERT INTO session_bindings VALUES (?, 'telegram', ?, 1, ?)",
-                (sid, chat, binding_ts),
+                "INSERT INTO session_bindings VALUES (?, 'telegram', ?, ?, ?)",
+                (sid, chat, thread_id, binding_ts),
             )
     conn.close()
 
@@ -321,6 +323,38 @@ def test_resolve_notify_session_last_resort_stale_binding(tmp_path):
     _make_bindings_db(db, [("archived-session", INFERHUB_WATCH_CHAT_ID, 200, 12345)])
     assert resolve_notify_session(cfg, db_path=db) == "archived-session"
 
+def test_resolve_notify_session_scoped_to_hq_topic_newer_worker_cannot_win(tmp_path):
+    # Issue #21 Finding D: a newer binding in a WORKER topic must not steal the
+    # owner-facing alert from HQ topic 2, even though its updated_at is highest.
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('[agent]\ndefault_model = "m"\n')
+    db = tmp_path / "opencrabs.db"
+    _make_bindings_db(db, [("hq-session", INFERHUB_WATCH_CHAT_ID, 100, None)])
+    # Same group chat, but a different forum topic (worker topic 510) whose
+    # binding is strictly newer — the chat_id-only lookup would have picked it.
+    conn = sqlite3.connect(str(db))
+    with conn:
+        conn.execute(
+            "INSERT INTO sessions VALUES ('worker-session', 'm', 'custom:inferhub', NULL, 500)"
+        )
+        conn.execute(
+            "INSERT INTO session_bindings VALUES ('worker-session', 'telegram', ?, 510, 500)",
+            (INFERHUB_WATCH_CHAT_ID,),
+        )
+    conn.close()
+    assert resolve_notify_session(cfg, db_path=db) == "hq-session"
+
+def test_resolve_notify_session_ignores_worker_topic_when_hq_unbound(tmp_path):
+    # Scoping holds for the last-resort leg too: with no HQ-topic binding at all,
+    # a worker-topic binding must NOT be used (fail loudly rather than misroute).
+    cfg = tmp_path / "config.toml"
+    cfg.write_text('[agent]\ndefault_model = "m"\n')
+    db = tmp_path / "opencrabs.db"
+    _make_bindings_db(
+        db, [("worker-session", INFERHUB_WATCH_CHAT_ID, 500, None)], thread_id=510
+    )
+    with pytest.raises(RuntimeError, match="No session resolvable"):
+        resolve_notify_session(cfg, db_path=db)
 
 def test_resolve_notify_session_loud_failure_no_bindings(tmp_path):
     cfg = tmp_path / "config.toml"
@@ -448,7 +482,7 @@ default_model = "current/m1"
             )
         """)
         conn.execute(
-            "INSERT INTO session_bindings VALUES ('watch-session', 'telegram', ?, 1, 10)",
+            "INSERT INTO session_bindings VALUES ('watch-session', 'telegram', ?, 2, 10)",
             (INFERHUB_WATCH_CHAT_ID,),
         )
     conn.close()

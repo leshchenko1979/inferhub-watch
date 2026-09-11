@@ -48,6 +48,12 @@ SWITCH_THRESHOLD = 0.15  # >15% higher value
 
 # Inferhub Watch Telegram group whose bound session receives switch alerts (Issue #14).
 INFERHUB_WATCH_CHAT_ID = "-1004379632866"
+# HQ forum topic (thread) inside that group — the switch alert is owner-facing, so it
+# must land in HQ topic 2, never in whichever worker topic most recently saw traffic
+# (Issue #21, Finding D). `session_bindings` is keyed on session_id with no
+# (chat_id, thread_id) uniqueness, so a chat_id-only lookup lets a worker topic steal
+# the alert.
+INFERHUB_WATCH_HQ_THREAD_ID = 2
 NOTIFY_PROFILE = "ops"
 NOTIFY_TITLE = "Inferhub Route Auto-Switched"
 # Receipt verdicts accepted from `opencrabs session notify --confirm` (Issue #14).
@@ -308,17 +314,24 @@ def resolve_notify_session(
     config_path: Path,
     db_path: Path = DEFAULT_DB_PATH,
     chat_id: str = INFERHUB_WATCH_CHAT_ID,
+    thread_id: int = INFERHUB_WATCH_HQ_THREAD_ID,
 ) -> str:
     """Resolve the OpenCrabs session that should receive switch alerts (Issue #14).
 
     Order (dynamic, never hardcoded to a session id):
       1. Explicit override key `notify_session` in config.toml
          (top-level or [notifications]).
-      2. The session bound to the Inferhub Watch group chat in the
-         `session_bindings` table — preferring a binding whose session is
-         still active (archived_at IS NULL), most recent first.
-      3. Last resort: most recent binding row for that chat, even if the
+      2. The session bound to the HQ topic (`thread_id = 2`) of the Inferhub
+         Watch group in the `session_bindings` table — preferring a binding
+         whose session is still active (archived_at IS NULL), most recent first.
+      3. Last resort: most recent binding row for that chat/topic, even if the
          bound session is archived (a stale binding is better than no alert).
+
+    The lookup is scoped to the HQ topic, not just the group chat (Issue #21,
+    Finding D): `session_bindings` is keyed on session_id with no
+    (chat_id, thread_id) uniqueness, so a chat_id-only query lets whichever
+    topic most recently received a message — a worker topic — steal the
+    owner-facing switch alert from HQ topic 2.
 
     Raises RuntimeError (fail loudly) if no session can be resolved.
     """
@@ -337,45 +350,46 @@ def resolve_notify_session(
 
     conn = sqlite3.connect(str(db_path))
     try:
-        # 2. Preferred: most recent binding for the chat with an ACTIVE session.
+        # 2. Preferred: most recent binding for the chat/topic with an ACTIVE session.
         row = conn.execute(
             """
             SELECT b.session_id
             FROM session_bindings b
             JOIN sessions s ON s.id = b.session_id
-            WHERE b.chat_id = ? AND s.archived_at IS NULL
+            WHERE b.chat_id = ? AND b.thread_id = ? AND s.archived_at IS NULL
             ORDER BY b.updated_at DESC
             LIMIT 1
             """,
-            (chat_id,),
+            (chat_id, thread_id),
         ).fetchone()
         if row:
             return str(row[0])
 
-        # 3. Last resort: most recent binding for the chat, regardless of
+        # 3. Last resort: most recent binding for the chat/topic, regardless of
         #    session status (stale binding beats staying silent).
         row = conn.execute(
             """
             SELECT session_id
             FROM session_bindings
-            WHERE chat_id = ?
+            WHERE chat_id = ? AND thread_id = ?
             ORDER BY updated_at DESC
             LIMIT 1
             """,
-            (chat_id,),
+            (chat_id, thread_id),
         ).fetchone()
         if row:
             logger.warning(
-                f"No active session bound to chat {chat_id}; falling back to "
-                f"most recent (possibly archived) binding {row[0]}."
+                f"No active session bound to chat {chat_id} topic {thread_id}; "
+                f"falling back to most recent (possibly archived) binding {row[0]}."
             )
             return str(row[0])
     finally:
         conn.close()
 
     raise RuntimeError(
-        f"No session resolvable for chat {chat_id}: no `notify_session` override "
-        f"in {config_path} and no rows in session_bindings ({db_path})."
+        f"No session resolvable for chat {chat_id} topic {thread_id}: no "
+        f"`notify_session` override in {config_path} and no matching rows in "
+        f"session_bindings ({db_path})."
     )
 
 
