@@ -95,5 +95,75 @@ class UpsertTests(unittest.TestCase):
             self.assertEqual(pgstore.rows_since("2026-09-01"), [])
 
 
+class PublishTests(unittest.TestCase):
+    """Gate + per-route basis publication, against a mocked connection."""
+
+    def _conn(self) -> mock.Mock:
+        conn = mock.MagicMock()
+        conn.cursor.return_value.__enter__ = mock.Mock()
+        conn.cursor.return_value.__exit__ = mock.Mock(return_value=False)
+        return conn
+
+    def test_ddl_declares_both_published_tables(self) -> None:
+        self.assertIn("projection_gate", pgstore.GATE_DDL)
+        self.assertIn("route_basis", pgstore.ROUTE_BASIS_DDL)
+
+    def test_ensure_schema_executes_every_ddl(self) -> None:
+        conn = self._conn()
+        pgstore.ensure_schema(conn)
+        cur = conn.cursor.return_value.__enter__.return_value
+        executed = [c.args[0] for c in cur.execute.call_args_list]
+        self.assertEqual(len(executed), 3)
+        for ddl in (pgstore.DDL, pgstore.GATE_DDL, pgstore.ROUTE_BASIS_DDL):
+            self.assertIn(ddl, executed)
+
+    def test_gate_upsert_passes_verdict_and_commits(self) -> None:
+        conn = self._conn()
+        pgstore.publish_projection_gate(conn, {
+            "n": 109, "within": 44, "share": 0.404, "tol": 0.2, "pass": False})
+        cur = conn.cursor.return_value.__enter__.return_value
+        sql, params = cur.execute.call_args.args
+        self.assertIn("insert into projection_gate", sql)
+        self.assertIn("on conflict (id) do update", sql)
+        self.assertEqual(params, ("projection_gate", False, 109, 44, 0.404, 0.2))
+        conn.commit.assert_called_once()
+
+    def test_gate_upsert_defaults_missing_pass_to_false(self) -> None:
+        conn = self._conn()
+        pgstore.publish_projection_gate(conn, {"n": 0})
+        cur = conn.cursor.return_value.__enter__.return_value
+        self.assertIs(cur.execute.call_args.args[1][1], False)
+
+    def test_route_basis_replaces_the_whole_set(self) -> None:
+        conn = self._conn()
+        n = pgstore.publish_route_basis(conn, [
+            {"route": "r/a", "realized": 0.0005, "projected": None},
+            {"route": "r/b", "realized": None, "projected": 0.001},
+        ], snapshot_at="2026-09-11T07:26:11+00:00")
+        self.assertEqual(n, 2)
+        cur = conn.cursor.return_value.__enter__.return_value
+        statements = [c.args[0] for c in cur.execute.call_args_list]
+        self.assertTrue(any("delete from route_basis" in s for s in statements))
+        inserted = cur.executemany.call_args.args
+        self.assertIn("insert into route_basis", inserted[0])
+        self.assertEqual(inserted[1], [
+            ("r/a", 0.0005, None, "2026-09-11T07:26:11+00:00"),
+            ("r/b", None, 0.001, "2026-09-11T07:26:11+00:00"),
+        ])
+        conn.commit.assert_called_once()
+
+    def test_route_basis_empty_still_clears(self) -> None:
+        conn = self._conn()
+        self.assertEqual(pgstore.publish_route_basis(conn, []), 0)
+        cur = conn.cursor.return_value.__enter__.return_value
+        self.assertIn("delete from route_basis",
+                      cur.execute.call_args.args[0])
+        cur.executemany.assert_not_called()
+
+    def test_route_basis_skips_rows_without_a_route(self) -> None:
+        conn = self._conn()
+        n = pgstore.publish_route_basis(conn, [{"route": "", "realized": 1.0}])
+        self.assertEqual(n, 0)
+
 if __name__ == "__main__":
     unittest.main()

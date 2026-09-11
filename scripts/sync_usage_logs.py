@@ -225,6 +225,24 @@ def sync_projection_gate(conn) -> dict:
     pgstore.publish_projection_gate(conn, gate)
     return gate
 
+def sync_route_basis(conn) -> int:
+    """Publish every route's money bases as the board's snapshot computes them.
+
+    Grafana cannot read data/pricing.json, so without this the panels re-derive
+    the basis from the billed store and rank a different route than the board
+    (issue #15). Prices come from probe.basis — the single money-basis owner.
+    """
+    import json
+
+    from probe import basis, pricing
+
+    root = Path(__file__).resolve().parents[1]
+    payload = json.loads((root / "data" / "pricing.json").read_text())
+    dated = pricing.dated_snapshots(root)
+    return pgstore.publish_route_basis(
+        conn, basis.route_bases(payload, dated), snapshot_at=payload.get("generated_at")
+    )
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=float, default=8.0,
@@ -280,6 +298,7 @@ def main() -> int:
     print(f"projection gate published: pass={gate.get('pass')} "
           f"{gate.get('within')}/{gate.get('n')} within "
           f"{int(float(gate.get('tol') or 0) * 100)}%")
+    print(f"route basis published: {sync_route_basis(conn)} routes")
     with conn.cursor() as cur:
         cur.execute("select max(created_at) from usage_logs")
         print(f"table now ends at {cur.fetchone()[0]}")

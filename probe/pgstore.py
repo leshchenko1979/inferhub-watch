@@ -56,6 +56,21 @@ create table if not exists projection_gate (
 );
 """
 
+# Per-route money bases, published from the committed snapshot so the
+# Grafana panels price a route exactly as the board does (probe.basis
+# .route_bases). Realized is the 30d bill; projected is NULL until the
+# route has projection evidence, which makes the panel fall back to
+# realized — the same fallback basis.board_basis applies.
+ROUTE_BASIS_DDL = """
+create table if not exists route_basis (
+    route text primary key,
+    realized numeric,
+    projected numeric,
+    snapshot_at text,
+    computed_at timestamptz not null default now()
+);
+"""
+
 
 def load_env(path: Path | None = None) -> dict[str, str]:
     """Parse the env file (never raises — callers handle empty gracefully)."""
@@ -89,6 +104,7 @@ def ensure_schema(conn) -> None:
     with conn.cursor() as cur:
         cur.execute(DDL)
         cur.execute(GATE_DDL)
+        cur.execute(ROUTE_BASIS_DDL)
     conn.commit()
 
 GATE_ID = "projection_gate"
@@ -120,9 +136,32 @@ def publish_projection_gate(conn, gate: dict) -> None:
         )
     conn.commit()
 
+def publish_route_basis(conn, rows: list[dict], snapshot_at: str | None = None) -> int:
+    """Replace the published per-route money bases.
+
+    A full replace, not an append: a route that leaves the snapshot must
+    leave the table too, or the panels would rank a route the board no
+    longer prices. Same transaction, so the panels never read a half-set.
+    """
+    tuples = [
+        (r["route"], r.get("realized"), r.get("projected"), snapshot_at)
+        for r in rows if r.get("route")
+    ]
+    with conn.cursor() as cur:
+        cur.execute("delete from route_basis")
+        if tuples:
+            cur.executemany(
+                """
+                insert into route_basis (route, realized, projected, snapshot_at, computed_at)
+                values (%s, %s, %s, %s, now())
+                """,
+                tuples,
+            )
+    conn.commit()
+    return len(tuples)
+
 
 _ROW_RE = re.compile(r"^[a-z0-9-]{10,}$", re.IGNORECASE)
-
 
 def row_fields(row: dict) -> tuple | None:
     """(request_id, created_at, model, tokens..., is_probe) from a log row."""

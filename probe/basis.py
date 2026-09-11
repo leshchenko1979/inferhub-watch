@@ -76,6 +76,23 @@ def gate_state(root: Path | None = None) -> dict:
     """
     return official_compare.projection_gate(pricing.dated_snapshots(root))
 
+def route_bases(payload: dict, dated: list) -> list[dict]:
+    """Every route's money bases, exactly as the board computes them.
+
+    The Grafana panels cannot read the committed snapshot, so their price
+    must come from HERE or the two surfaces rank different routes on the
+    same day (issue #15: the panels divided an ungated projected basis and
+    led with a route the board did not). One owner, one price.
+    """
+    out: list[dict] = []
+    for route in (payload.get("routes") or {}):
+        out.append({
+            "route": route,
+            "realized": realized(payload, route),
+            "projected": projected(payload, route, dated),
+        })
+    return out
+
 def incumbent_bar(routes: dict, incumbents: list[str]) -> float | None:
     """Cheapest billed eff $/M among the family's board aliases."""
     best: float | None = None

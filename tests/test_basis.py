@@ -63,6 +63,41 @@ class ChartPriceTests(unittest.TestCase):
         self.assertEqual(basis.chart_price(_payload({}), "ghost"), (None, ""))
 
 
+class RouteBasesTests(unittest.TestCase):
+    """route_bases: the per-route prices the panels must mirror."""
+
+    def test_every_route_gets_a_row(self) -> None:
+        p = _payload({"r/a": {"eff_per_mtok": 0.001},
+                      "r/b": {"eff_per_mtok": 0.002}})
+        with unittest.mock.patch.object(basis, "projected", return_value=None):
+            rows = basis.route_bases(p, [])
+        self.assertEqual([r["route"] for r in rows], ["r/a", "r/b"])
+        self.assertEqual(rows[0]["realized"], 0.001)
+        self.assertIsNone(rows[0]["projected"])
+
+    def test_projected_carried_through(self) -> None:
+        p = _payload({"r/a": {"eff_per_mtok": 0.001}})
+        with unittest.mock.patch.object(basis, "projected", return_value=0.0007):
+            rows = basis.route_bases(p, [])
+        self.assertEqual(rows[0]["projected"], 0.0007)
+
+    def test_no_routes_is_empty(self) -> None:
+        self.assertEqual(basis.route_bases(_payload({}), []), [])
+
+class GateStateTests(unittest.TestCase):
+    """gate_state: one verdict, read through the money-basis owner."""
+
+    def test_reads_committed_snapshots(self) -> None:
+        verdict = {"n": 109, "within": 44, "share": 0.404, "tol": 0.2,
+                   "pass": False}
+        with unittest.mock.patch.object(basis.pricing, "dated_snapshots",
+                                        return_value=[("2026-09-11", {})]), \
+                unittest.mock.patch.object(basis.official_compare,
+                                           "projection_gate",
+                                           return_value=verdict) as gate:
+            self.assertEqual(basis.gate_state(), verdict)
+        gate.assert_called_once()
+
 class IncumbentBarTests(unittest.TestCase):
     def test_cheapest_realized_wins(self) -> None:
         routes = {"a": {"eff_per_mtok": 0.01}, "b": {"eff_per_mtok": 0.002}}
