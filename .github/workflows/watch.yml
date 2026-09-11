@@ -1,5 +1,15 @@
 name: Watch
 
+# Display-only run title so each run self-describes its trigger: a green push
+# run ("site deploy") never probes, so it must not be mistaken for the sweep.
+run-name: >-
+  ${{
+    github.event_name == 'schedule' && 'Watch — sweep'
+    || github.event_name == 'workflow_dispatch' && 'Watch — manual sweep'
+    || github.event_name == 'pull_request' && 'Watch — validate'
+    || 'Watch — site deploy'
+  }}
+
 on:
   schedule:
     - cron: "17 2 * * *"
