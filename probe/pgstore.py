@@ -39,6 +39,23 @@ create index if not exists idx_ul_created on usage_logs (created_at);
 create index if not exists idx_ul_model on usage_logs (model, created_at);
 """
 
+# The projection gate verdict, published for the Grafana panels so the
+# dashboard reads the SAME gate the board renders on (probe.basis.gate_state
+# -> official_compare.projection_gate). One row, rewritten per sync; the
+# panels fall back to the realized basis when `pass` is false, and to
+# realized again when the row is absent (COALESCE ... false).
+GATE_DDL = """
+create table if not exists projection_gate (
+    id text primary key,
+    pass boolean not null,
+    n integer,
+    within integer,
+    share numeric,
+    tol numeric,
+    computed_at timestamptz not null default now()
+);
+"""
+
 
 def load_env(path: Path | None = None) -> dict[str, str]:
     """Parse the env file (never raises — callers handle empty gracefully)."""
@@ -71,6 +88,36 @@ def _connect(env: dict[str, str]):
 def ensure_schema(conn) -> None:
     with conn.cursor() as cur:
         cur.execute(DDL)
+        cur.execute(GATE_DDL)
+    conn.commit()
+
+GATE_ID = "projection_gate"
+
+def publish_projection_gate(conn, gate: dict) -> None:
+    """Upsert the projection gate verdict the dashboard reads.
+
+    `gate` is official_compare.projection_gate output: n / within / share /
+    tol / pass. The single row is rewritten in place — the dashboard needs
+    the current verdict, not a history (the history is the committed
+    snapshots the verdict is recomputed from).
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into projection_gate
+                (id, pass, n, within, share, tol, computed_at)
+            values (%s, %s, %s, %s, %s, %s, now())
+            on conflict (id) do update set
+                pass = excluded.pass,
+                n = excluded.n,
+                within = excluded.within,
+                share = excluded.share,
+                tol = excluded.tol,
+                computed_at = now()
+            """,
+            (GATE_ID, bool(gate.get("pass")), gate.get("n"), gate.get("within"),
+             gate.get("share"), gate.get("tol")),
+        )
     conn.commit()
 
 

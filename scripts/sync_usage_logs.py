@@ -211,6 +211,20 @@ def sync_route_metrics(conn, live_models: dict[str, dict] | None = None) -> int:
             n += 1
     return n
 
+def sync_projection_gate(conn) -> dict:
+    """Recompute the projection gate from committed snapshots and publish it.
+
+    The board computes the gate itself from data/pricing/*.json; the Grafana
+    panels cannot (no template variables on public dashboards), so the same
+    verdict is published to Postgres and read by their SQL. Same owner, one
+    verdict — see probe.basis.gate_state.
+    """
+    from probe import basis
+
+    gate = basis.gate_state()
+    pgstore.publish_projection_gate(conn, gate)
+    return gate
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=float, default=8.0,
@@ -262,6 +276,10 @@ def main() -> int:
 
     metrics = sync_route_metrics(conn, live_models=live_models)
     print(f"route_metrics upserted: {metrics}")
+    gate = sync_projection_gate(conn)
+    print(f"projection gate published: pass={gate.get('pass')} "
+          f"{gate.get('within')}/{gate.get('n')} within "
+          f"{int(float(gate.get('tol') or 0) * 100)}%")
     with conn.cursor() as cur:
         cur.execute("select max(created_at) from usage_logs")
         print(f"table now ends at {cur.fetchone()[0]}")

@@ -13,7 +13,9 @@ Three bases per route:
 """
 from __future__ import annotations
 
-from probe import official_compare
+from pathlib import Path
+
+from probe import official_compare, pricing
 
 
 def route_stats(payload: dict, route: str) -> dict:
@@ -62,6 +64,17 @@ def chart_price(payload: dict, route: str) -> tuple[float | None, str]:
         return r, "eff"
     return None, ""
 
+
+def gate_state(root: Path | None = None) -> dict:
+    """The projection gate verdict over the committed dated snapshots.
+
+    The gate is a property of the money basis, so it is read through this
+    owner (probe.pricing.dated_snapshots -> official_compare.projection_gate)
+    and published to Postgres for the Grafana panels — one implementation,
+    one verdict, both surfaces. Recomputed from committed history, never
+    hardcoded.
+    """
+    return official_compare.projection_gate(pricing.dated_snapshots(root))
 
 def incumbent_bar(routes: dict, incumbents: list[str]) -> float | None:
     """Cheapest billed eff $/M among the family's board aliases."""
