@@ -113,9 +113,18 @@ class PublishTests(unittest.TestCase):
         pgstore.ensure_schema(conn)
         cur = conn.cursor.return_value.__enter__.return_value
         executed = [c.args[0] for c in cur.execute.call_args_list]
-        self.assertEqual(len(executed), 3)
-        for ddl in (pgstore.DDL, pgstore.GATE_DDL, pgstore.ROUTE_BASIS_DDL):
+        self.assertEqual(len(executed), 4)
+        for ddl in (pgstore.DDL, pgstore.GATE_DDL, pgstore.ROUTE_BASIS_DDL,
+                    pgstore.GRANT_DDL):
             self.assertIn(ddl, executed)
+
+    def test_grant_ddl_is_role_guarded(self) -> None:
+        # The dashboard reads as inferhub_ro; without the grant every panel
+        # fails with "permission denied" on the live surface only.
+        self.assertIn("inferhub_ro", pgstore.GRANT_DDL)
+        self.assertIn("pg_roles", pgstore.GRANT_DDL)
+        self.assertIn("route_basis", pgstore.GRANT_DDL)
+        self.assertIn("projection_gate", pgstore.GRANT_DDL)
 
     def test_gate_upsert_passes_verdict_and_commits(self) -> None:
         conn = self._conn()

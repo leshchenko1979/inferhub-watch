@@ -72,6 +72,22 @@ create table if not exists route_basis (
 """
 
 
+# The Grafana datasource reads as `inferhub_ro`, not as the owner role, so
+# every table a panel queries needs an explicit SELECT grant. Without it the
+# panel errors "permission denied for table ..." on the live dashboard while
+# the same SQL runs fine over the owner connection — the failure only shows
+# up on the surface the owner actually looks at. Guarded on the role so a
+# fresh database without the dashboard role still provisions.
+GRANT_DDL = """
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'inferhub_ro') THEN
+        EXECUTE 'grant select on usage_logs, route_metrics, projection_gate, '
+             || 'route_basis to inferhub_ro';
+    END IF;
+END $$;
+"""
+
 def load_env(path: Path | None = None) -> dict[str, str]:
     """Parse the env file (never raises — callers handle empty gracefully)."""
     env: dict[str, str] = {}
@@ -105,6 +121,7 @@ def ensure_schema(conn) -> None:
         cur.execute(DDL)
         cur.execute(GATE_DDL)
         cur.execute(ROUTE_BASIS_DDL)
+        cur.execute(GRANT_DDL)
     conn.commit()
 
 GATE_ID = "projection_gate"
