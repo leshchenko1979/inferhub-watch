@@ -44,6 +44,42 @@ NAMED = ("median_output_tokens_per_second", "median_time_to_first_token_seconds"
 HINTS = ("token", "second", "ttft", "time_to_first", "latency", "speed")
 
 
+def perf_hint_counts(entries: list, max_depth: int = 3) -> dict[str, int]:
+    """How many ENTRIES carry each perf-hint key, at any nesting depth.
+
+    Counts entries, never occurrences: a key that nests twice inside one model
+    is one entry, and a key present on every model reads as `len(entries)`.
+
+    The list branch of the original walk descended `obj[0]` alone, so its
+    figure was a statement about ONE model printed in the shape of a coverage
+    count — it read as "1 of 646". `tests/test_aa_fields_probe.py` pins the
+    scope.
+    """
+    counts: dict[str, int] = {}
+
+    def scan(obj, hits: set, depth: int) -> None:
+        if depth > max_depth:
+            return
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if v is not None and any(h in k.lower() for h in HINTS):
+                    hits.add(k)
+                scan(v, hits, depth + 1)
+        elif isinstance(obj, list):
+            for item in obj:
+                scan(item, hits, depth + 1)
+
+    for entry in entries:
+        hits: set = set()
+        # Start at depth 1: an entry's own keys sit exactly where the old
+        # `walk(entries[0], 1)` examined them, so the nesting reach is
+        # unchanged — only the number of entries walked is.
+        scan(entry, hits, 1)
+        for k in hits:
+            counts[k] = counts.get(k, 0) + 1
+    return counts
+
+
 def main() -> int:
     key = os.environ.get("AA_API_KEY")
     if not key:
@@ -80,24 +116,13 @@ def main() -> int:
         print(f"  {f:40} present on {n}/{len(entries)}")
     print()
 
-    # 3. Any key that LOOKS like a perf metric, wherever it nests.
+    # 3. Any key that LOOKS like a perf metric, wherever it nests. The count
+    #    is ENTRIES carrying the key, so it is directly comparable to the
+    #    named-field coverage above.
     print("=== keys matching perf hints (any nesting depth) ===")
-    found: dict[str, int] = {}
-
-    def walk(obj, depth=0):
-        if depth > 3:
-            return
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                if any(h in k.lower() for h in HINTS):
-                    found[k] = found.get(k, 0) + (1 if v is not None else 0)
-                walk(v, depth + 1)
-        elif isinstance(obj, list) and obj:
-            walk(obj[0], depth + 1)
-
-    walk(entries)
+    found = perf_hint_counts(entries)
     for k in sorted(found):
-        print(f"  {k:50} non-null on {found[k]} entries")
+        print(f"  {k:50} non-null on {found[k]}/{len(entries)} entries")
     if not found:
         print("  (none)")
     print()
