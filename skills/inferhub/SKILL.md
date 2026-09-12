@@ -195,21 +195,21 @@ Every object in the project is kept clean and ordered — no accumulation of dea
 - **Telegram topics:** worker topics are renamed or marked done when their task closes; idle topics are not left dangling (rename via userbot `tg_mtproto` per the topic law).
 - Work is done by the process (worker dispatch per the delegation law; mechanical hygiene like branch deletion is not task-shaped and may be done inline by HQ).
 
-### Object-class check ledger (owner order 2026-09-11 10:1xZ)
+### Object-class check ledger (owner order 2026-09-11 10:1xZ; rotation & health tracking 2026-09-12)
 
-Records **which object class each hourly cycle examined** — the rotation mechanism the discovery law requires. One line per cycle that actually scanned a class; a cycle that scanned none (quiet cycle) adds no line.
+Records **which object class each hourly cycle examined** and tracks health check stamps across the 7 object classes. One line per cycle that scanned a class.
 
-| Class | Last scanned | Cycle / issue | Outcome |
-|---|---|---|---|
-| 1 Repository & CI/CD | 2026-09-11 09:2xZ | #18 | filed + landed `79a4710` |
-| 2 Data & Storage | 2026-09-11 10:0xZ | #19 | filed + landed `94bd77e` |
-| 3 Surfaces | 2026-09-11 11:2xZ | reclassification (owner 11:2xZ) | forum + topics folded in from class 8 |
-| 4 Schedulers & Triggers | 2026-09-11 09:0xZ | #17 | filed + landed `bf9c7ff` |
-| 5 Code & Config | 2026-09-11 13:0xZ | #22 | filed (edit direction held for the owner's ruling) |
-| 6 Process & Vocabulary | 2026-09-11 11:0xZ | #20 | filed + landed `5ea9380` |
-| 7 Agent Workspaces | 2026-09-11 12:1xZ | #21 | filed |
+| Class | Object Class Name | Last Scanned | Cycle / Issue | Health Status | Outcome |
+|---|---|---|---|---|---|
+| 1 | Repository & CI/CD | 2026-09-11 21:00Z | 21:00Z cycle / #18 | HEALTHY | Push runs verify `Watch — site deploy`; sweep run-name pending 02:17Z |
+| 2 | Data & Storage | 2026-09-11 20:00Z | 20:00Z cycle / #19 | HEALTHY | `data/pricing.json`, `data/proven.json` schema & sync verified |
+| 3 | Surfaces (Web, Grafana, Telegram) | 2026-09-12 02:00Z | 02:00Z cycle / #23 | HEALTHY | 24/24 Grafana panels valid (`scripts/test_grafana_panels.py` pass), Pages 200 ok |
+| 4 | Schedulers & Triggers | 2026-09-12 00:25Z | #24 landed | HEALTHY | 3 crons active; cycle continuity checks in place (`de5513f`) |
+| 5 | Code & Config | 2026-09-12 01:25Z | #22 / bfc2f3c | HEALTHY | Unified crown basis + TPS power law ($w=0.50$), 568 tests pass |
+| 6 | Process & Vocabulary | 2026-09-12 01:27Z | 6464b50 | HEALTHY | `session_notify` workhorse law codified in SKILL.md & AGENTS.md |
+| 7 | Agent Workspaces & Lanes | 2026-09-12 01:00Z | #21 | HEALTHY | Lane reuse law active; persistent topic workers handling dispatches |
 
-*(Class 8 Forum & Topics was folded into class 3 Surfaces on the owner's 11:2xZ ruling — the inventory is 7 classes again; forum + topics stay ON the list as part of class 3.)*
+*(Class 8 Forum & Topics folded into Class 3 Surfaces per owner ruling).*
 
 ### Improvement ledger
 
