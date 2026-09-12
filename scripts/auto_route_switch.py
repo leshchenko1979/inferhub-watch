@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 import sqlite3
 import subprocess
@@ -39,12 +40,14 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from probe import basis, official_compare, pricing
+from probe import basis, official_compare, pgstore, pricing, tps_qual
+from probe.http import InferHubClient
 from scripts.sync_usage_logs import resolve_slug
 
 logger = logging.getLogger("auto_route_switch")
 
 DEFAULT_CONFIG_PATH = Path("/root/.opencrabs/profiles/ops/config.toml")
+DEFAULT_KEYS_PATH = Path("/root/.opencrabs/profiles/ops/keys.toml")
 DEFAULT_DB_PATH = Path("/root/.opencrabs/profiles/ops/opencrabs.db")
 DEFAULT_ROOT_DB_PATH = Path("/root/.opencrabs/opencrabs.db")
 IQ_FLOOR = 35.0
@@ -93,6 +96,7 @@ class RouteCandidate:
     value: float
     supports_tools: bool
     supports_cache: bool
+    tps_source: str = "fallback"  # "prod", "qual", "fallback"
 
 
 def calculate_value(
@@ -177,11 +181,14 @@ def resolve_route_tps(
     pricing_payload: dict[str, Any] | None = None,
     qual_runs: dict[str, Any] | None = None,
     default_tps: float = TPS_REF,
-) -> float:
+) -> tuple[float, str]:
     """Resolve route TPS hierarchically:
-    1. 24h rolling production perf_stats from pricing_payload (n >= 5)
-    2. Qualified sustained TPS probe from qual_runs (1.0 <= tps <= 500.0)
-    3. Fleet reference baseline (default_tps = 50.0)
+    1. 24h rolling production perf_stats from pricing_payload (n >= 5) -> ("prod")
+    2. Qualified sustained TPS probe from qual_runs (1.0 <= tps <= 500.0) -> ("qual")
+    3. Fleet reference baseline (default_tps = 50.0) -> ("fallback")
+
+    Returns:
+        (tps_value, source_name)
     """
     # Tier 1: Production 24h perf stats
     if pricing_payload is not None:
@@ -191,7 +198,7 @@ def resolve_route_tps(
         tps_mean = model_stats.get("tps_mean")
         n_samples = model_stats.get("tps_samples") or model_stats.get("reqs") or model_stats.get("n", 0)
         if tps_mean is not None and n_samples >= 5 and 1.0 <= float(tps_mean) <= 500.0:
-            return float(tps_mean)
+            return float(tps_mean), "prod"
 
     # Tier 2: Candidate qualification probe runs
     if qual_runs is not None:
@@ -199,10 +206,44 @@ def resolve_route_tps(
         qual_stat = qual_models.get(route) or {}
         q_tps = qual_stat.get("tps")
         if q_tps is not None and 1.0 <= float(q_tps) <= 500.0:
-            return float(q_tps)
+            return float(q_tps), "qual"
 
     # Tier 3: Fleet reference default
-    return default_tps
+    return default_tps, "fallback"
+
+
+def resolve_inferhub_key(
+    config_path: Path | None = None,
+    keys_path: Path | None = None,
+) -> str:
+    """Resolve InferHub API key from env or keys.toml."""
+    env_key = os.environ.get("INFERHUB_API_KEY", "").strip()
+    if env_key:
+        return env_key
+
+    kp = keys_path
+    if kp is None and config_path is not None:
+        cand = config_path.with_name("keys.toml")
+        if cand.exists():
+            kp = cand
+    if kp is None and config_path is not None and DEFAULT_CONFIG_PATH.exists() and config_path == DEFAULT_CONFIG_PATH:
+        if DEFAULT_KEYS_PATH.exists():
+            kp = DEFAULT_KEYS_PATH
+
+    if kp and kp.exists():
+        try:
+            with kp.open("rb") as f:
+                data = tomllib.load(f)
+            return (
+                data.get("providers", {})
+                .get("custom", {})
+                .get("inferhub", {})
+                .get("api_key", "")
+                .strip()
+            )
+        except Exception as exc:
+            logger.warning(f"Failed to read keys from {kp}: {exc}")
+    return ""
 
 
 def is_qualified(
@@ -287,7 +328,7 @@ def evaluate_candidates(
             dated_snapshots=dated_snapshots,
             use_proj=use_proj,
         )
-        tps = resolve_route_tps(route, pricing_payload=pricing_payload, qual_runs=qual_runs)
+        tps, tps_source = resolve_route_tps(route, pricing_payload=pricing_payload, qual_runs=qual_runs)
         val = calculate_value(iq or 0.0, eff_price=eff_price, tps=tps) if (iq is not None and eff_price > 0) else 0.0
 
         candidates[route] = RouteCandidate(
@@ -300,6 +341,7 @@ def evaluate_candidates(
             value=val,
             supports_tools=supports_tools,
             supports_cache=supports_cache,
+            tps_source=tps_source,
         )
     return candidates
 
@@ -315,6 +357,8 @@ def find_best_route(
     dated_snapshots: list | None = None,
     qual_runs: dict[str, Any] | None = None,
     use_proj: bool = True,
+    client: Any | None = None,
+    qual_path: Path | None = None,
 ) -> tuple[bool, RouteCandidate | None, RouteCandidate | None, str]:
     """Determine if a route switch is needed.
 
@@ -343,6 +387,34 @@ def find_best_route(
 
     # Sort descending by value
     qualified_candidates.sort(key=lambda c: c.value, reverse=True)
+
+    # Ensure the top candidate has verified empirical TPS before crowning or switching.
+    # An unverified candidate (fallback 50.0) is live-probed via sustained qualification probe.
+    if client is not None:
+        while qualified_candidates:
+            top = qualified_candidates[0]
+            if top.tps_source != "fallback":
+                break  # Verified via prod stats or existing qualification probe
+
+            logger.info(f"Top candidate {top.route} has unverified TPS (fallback {top.tps:.1f}); probing sustained TPS...")
+            res = tps_qual.run_candidate_tps_qual(client, top.route, qual_path=qual_path)
+            if res.get("valid") and res.get("tps") is not None:
+                new_tps = float(res["tps"])
+                logger.info(f"Candidate {top.route} qualified: measured TPS={new_tps:.1f}")
+                top.tps = new_tps
+                top.tps_source = "qual"
+                top.value = calculate_value(top.iq, eff_price=top.eff_price, tps=top.tps)
+                qualified_candidates.sort(key=lambda c: c.value, reverse=True)
+            else:
+                logger.warning(
+                    f"Candidate {top.route} failed sustained TPS qualification ({res.get('error', 'invalid metrics')}); "
+                    "disqualifying from switch contention."
+                )
+                qualified_candidates.pop(0)
+
+    if not qualified_candidates:
+        return False, None, current_cand, "No qualified candidates meeting IQ, tool, and TPS requirements."
+
     best = qualified_candidates[0]
 
     if current_cand is None or current_cand.value <= 0:
@@ -354,14 +426,14 @@ def find_best_route(
             True,
             best,
             current_cand,
-            f"Candidate {best.route} (Val={best.value:.1f}) exceeds {current_model} (Val={current_cand.value:.1f}) by {gain * 100:.1f}% (threshold {threshold * 100:.0f}%).",
+            f"Candidate {best.route} (Val={best.value:.1f}, TPS={best.tps:.1f}[{best.tps_source}]) exceeds {current_model} (Val={current_cand.value:.1f}, TPS={current_cand.tps:.1f}[{current_cand.tps_source}]) by {gain * 100:.1f}% (threshold {threshold * 100:.0f}%).",
         )
 
     return (
         False,
         best,
         current_cand,
-        f"Top candidate {best.route} gain over {current_model} is {gain * 100:.1f}% (<= {threshold * 100:.0f}% threshold).",
+        f"Top candidate {best.route} (Val={best.value:.1f}, TPS={best.tps:.1f}[{best.tps_source}]) gain over {current_model} is {gain * 100:.1f}% (<= {threshold * 100:.0f}% threshold).",
     )
 
 
@@ -623,6 +695,18 @@ def run_auto_route_switch(
     # Load pricing payload and snapshots if available
     pricing_path = root_dir / "data" / "pricing.json"
     pricing_payload = json.loads(pricing_path.read_text(encoding="utf-8")) if pricing_path.exists() else None
+
+    # Refresh rolling 24h perf from live database usage logs if possible
+    try:
+        usage_rows = pgstore.window_rows(24)
+        if usage_rows:
+            fresh_perf = pricing.perf_stats(usage_rows)
+            if pricing_payload is None:
+                pricing_payload = {}
+            pricing_payload["perf"] = fresh_perf
+    except Exception as exc:
+        logger.debug(f"Live pgstore perf fetch skipped ({exc}); using pricing_payload.")
+
     dated_snapshots = pricing.dated_snapshots(root_dir)
     qual_path = root_dir / "data" / "qual_runs.json"
     qual_runs = json.loads(qual_path.read_text(encoding="utf-8")) if qual_path.exists() else None
@@ -630,6 +714,13 @@ def run_auto_route_switch(
     # Check projection gate
     gate = official_compare.projection_gate(dated_snapshots)
     use_proj = gate.get("pass", False)
+
+    # Initialize InferHubClient if API key is resolvable for live TPS candidate qualification
+    client: InferHubClient | None = None
+    if not dry_run:
+        api_key = resolve_inferhub_key(config_path=config_path)
+        if api_key:
+            client = InferHubClient(api_key)
 
     current_model = get_current_model(config_path)
     should_switch, best, current, reason = find_best_route(
@@ -643,6 +734,8 @@ def run_auto_route_switch(
         dated_snapshots=dated_snapshots,
         qual_runs=qual_runs,
         use_proj=use_proj,
+        client=client,
+        qual_path=qual_path,
     )
 
     result: dict[str, Any] = {
