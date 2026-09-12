@@ -127,19 +127,28 @@ jobs:
         env:
           INFERHUB_API_KEY: ${{ secrets.INFERHUB_API_KEY }}
         run: python3 -m probe.run
+      # An always-run condition on every downstream step: a failure in one probe
+      # step must not silently discard the artifacts produced after it. The job
+      # still goes red on the step that failed; the later steps just still run.
       - name: Probe pricing
+        if: always()
         env:
           INFERHUB_API_KEY: ${{ secrets.INFERHUB_API_KEY }}
         run: python3 -m probe.pricing
       - name: Probe catalog
+        if: always()
         env:
           INFERHUB_API_KEY: ${{ secrets.INFERHUB_API_KEY }}
         run: python3 -m probe.catalog
       - name: Probe intelligence
+        if: always()
         env:
           AA_API_KEY: ${{ secrets.AA_API_KEY }}
         run: python3 -m probe.intelligence
+      # No-op safe by construction: a run that produced no new files takes the
+      # "no new run files" branch instead of manufacturing an empty commit.
       - name: Commit run JSON
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
