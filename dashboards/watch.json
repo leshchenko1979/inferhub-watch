@@ -1588,7 +1588,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(created_at,'1d'), round(avg(ask_input_per_mtok)::numeric,5) AS avg_price, model AS metric FROM usage_logs WHERE $__timeFilter(created_at) AND is_probe = false AND ask_input_per_mtok > 0 AND model NOT LIKE '%grok%' GROUP BY 1, model ORDER BY 1",
+          "rawSql": "SELECT $__timeGroupAlias(u.created_at,'1d'), round(avg(COALESCE(NULLIF(u.ask_input_per_mtok, 0), rm.ask_in))::numeric,5) AS avg_price, u.model AS metric FROM usage_logs u LEFT JOIN route_metrics rm ON rm.route = u.model WHERE $__timeFilter(u.created_at) AND u.is_probe = false AND COALESCE(NULLIF(u.ask_input_per_mtok, 0), rm.ask_in) > 0 AND u.model NOT LIKE '%grok%' GROUP BY 1, u.model ORDER BY 1",
           "refId": "A"
         }
       ],
@@ -1652,7 +1652,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(created_at,'1d'), round(avg(ask_output_per_mtok)::numeric,5) AS avg_price, model AS metric FROM usage_logs WHERE $__timeFilter(created_at) AND is_probe = false AND ask_output_per_mtok > 0 AND model NOT LIKE '%grok%' GROUP BY 1, model ORDER BY 1",
+          "rawSql": "SELECT $__timeGroupAlias(u.created_at,'1d'), round(avg(COALESCE(NULLIF(u.ask_output_per_mtok, 0), rm.ask_out))::numeric,5) AS avg_price, u.model AS metric FROM usage_logs u LEFT JOIN route_metrics rm ON rm.route = u.model WHERE $__timeFilter(u.created_at) AND u.is_probe = false AND COALESCE(NULLIF(u.ask_output_per_mtok, 0), rm.ask_out) > 0 AND u.model NOT LIKE '%grok%' GROUP BY 1, u.model ORDER BY 1",
           "refId": "A"
         }
       ],
