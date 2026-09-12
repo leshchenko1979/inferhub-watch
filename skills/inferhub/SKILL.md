@@ -201,13 +201,13 @@ Records **which object class each hourly cycle examined** and tracks health chec
 
 | Class | Object Class Name | Last Scanned | Cycle / Issue | Health Status | Outcome |
 |---|---|---|---|---|---|
-| 1 | Repository & CI/CD | 2026-09-11 21:00Z | 21:00Z cycle / #18 | HEALTHY | Push runs verify `Watch — site deploy`; sweep run-name pending 02:17Z |
-| 2 | Data & Storage | 2026-09-11 20:00Z | 20:00Z cycle / #19 | HEALTHY | `data/pricing.json`, `data/proven.json` schema & sync verified |
-| 3 | Surfaces (Web, Grafana, Telegram) | 2026-09-12 02:00Z | 02:00Z cycle / #23 | HEALTHY | 24/24 Grafana panels valid (`scripts/test_grafana_panels.py` pass), Pages 200 ok |
-| 4 | Schedulers & Triggers | 2026-09-12 00:25Z | #24 landed | HEALTHY | 3 crons active; cycle continuity checks in place (`de5513f`) |
+| 1 | Repository & CI/CD | 2026-09-12 03:00Z | 03:00Z cycle / #18 | HEALTHY | Push runs verify `Watch — site deploy` (live: runs 34665426482 et al.); criterion 3 gate moved to ~07:19Z — see Class 4 |
+| 2 | Data & Storage | 2026-09-12 03:00Z | 03:00Z cycle / #25 | IMPROVING | TPS staleness fixed live (`auto_route_switch.py:722` Postgres perf overlay, DeepSeek 240.1 [prod]); catalog asks still 24h-stale → #25 hourly catalog query dispatched |
+| 3 | Surfaces (Web, Grafana, Telegram) | 2026-09-12 03:00Z | 03:00Z cycle / #23 | HEALTHY | 24/24 panels valid after worker fixes `37227ca`+`0f05e5b` (live `/api/ds/query` probe), Pages 200 |
+| 4 | Schedulers & Triggers | 2026-09-12 03:00Z | 03:00Z cycle / #25 | **DEGRADED** | GH Actions fires the daily sweep ~5h late consistently (02:17Z cron → 07:19-07:25Z observed firings Sep 9/10/11); external (GitHub scheduler), mitigated by #25 hourly catalog sync |
 | 5 | Code & Config | 2026-09-12 01:25Z | #22 / bfc2f3c | HEALTHY | Unified crown basis + TPS power law ($w=0.50$), 568 tests pass |
 | 6 | Process & Vocabulary | 2026-09-12 01:27Z | 6464b50 | HEALTHY | `session_notify` workhorse law codified in SKILL.md & AGENTS.md |
-| 7 | Agent Workspaces & Lanes | 2026-09-12 01:00Z | #21 | HEALTHY | Lane reuse law active; persistent topic workers handling dispatches |
+| 7 | Agent Workspaces & Lanes | 2026-09-12 03:00Z | #21 / #25 | HEALTHY | Persistent lane 1122b15e (topic 559) dispatched #25 + #21 remainder via `session_notify` mode=now |
 
 *(Class 8 Forum & Topics folded into Class 3 Surfaces per owner ruling).*
 
