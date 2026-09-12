@@ -56,6 +56,50 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
+      # psycopg2 is imported lazily by probe/pgstore.py. Without it the
+      # Postgres path cannot be reached at all, which is how Finding B (#27)
+      # stayed invisible: the builder silently used the 12k-row API cap and
+      # still declared `range: 30d`.
+      - name: Install probe dependencies
+        run: pip install -q "psycopg2-binary>=2.9,<3"
+      # Finding B fix (owner ruling 2026-09-12: "CI credential for PG"). The
+      # runner opens its OWN tunnel to the usage-log cache — never the
+      # unmanaged manual process on the agents box. The key is a dedicated,
+      # server-side-restricted CI identity (restrict,port-forwarding,
+      # permitopen="127.0.0.1:5432",command="/bin/false"): it can forward to
+      # Postgres and nothing else, and it cannot run a command.
+      - name: Open the Postgres tunnel (full 30d window)
+        env:
+          PG_CI_SSH_KEY: ${{ secrets.PG_CI_SSH_KEY }}
+          PG_CI_SSH_HOST: ${{ secrets.PG_CI_SSH_HOST }}
+          PG_CI_SSH_USER: ${{ secrets.PG_CI_SSH_USER }}
+          PG_CI_DB_USER: ${{ secrets.PG_CI_DB_USER }}
+          PG_CI_DB_PASSWORD: ${{ secrets.PG_CI_DB_PASSWORD }}
+        run: |
+          set -eu
+          if [ -z "${PG_CI_SSH_KEY:-}" ]; then
+            echo "::warning::PG_CI_SSH_KEY is not set — pricing will fall back to the 12k-row Management API cap and the artifact will declare its TRUE (short) window with row_source=api."
+            exit 0
+          fi
+          keyfile="$RUNNER_TEMP/ci_pg_key"
+          printf '%s\n' "$PG_CI_SSH_KEY" > "$keyfile"
+          chmod 600 "$keyfile"
+          mkdir -p "$HOME/.ssh"
+          ssh-keyscan -H "$PG_CI_SSH_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          ssh -f -N -o ExitOnForwardFailure=yes -o ConnectTimeout=15 \
+              -o IdentitiesOnly=yes -o BatchMode=yes -i "$keyfile" \
+              -L 15432:127.0.0.1:5432 "$PG_CI_SSH_USER@$PG_CI_SSH_HOST"
+          pid=$(pgrep -f "[s]sh .*-L 15432:127.0.0.1:5432" | head -1)
+          echo "tunnel open (pid $pid): 127.0.0.1:15432 -> $PG_CI_SSH_HOST:5432"
+          echo "TUNNEL_PID=$pid" >> "$GITHUB_ENV"
+          python3 -c 'import sys, psycopg2; c = psycopg2.connect(host="127.0.0.1", port=15432, dbname="inferhub_logs", user=sys.argv[1], password=sys.argv[2], connect_timeout=15); k = c.cursor(); k.execute("select count(*) from usage_logs"); print("tunnel ready: usage_logs =", k.fetchone()[0], "rows"); c.close()' "$PG_CI_DB_USER" "$PG_CI_DB_PASSWORD"
+          {
+            echo "PGHOST=127.0.0.1"
+            echo "PGPORT=15432"
+            echo "PGDATABASE=inferhub_logs"
+            echo "PGUSER=$PG_CI_DB_USER"
+            echo "PGPASSWORD=$PG_CI_DB_PASSWORD"
+          } >> "$GITHUB_ENV"
       - name: Probe InferHub
         env:
           INFERHUB_API_KEY: ${{ secrets.INFERHUB_API_KEY }}
@@ -92,6 +136,16 @@ jobs:
             git pull --rebase origin main
             git push || { git pull --rebase origin main && git push; }
           fi
+      # Always, even when a probe step failed: a leaked forward or key file
+      # must not outlive the job. The pattern is bracketed so the shell's own
+      # command line cannot match itself.
+      - name: Close the tunnel and remove the key
+        if: always()
+        run: |
+          if [ -n "${TUNNEL_PID:-}" ]; then kill "$TUNNEL_PID" 2>/dev/null || true; fi
+          pkill -f "[s]sh .*-L 15432:127.0.0.1:5432" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/ci_pg_key"
+          echo "tunnel closed, key removed"
 
   pages:
     if: >-
