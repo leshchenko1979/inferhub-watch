@@ -88,10 +88,13 @@ def _iq_asof(payload: dict, route: str, models: dict, fallback: bool) -> float |
     then only when `fallback` says so. That path is look-ahead CONTAMINATED:
     `data/intelligence.json` is overwritten each sweep, so the live value is
     not the value that day saw. Callers that take it must label the result.
+
+    The stamp rule itself is owned by `probe.official_compare` (`iq_asof` +
+    `has_iq_stamp`), so the gate and this backtest cannot drift apart on what
+    "as-of IQ" means.
     """
-    st = (payload.get("routes") or {}).get(route)
-    if isinstance(st, dict) and "iq" in st:
-        return st.get("iq")
+    if official_compare.has_iq_stamp(payload, route):
+        return official_compare.iq_asof(payload, route)
     return _iq_of(models, route) if fallback else None
 
 
