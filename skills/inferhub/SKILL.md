@@ -104,16 +104,19 @@ The discovered objects span 7 concrete classes. (Owner reclassification 2026-09-
 - Workers `git pull --ff-only` before touching anything; a stale checkout is a clobbered sweep.
 - **Probes cost real money.** A worker never invents probes; probe dispatch follows `probe/run.py` conventions and owner OK for anything beyond the scheduled sweep.
 
-## Sub-agent and worker mechanics (owner order 2026-09-11 10:1xZ: "Reload skill on using subagents")
+## Sub-agent and worker mechanics (owner order 2026-09-11 10:1xZ; sharpened 2026-09-12 01:26Z)
 
 Two mechanisms, one rule each — do not confuse them:
 
-| Mechanism | Use for | Binding | Brief |
+| Mechanism | Use for | Binding | Brief & Communication |
 |---|---|---|---|
-| **Topic worker** | ALL implementation, bugfix, sync, research | forum topic = its reporting surface | spawn prompt is the thin seed; substantive brief via `send_input` — `session_notify` to a fresh worker PARKS (see the delivery law) |
-| **Review sub-agent** | reviews ONLY (fresh context, no session bias) | none | spawn prompt carries the task |
+| **Topic worker / persistent lane** | ALL implementation, bugfix, sync, research | forum topic = its reporting surface | `session_notify` is the main workhorse; `tg_send_message` strictly for post-creation session seeding (initial message pump); NEVER use `send_input` or `resume_agent` |
+| **Review sub-agent** | reviews ONLY (fresh context, no session bias) | none | spawn prompt carries the task; `send_input` / `resume_agent` are reserved strictly for subagents |
 
-**Delivery law (corrected 2026-09-11, [issue #21](https://github.com/leshchenko1979/inferhub-watch/issues/21)):** a `session_notify` "delivered" verdict is a ROUTE report, not proof the worker woke — and for a **freshly spawned** worker the message is not delivered at all. The worker session has no channel claim (nothing has passed through the ingress handler for its topic), so the notify **parks** and waits for a channel that never claims it. Receipts — `restart_recovery.rs:248` in `~/.opencrabs/profiles/ops/logs/opencrabs.2026-09-11`, four parked briefs in one day: `c34f5cbb` (#15, 07:57Z), `45bac1d7` (#16 gate-rank, 08:23Z), `5c5d7214` (#18, 09:32Z), `0628f7d3` (#16 crown, 09:54Z). So the substantive brief goes via `send_input` while the worker is running, or `resume_agent` once it has completed a turn. Record which path was used — never write "briefed via `session_notify`" when another path carried it.
+**Delivery & Communication law (sharpened 2026-09-12 01:26Z, owner order):**
+- **`session_notify` is the main workhorse** for dispatching tasks and communicating with persistent topic lanes.
+- **`tg_send_message` is used strictly for post-creation session seeding:** When a new topic/worker is created, send a message to seed the topic and trigger the ingress message pump so the channel claim registers.
+- **`send_input` and `resume_agent` are for subagents only:** Do not use them on persistent topic workers or normal sessions.
 
 **Shared-checkout law:** all workers share one worktree. A worker stages ONLY its own files (`git add <paths>`) and verifies `git status` before committing; concurrent writers in one worktree are a known hazard.
 
