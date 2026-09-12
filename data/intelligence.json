@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-11T07:26:12Z",
+ "generated_at": "2026-09-12T07:17:01Z",
  "source": "artificialanalysis.ai",
  "endpoint": "https://artificialanalysis.ai/api/v2/data/llms/models",
  "models": {
@@ -108,9 +108,16 @@
    "aa_in": 0,
    "aa_out": 0
   },
+  "agnes-3-0-flash": {
+   "name": "Agnes 3.0 Flash",
+   "iq": 35.5,
+   "coding": null,
+   "aa_in": 0.05,
+   "aa_out": 0.15
+  },
   "k2-horizon-375b-a23b": {
    "name": "K2 Horizon 375B A23B",
-   "iq": 33.9,
+   "iq": 30.7,
    "coding": 61.5,
    "aa_in": 0,
    "aa_out": 0
@@ -159,7 +166,7 @@
   },
   "gpt-5-6-luna-low": {
    "name": "GPT-5.6 Luna (low)",
-   "iq": 21.8,
+   "iq": 21.5,
    "coding": 44.2,
    "aa_in": 0.2,
    "aa_out": 1.2
@@ -299,7 +306,7 @@
   },
   "gpt-5-6-luna-medium": {
    "name": "GPT-5.6 Luna (medium)",
-   "iq": 25.8,
+   "iq": 25.5,
    "coding": 50.7,
    "aa_in": 0.2,
    "aa_out": 1.2
@@ -607,7 +614,7 @@
   },
   "claude-sonnet-5-xhigh": {
    "name": "Claude Sonnet 5 (Adaptive Reasoning, Xhigh Effort)",
-   "iq": null,
+   "iq": 34.7,
    "coding": null,
    "aa_in": 2,
    "aa_out": 10
@@ -1202,7 +1209,7 @@
   },
   "kimi-k3-low": {
    "name": "Kimi K3 (low)",
-   "iq": 34.5,
+   "iq": 30.5,
    "coding": 72,
    "aa_in": 3,
    "aa_out": 15
@@ -1783,7 +1790,7 @@
   },
   "glm-5-2": {
    "name": "GLM-5.2 (max)",
-   "iq": 38.6,
+   "iq": 34,
    "coding": 68.8,
    "aa_in": 1.4,
    "aa_out": 4.4
@@ -2112,7 +2119,7 @@
   },
   "agnes-2-5-pro-alpha": {
    "name": "Agnes 2.5 Pro Alpha",
-   "iq": 26.8,
+   "iq": 27.8,
    "coding": 58.8,
    "aa_in": 0.45,
    "aa_out": 0.9
