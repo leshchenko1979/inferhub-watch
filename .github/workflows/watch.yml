@@ -7,7 +7,7 @@ run-name: >-
     github.event_name == 'schedule' && 'Watch — sweep'
     || github.event_name == 'workflow_dispatch' && 'Watch — manual sweep'
     || github.event_name == 'pull_request' && 'Watch — validate'
-    || 'Watch — site deploy'
+    || 'Watch — contract gate + site deploy'
   }}
 
 on:
@@ -28,8 +28,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The contract gate (#29). It runs on the SHIPPING path — push to main —
+  # as well as on pull_request. This repo ships by direct push, so a gate
+  # gated on pull_request alone had never run against a commit that actually
+  # landed: 100 tests in 5 pytest-style files were invisible to it.
+  # It stays its OWN job so a red test fails loudly here without touching the
+  # sweep: the probe job is schedule/dispatch-only, the sweep's data commit
+  # carries [skip ci], and data/** is paths-ignore'd — a data push triggers
+  # no run at all.
   validate:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -42,6 +50,11 @@ jobs:
         run: pip install -q -r requirements.txt && python3 site/generate.py
         env:
           PAGES_BASE: /inferhub-watch
+      # pytest collects every suite; `unittest discover` sees only TestCase
+      # subclasses. Both run: unittest is the repo's historical contract,
+      # pytest is the complete one.
+      - name: Contract unit tests (pytest)
+        run: python3 -m pytest tests/ -q
       - name: Contract unit tests
         run: python3 -m unittest discover -s . -q
 

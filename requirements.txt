@@ -1,1 +1,12 @@
 jinja2>=3.1
+
+# Contract-gate dependencies (#29). The gate runs `python3 -m pytest tests/ -q`
+# so the 5 pytest-style files (100 tests) are collected — `unittest discover`
+# sees only TestCase subclasses. typing_extensions and psycopg2-binary are
+# import-time requirements of suites the gate must collect: test_costs.py does
+# `from typing_extensions import Self`, and test_pgstore.py patches
+# psycopg2.extras.execute_values. Without them the gate fails to COLLECT, which
+# reads as an infrastructure break rather than the test failure it is.
+pytest>=8,<10
+typing_extensions>=4
+psycopg2-binary>=2.9,<3
