@@ -145,20 +145,64 @@ class PublishTests(unittest.TestCase):
         conn = self._conn()
         pgstore.publish_projection_gate(conn, {
             "n": 14, "land": 12, "share": 0.857, "tol": 0.15, "min_n": 10,
-            "pass": True})
+            "pass": True,
+            "value_n": 9, "value_land": 8, "value_share": 0.889,
+            "value_tol": 0.15, "value_min_n": 10, "value_pass": False,
+            "value_status": "measured"})
         cur = conn.cursor.return_value.__enter__.return_value
         sql, params = cur.execute.call_args.args
         self.assertIn("insert into projection_gate", sql)
         self.assertIn("on conflict (id) do update", sql)
         self.assertEqual(
-            params, ("projection_gate", True, 14, 12, 0.857, 0.15, 10))
+            params, ("projection_gate", True, 14, 12, 0.857, 0.15, 10,
+                     9, 8, 0.889, 0.15, 10, False, "measured"))
         conn.commit.assert_called_once()
+
+    def test_gate_upsert_publishes_the_value_leg_alongside_cost(self) -> None:
+        # Item 2 (D4): the row carries BOTH legs. `pass` must stay the cost
+        # verdict even when the Value leg disagrees, so a reader sees the
+        # disagreement instead of it being resolved silently in the publisher.
+        conn = self._conn()
+        pgstore.publish_projection_gate(conn, {
+            "n": 15, "land": 13, "share": 0.867, "tol": 0.15, "min_n": 10,
+            "pass": True,
+            "value_n": 10, "value_land": 9, "value_share": 0.9,
+            "value_tol": 0.15, "value_min_n": 10, "value_pass": True,
+            "value_status": "measured"})
+        cur = conn.cursor.return_value.__enter__.return_value
+        sql, params = cur.execute.call_args.args
+        for col in ("value_n", "value_land", "value_share", "value_tol",
+                    "value_min_n", "value_pass", "value_status"):
+            self.assertIn(f"{col} = excluded.{col}", sql)
+        self.assertIs(params[1], True)          # pass == the COST verdict
+        self.assertEqual(params[2:7], (15, 13, 0.867, 0.15, 10))
+
+    def test_gate_ddl_creates_and_migrates_the_value_columns(self) -> None:
+        # Both halves matter: a fresh database takes them from the create, an
+        # existing one takes them from the guarded alters. Only having the
+        # create would leave the live table without the columns forever.
+        for col in ("value_n", "value_land", "value_share", "value_tol",
+                    "value_min_n", "value_pass", "value_status"):
+            self.assertIn(f"add column if not exists {col}", pgstore.GATE_DDL)
+        create = pgstore.GATE_DDL.split("alter table", 1)[0]
+        for col in ("value_n", "value_land", "value_share", "value_status"):
+            self.assertIn(col, create)
 
     def test_gate_upsert_defaults_missing_pass_to_false(self) -> None:
         conn = self._conn()
         pgstore.publish_projection_gate(conn, {"n": 0})
         cur = conn.cursor.return_value.__enter__.return_value
         self.assertIs(cur.execute.call_args.args[1][1], False)
+
+    def test_gate_upsert_defaults_a_missing_value_leg_to_null(self) -> None:
+        # A gate dict that predates the Value leg must publish NULLs, not
+        # zeros: value_n = 0 would read as "measured, nothing resolved",
+        # which is a different claim from "not reported".
+        conn = self._conn()
+        pgstore.publish_projection_gate(conn, {"n": 1, "pass": True})
+        cur = conn.cursor.return_value.__enter__.return_value
+        params = cur.execute.call_args.args[1]
+        self.assertEqual(params[7:], (None, None, None, None, None, None, None))
 
     def test_route_basis_replaces_the_whole_set(self) -> None:
         conn = self._conn()

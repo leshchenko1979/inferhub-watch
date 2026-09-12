@@ -54,6 +54,18 @@ create table if not exists projection_gate (
     share numeric,
     tol numeric,
     min_n integer,
+    -- Item 2 (D4): the Value leg, MEASURED alongside the cost verdict.
+    -- `pass` stays the COST verdict and the panels' `use_proj` switch still
+    -- reads it - these columns report what the same crown walk says when the
+    -- regret ratio is taken on Value on both sides instead of on cost. See
+    -- `official_compare._crown_value_regrets`; the constants are shared.
+    value_n integer,
+    value_land integer,
+    value_share numeric,
+    value_tol numeric,
+    value_min_n integer,
+    value_pass boolean,
+    value_status text,
     computed_at timestamptz not null default now()
 );
 -- The verdict was re-tuned from rank fidelity (land / bar / rho_median) onto
@@ -65,6 +77,15 @@ alter table projection_gate add column if not exists min_n integer;
 alter table projection_gate drop column if exists bar;
 alter table projection_gate drop column if exists rho_median;
 alter table projection_gate drop column if exists within;
+-- Item 2 (D4): an existing table gains the Value leg in place. The create
+-- above covers a fresh database; these cover one that predates the columns.
+alter table projection_gate add column if not exists value_n integer;
+alter table projection_gate add column if not exists value_land integer;
+alter table projection_gate add column if not exists value_share numeric;
+alter table projection_gate add column if not exists value_tol numeric;
+alter table projection_gate add column if not exists value_min_n integer;
+alter table projection_gate add column if not exists value_pass boolean;
+alter table projection_gate add column if not exists value_status text;
 """
 
 # Per-route money bases, published from the committed snapshot so the
@@ -188,16 +209,27 @@ def publish_projection_gate(conn, gate: dict) -> None:
     """Upsert the projection gate verdict the dashboard reads.
 
     `gate` is official_compare.projection_gate output: n / land / share /
-    tol / min_n / pass. The single row is rewritten in place — the dashboard
-    needs the current verdict, not a history (the history is the committed
-    snapshots the verdict is recomputed from).
+    tol / min_n / pass for the COST leg, plus the parallel Value leg
+    (value_n / value_land / value_share / value_tol / value_min_n /
+    value_pass / value_status). The single row is rewritten in place — the
+    dashboard needs the current verdict, not a history (the history is the
+    committed snapshots the verdict is recomputed from).
+
+    The Value leg is PUBLISHED, never substituted: `pass` stays the cost
+    verdict and the panels' `use_proj` switch keeps reading it. Item 2 (D4)
+    moved what the gate MEASURES; which leg it ships on is a separate,
+    owner-level decision, so this row carries both and lets a reader see the
+    disagreement rather than having it resolved silently in code.
     """
     with conn.cursor() as cur:
         cur.execute(
             """
             insert into projection_gate
-                (id, pass, n, land, share, tol, min_n, computed_at)
-            values (%s, %s, %s, %s, %s, %s, %s, now())
+                (id, pass, n, land, share, tol, min_n, computed_at,
+                 value_n, value_land, value_share, value_tol, value_min_n,
+                 value_pass, value_status)
+            values (%s, %s, %s, %s, %s, %s, %s, now(),
+                    %s, %s, %s, %s, %s, %s, %s)
             on conflict (id) do update set
                 pass = excluded.pass,
                 n = excluded.n,
@@ -205,10 +237,21 @@ def publish_projection_gate(conn, gate: dict) -> None:
                 share = excluded.share,
                 tol = excluded.tol,
                 min_n = excluded.min_n,
+                value_n = excluded.value_n,
+                value_land = excluded.value_land,
+                value_share = excluded.value_share,
+                value_tol = excluded.value_tol,
+                value_min_n = excluded.value_min_n,
+                value_pass = excluded.value_pass,
+                value_status = excluded.value_status,
                 computed_at = now()
             """,
             (GATE_ID, bool(gate.get("pass")), gate.get("n"), gate.get("land"),
-             gate.get("share"), gate.get("tol"), gate.get("min_n")),
+             gate.get("share"), gate.get("tol"), gate.get("min_n"),
+             gate.get("value_n"), gate.get("value_land"),
+             gate.get("value_share"), gate.get("value_tol"),
+             gate.get("value_min_n"), gate.get("value_pass"),
+             gate.get("value_status")),
         )
     conn.commit()
 

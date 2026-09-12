@@ -2088,6 +2088,92 @@
       ],
       "title": "Predictor scoreboard \u2014 ordering accuracy (verdict) + level ratio (diagnostic)",
       "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "The projection gate, BOTH legs (issue #35, item 2 of the 2026-09-12 owner decision set). The gate's question is unchanged: of the transitions where the board would have crowned a route (lowest projected $/M), what share realized within GATE_TOL (15%) of the cheapest realized route. What item 2 moved is the METRIC the regret ratio is taken on. COST takes it on realized $/M; VALUE takes it on the North Star metric (probe/value.py), on both sides of the ratio, never mixed. The same GATE_TOL / GATE_SHARE / GATE_MIN_N apply to both - a pass/fail constant is owner property and is never re-tuned to make a leg pass. IMPORTANT: the 'Cost verdict' column is what the panels' projected-basis switch reads (projection_gate.pass). The Value leg is PUBLISHED alongside it, not substituted for it; which leg the gate ships on is an owner decision, and until it is taken the disagreement is shown here rather than resolved silently. A 'n/a - unresolved' Value verdict is a RESOLUTION limit of the input (no as-of IQ stamp on the snapshot), never evidence that Value failed.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "minWidth": 60
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cost share"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value share"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 100
+      },
+      "id": 72,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  CASE WHEN pass THEN 'PASS' ELSE 'FAIL' END AS \"Cost verdict\",\n  n AS \"Cost n\",\n  land AS \"Cost land\",\n  share AS \"Cost share\",\n  CASE WHEN value_status = 'measured'\n       THEN CASE WHEN value_pass THEN 'PASS' ELSE 'FAIL' END\n       ELSE 'n/a - ' || COALESCE(value_status, 'unresolved')\n  END AS \"Value verdict\",\n  value_n AS \"Value n\",\n  value_land AS \"Value land\",\n  value_share AS \"Value share\",\n  value_status AS \"Value status\",\n  computed_at AS \"Computed\"\nFROM projection_gate\nWHERE id = 'projection_gate'",
+          "refId": "A"
+        }
+      ],
+      "title": "Projection gate \u2014 both legs (cost verdict + Value measurement)",
+      "type": "table"
     }
   ],
   "refresh": "10m",
