@@ -83,6 +83,41 @@ create table if not exists route_basis (
 """
 
 
+# The predictor scoreboard, published so the Grafana panels can read it.
+# Grafana cannot run `scripts/predictor_scoreboard.py` — the artifact is a
+# recomputation over the committed snapshots plus the whole log store, not a
+# query — so the script publishes its own verdicts here and the panels read
+# them. One row per CADENCE (daily / hourly_cumulative / hourly_slice), which
+# is the shape the scoreboard itself is organised in.
+#
+# `value_status` is load-bearing, not decoration. The Value leg carries
+# `n = 0` / `share = null` at the hourly cadences, and a bare null there reads
+# as a measured failure on a dashboard. It is a RESOLUTION limit instead — see
+# `_value_resolution` in scripts/predictor_scoreboard.py — so the status
+# (`measured` / `unresolved`) travels with the numbers and the panel renders
+# "n/a" rather than "0.0".
+SCOREBOARD_DDL = """
+create table if not exists predictor_scoreboard (
+    cadence text primary key,
+    transitions integer,
+    cost_n integer,
+    cost_land integer,
+    cost_share numeric,
+    cost_pass boolean,
+    value_n integer,
+    value_land integer,
+    value_share numeric,
+    value_pass boolean,
+    value_status text,
+    value_limit text,
+    level_n integer,
+    level_median numeric,
+    level_within_50pct numeric,
+    level_within_2x numeric,
+    computed_at timestamptz not null default now()
+);
+"""
+
 # The Grafana datasource reads as `inferhub_ro`, not as the owner role, so
 # every table a panel queries needs an explicit SELECT grant. Without it the
 # panel errors "permission denied for table ..." on the live dashboard while
@@ -94,7 +129,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'inferhub_ro') THEN
         EXECUTE 'grant select on usage_logs, route_metrics, projection_gate, '
-             || 'route_basis to inferhub_ro';
+             || 'route_basis, predictor_scoreboard to inferhub_ro';
     END IF;
 END $$;
 """
@@ -143,6 +178,7 @@ def ensure_schema(conn) -> None:
         cur.execute(DDL)
         cur.execute(GATE_DDL)
         cur.execute(ROUTE_BASIS_DDL)
+        cur.execute(SCOREBOARD_DDL)
         cur.execute(GRANT_DDL)
     conn.commit()
 
@@ -200,6 +236,71 @@ def publish_route_basis(conn, rows: list[dict], snapshot_at: str | None = None) 
     conn.commit()
     return len(tuples)
 
+
+SCOREBOARD_CADENCES = ("daily", "hourly_cumulative", "hourly_slice")
+
+def publish_scoreboard(conn, artifact: dict) -> int:
+    """Publish the predictor scoreboard, one row per cadence.
+
+    `artifact` is `scripts/predictor_scoreboard.py`'s output. A cadence whose
+    block is absent or skipped is DELETED rather than left standing: the
+    hourly legs vanish when Postgres credentials are missing, and a stale row
+    would keep publishing a verdict the run did not make.
+    """
+    rows = []
+    for cadence in SCOREBOARD_CADENCES:
+        blk = artifact.get(cadence) or {}
+        if "ordering" not in blk or "level" not in blk:
+            continue
+        cost = blk["ordering"].get("cost_regret") or {}
+        val = blk["ordering"].get("value_regret") or {}
+        res = blk["ordering"].get("value_resolution") or {}
+        lv = blk["level"] or {}
+        rows.append((
+            cadence, blk.get("transitions"),
+            cost.get("n"), cost.get("land"), cost.get("share"), cost.get("pass"),
+            val.get("n"), val.get("land"), val.get("share"), val.get("pass"),
+            res.get("status"), res.get("limit"),
+            lv.get("n_pairs"), lv.get("median_ratio"),
+            lv.get("within_50pct"), lv.get("within_2x"),
+        ))
+    with conn.cursor() as cur:
+        cur.execute("delete from predictor_scoreboard where not (cadence = any(%s))",
+                    ([r[0] for r in rows],))
+        if rows:
+            cur.executemany(
+                """
+                insert into predictor_scoreboard (
+                    cadence, transitions,
+                    cost_n, cost_land, cost_share, cost_pass,
+                    value_n, value_land, value_share, value_pass,
+                    value_status, value_limit,
+                    level_n, level_median, level_within_50pct, level_within_2x,
+                    computed_at
+                ) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                          %s, %s, %s, %s, now())
+                on conflict (cadence) do update set
+                    transitions = excluded.transitions,
+                    cost_n = excluded.cost_n,
+                    cost_land = excluded.cost_land,
+                    cost_share = excluded.cost_share,
+                    cost_pass = excluded.cost_pass,
+                    value_n = excluded.value_n,
+                    value_land = excluded.value_land,
+                    value_share = excluded.value_share,
+                    value_pass = excluded.value_pass,
+                    value_status = excluded.value_status,
+                    value_limit = excluded.value_limit,
+                    level_n = excluded.level_n,
+                    level_median = excluded.level_median,
+                    level_within_50pct = excluded.level_within_50pct,
+                    level_within_2x = excluded.level_within_2x,
+                    computed_at = now()
+                """,
+                rows,
+            )
+    conn.commit()
+    return len(rows)
 
 _ROW_RE = re.compile(r"^[a-z0-9-]{10,}$", re.IGNORECASE)
 

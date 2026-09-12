@@ -1881,6 +1881,213 @@
       ],
       "title": "Effective $/Mtok by model (in use)",
       "type": "timeseries"
+    },
+    {
+      "id": 70,
+      "type": "row",
+      "title": "Predictor scoreboard",
+      "gridPos": {
+        "x": 0,
+        "y": 68,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "How well the route predictor ranks and levels, at three cadences (issue #30). ORDERING (the verdict) = the crown backtest's regret share: of the transitions where the board would have crowned a route, what share realized within GATE_TOL (15%) of the cheapest. LEVEL (the diagnostic) = realized / projected ratio. The VALUE leg is the North Star metric (probe/value.py) scored on realized outcomes. DAILY is measured \u2014 each snapshot's own as-of IQ stamp, backfilled from the git-tracked data/intelligence.json history (D3): real historical values, never interpolated. The HOURLY legs read 'n/a' by design, NOT as a failure: the hourly series is rebuilt from usage_logs and carries no D3 iq stamp, and IQ's own resolution is a day, so there is no as-of IQ to read at an hourly boundary. The daily leg is the leg that can be scored.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "minWidth": 60
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cost share"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value share"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Level within 50pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Level within 2x"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cost verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASS": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "FAIL": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value verdict"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASS": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "FAIL": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Level median"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 69
+      },
+      "id": 71,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  cadence AS \"Cadence\",\n  transitions AS \"Transitions\",\n  cost_n AS \"Cost n\",\n  cost_land AS \"Cost land\",\n  cost_share AS \"Cost share\",\n  CASE WHEN cost_pass THEN 'PASS' ELSE 'FAIL' END AS \"Cost verdict\",\n  value_n AS \"Value n\",\n  value_land AS \"Value land\",\n  value_share AS \"Value share\",\n  CASE WHEN value_status = 'measured'\n       THEN CASE WHEN value_pass THEN 'PASS' ELSE 'FAIL' END\n       ELSE 'n/a - ' || COALESCE(value_limit, 'unresolved')\n  END AS \"Value verdict\",\n  level_n AS \"Level n\",\n  level_median AS \"Level median\",\n  level_within_50pct AS \"Level within 50pct\",\n  level_within_2x AS \"Level within 2x\",\n  computed_at AS \"Computed\"\nFROM predictor_scoreboard\nORDER BY CASE cadence\n  WHEN 'daily' THEN 0 WHEN 'hourly_cumulative' THEN 1 ELSE 2 END",
+          "refId": "A"
+        }
+      ],
+      "title": "Predictor scoreboard \u2014 ordering accuracy (verdict) + level ratio (diagnostic)",
+      "type": "table"
     }
   ],
   "refresh": "10m",

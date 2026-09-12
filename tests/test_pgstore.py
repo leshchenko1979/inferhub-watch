@@ -107,6 +107,7 @@ class PublishTests(unittest.TestCase):
     def test_ddl_declares_both_published_tables(self) -> None:
         self.assertIn("projection_gate", pgstore.GATE_DDL)
         self.assertIn("route_basis", pgstore.ROUTE_BASIS_DDL)
+        self.assertIn("predictor_scoreboard", pgstore.SCOREBOARD_DDL)
 
     def test_gate_ddl_retires_the_rank_fidelity_columns(self) -> None:
         # The verdict is the top-1 crown backtest now, so the rank-fidelity
@@ -122,10 +123,14 @@ class PublishTests(unittest.TestCase):
         pgstore.ensure_schema(conn)
         cur = conn.cursor.return_value.__enter__.return_value
         executed = [c.args[0] for c in cur.execute.call_args_list]
-        self.assertEqual(len(executed), 4)
+        self.assertEqual(len(executed), 5)
         for ddl in (pgstore.DDL, pgstore.GATE_DDL, pgstore.ROUTE_BASIS_DDL,
-                    pgstore.GRANT_DDL):
+                    pgstore.SCOREBOARD_DDL, pgstore.GRANT_DDL):
             self.assertIn(ddl, executed)
+        # The grant must run AFTER the table it grants on, or a fresh
+        # database raises "relation does not exist" during provisioning.
+        self.assertLess(executed.index(pgstore.SCOREBOARD_DDL),
+                        executed.index(pgstore.GRANT_DDL))
 
     def test_grant_ddl_is_role_guarded(self) -> None:
         # The dashboard reads as inferhub_ro; without the grant every panel
@@ -134,6 +139,7 @@ class PublishTests(unittest.TestCase):
         self.assertIn("pg_roles", pgstore.GRANT_DDL)
         self.assertIn("route_basis", pgstore.GRANT_DDL)
         self.assertIn("projection_gate", pgstore.GRANT_DDL)
+        self.assertIn("predictor_scoreboard", pgstore.GRANT_DDL)
 
     def test_gate_upsert_passes_verdict_and_commits(self) -> None:
         conn = self._conn()
@@ -179,6 +185,70 @@ class PublishTests(unittest.TestCase):
         self.assertIn("delete from route_basis",
                       cur.execute.call_args.args[0])
 
+
+    def _cadence(self, transitions=16, cost_n=15, cost_pass=True,
+                 value_n=10, value_pass=True, value_status="measured",
+                 value_limit=None):
+        return {
+            "transitions": transitions,
+            "ordering": {
+                "cost_regret": {"n": cost_n, "land": 13, "share": 0.867,
+                                "pass": cost_pass},
+                "value_regret": {"n": value_n, "land": 9, "share": 0.9,
+                                 "pass": value_pass},
+                "value_resolution": {"status": value_status,
+                                     "limit": value_limit},
+            },
+            "level": {"n_pairs": 119, "median_ratio": 1.227,
+                      "within_50pct": 0.496, "within_2x": 0.672},
+        }
+
+    def test_scoreboard_publishes_one_row_per_cadence(self) -> None:
+        conn = self._conn()
+        artifact = {
+            "daily": self._cadence(),
+            "hourly_cumulative": self._cadence(
+                transitions=300, cost_n=243, cost_pass=False,
+                value_n=0, value_pass=False, value_status="unresolved",
+                value_limit="no as-of IQ on the hourly series"),
+            "hourly_slice": self._cadence(transitions=300),
+        }
+        self.assertEqual(pgstore.publish_scoreboard(conn, artifact), 3)
+        cur = conn.cursor.return_value.__enter__.return_value
+        sql, params = cur.executemany.call_args.args
+        self.assertIn("insert into predictor_scoreboard", sql)
+        self.assertEqual([r[0] for r in params],
+                         ["daily", "hourly_cumulative", "hourly_slice"])
+        # The Value leg's STATUS travels with its numbers, so a panel can
+        # render "n/a" instead of reading a bare null as a measured failure.
+        unresolved = params[1]
+        self.assertEqual(unresolved[10], "unresolved")
+        self.assertEqual(unresolved[11], "no as-of IQ on the hourly series")
+        conn.commit.assert_called_once()
+
+    def test_scoreboard_clears_cadences_the_run_did_not_publish(self) -> None:
+        # The hourly legs vanish when Postgres credentials are missing; a
+        # stale row would keep publishing a verdict the run never made.
+        conn = self._conn()
+        pgstore.publish_scoreboard(conn, {"daily": self._cadence()})
+        cur = conn.cursor.return_value.__enter__.return_value
+        delete_sql, delete_params = cur.execute.call_args.args
+        self.assertIn("delete from predictor_scoreboard", delete_sql)
+        self.assertEqual(delete_params, (["daily"],))
+
+    def test_scoreboard_skips_a_block_that_did_not_run(self) -> None:
+        conn = self._conn()
+        artifact = {"daily": self._cadence(),
+                    "hourly_cumulative": {"skipped": "no Postgres credentials"}}
+        self.assertEqual(pgstore.publish_scoreboard(conn, artifact), 1)
+
+    def test_scoreboard_empty_artifact_clears_everything(self) -> None:
+        conn = self._conn()
+        self.assertEqual(pgstore.publish_scoreboard(conn, {}), 0)
+        cur = conn.cursor.return_value.__enter__.return_value
+        self.assertIn("delete from predictor_scoreboard",
+                      cur.execute.call_args.args[0])
+        cur.executemany.assert_not_called()
 
 class LoadRouteMetricsTests(unittest.TestCase):
     def _conn(self) -> mock.Mock:

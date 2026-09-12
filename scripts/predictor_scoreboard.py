@@ -152,12 +152,20 @@ def _order_block(regrets: list[float]) -> dict:
 def _value_resolution(n: int) -> dict:
     """Why the Value leg has the `n` it has — a RESOLUTION limit, not a verdict.
 
-    `n == 0` must never be read as "the Value leg failed". IQ history is
-    DAILY: `data/intelligence.json` is git-tracked at one version per sweep
-    day, and the dated snapshots it joins against are daily too. An HOURLY
-    boundary therefore has no as-of IQ to read, and the Value leg cannot
-    resolve at hourly cadence AT ALL — no volume of data fixes it, because
-    the resolution of the input is a day.
+    `n == 0` must never be read as "the Value leg failed". The leg reads each
+    snapshot's OWN as-of `iq` stamp (D3), and only the 17 committed DAILY
+    snapshots carry one. The hourly series is rebuilt from `usage_logs` rows
+    by `hourly_series()` and stamps no `iq`, so `_iq_asof` returns None for
+    every hourly boundary and the leg scores nothing.
+
+    That is a PLUMBING gap on top of a resolution limit, and the distinction
+    is stated rather than blurred: IQ's own resolution is a DAY
+    (`data/intelligence.json` is a git-tracked daily series), so even once the
+    hourly series carries a stamp the input would be day-resolution — the same
+    IQ for every boundary inside a day. Resolving it means joining each
+    boundary's date to that day's IQ from the same git history D3 backfilled
+    from; it is NOT impossible, it is simply not built, and no volume of
+    traffic closes either gap.
 
     Stated IN the artifact so a reader — or a dashboard panel — cannot
     mistake `n: 0` / `share: null` for a measured failure.
@@ -174,14 +182,15 @@ def _value_resolution(n: int) -> dict:
     return {
         "status": "unresolved",
         "n": 0,
-        "limit": "IQ history is daily-only",
-        "note": ("NOT a measured failure. The Value leg cannot be scored at "
-                 "this cadence: data/intelligence.json is a DAILY series (one "
-                 "git-tracked version per sweep day) and the dated snapshots "
-                 "it joins against are daily, so an hourly boundary has no "
-                 "as-of IQ. `share: null` and `pass: false` on this leg are "
-                 "artifacts of that resolution limit and carry NO evidence "
-                 "about Value. The daily leg is the leg that can be scored."),
+        "limit": "no as-of IQ on the hourly series",
+        "note": ("NOT a measured failure. The hourly series is rebuilt from "
+                 "usage_logs and carries no D3 `iq` stamp, so there is no "
+                 "as-of IQ to read at an hourly boundary. On top of that, IQ's "
+                 "resolution is a DAY (data/intelligence.json is a daily "
+                 "series), so the input would be day-resolution even once "
+                 "stamped. `share: null` and `pass: false` on this leg are "
+                 "artifacts of that limit and carry NO evidence about Value. "
+                 "The daily leg is the leg that can be scored."),
     }
 
 
@@ -307,7 +316,7 @@ def hourly_series(rows: list[dict], perf_hours: int = 24) -> tuple[list, list]:
     return dated, slices[1:]
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--perf-hours", type=int, default=24)
@@ -315,7 +324,7 @@ def main() -> int:
     ap.add_argument("--iq-fallback", action="store_true",
                     help="D4: let payloads with no D3 iq stamp read the LIVE "
                          "intelligence table (look-ahead contaminated)")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     models = _iq_table()
     daily = pricing.dated_snapshots(ROOT_DIR)
@@ -325,15 +334,13 @@ def main() -> int:
         "cadences": {"daily": len(daily)},
     }
 
+    conn = None
     if not args.no_pg:
         from probe.pgstore import _connect, load_env, rows_since
         env = load_env()
         if env.get("PGPASSWORD"):
             conn = _connect(env)
-            try:
-                rows = rows_since(datetime(2026, 8, 1, tzinfo=timezone.utc), conn=conn)
-            finally:
-                conn.close()
+            rows = rows_since(datetime(2026, 8, 1, tzinfo=timezone.utc), conn=conn)
             dated, slices = hourly_series(rows, args.perf_hours)
             artifact["hourly_cumulative"] = score(dated, models, iq_fallback=args.iq_fallback)
             artifact["hourly_slice"] = score(dated, models, real_maps=slices,
@@ -362,6 +369,21 @@ def main() -> int:
               f"cost n={o['n']:3d} share={o['share']} pass={o['pass']} | "
               f"value n={v['n']:3d} share={v['share']} {vpass} | "
               f"level n={lv['n_pairs']:4d} median={lv['median_ratio']}")
+
+    # Publish so the Grafana panels read the same verdicts this artifact
+    # carries. Grafana cannot recompute the scoreboard — it is a pass over the
+    # committed snapshots plus the whole log store, not a query — so the
+    # script that owns the artifact is also the publisher (pgstore
+    # .SCOREBOARD_DDL). A failure to publish is loud: a dashboard showing a
+    # stale verdict is worse than one showing none.
+    if conn is not None:
+        from probe.pgstore import ensure_schema, publish_scoreboard
+        try:
+            ensure_schema(conn)
+            print(f"scoreboard published: {publish_scoreboard(conn, artifact)} "
+                  "cadence row(s)")
+        finally:
+            conn.close()
     return 0
 
 

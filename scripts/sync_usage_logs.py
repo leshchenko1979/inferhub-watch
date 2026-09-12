@@ -287,6 +287,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=float, default=8.0,
                     help="how far back to fetch on an empty table")
+    ap.add_argument("--skip-scoreboard", action="store_true",
+                    help="do not recompute/publish the predictor scoreboard")
     args = ap.parse_args()
 
     conn = pgstore._connect(pgstore.load_env())
@@ -354,6 +356,18 @@ def main() -> int:
             print(f"auto_route_switch: no switch needed ({switch_res.get('reason')})")
     except Exception as exc:
         print(f"auto_route_switch warning: {exc}")
+
+    # Recompute and publish the predictor scoreboard (D6). Deliberately LAST
+    # and GUARDED: the switcher above is the production path and must never be
+    # delayed or aborted by a dashboard artifact, but a table nothing
+    # refreshes would let the panel publish a stale verdict indefinitely —
+    # which is why the panel also shows `computed_at`.
+    if not args.skip_scoreboard:
+        try:
+            from scripts.predictor_scoreboard import main as scoreboard_main
+            print(f"scoreboard exit: {scoreboard_main([])}")
+        except Exception as exc:
+            print(f"scoreboard warning: {exc}")
 
     return 0
 
