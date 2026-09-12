@@ -288,6 +288,95 @@ def _crown_regrets(dated: list) -> list[float]:
         regrets.append(crowned[2] / cheapest - 1)
     return regrets
 
+def iq_asof(payload: dict, route: str) -> float | None:
+    """IQ as the snapshot ITSELF recorded it (D3), never as today knows it.
+
+    D3 stamps `iq` at build time precisely so a past day's crown can be
+    reconstructed without look-ahead. When the key is present it is used
+    unconditionally - including when it is null, which means that day carried
+    no IQ and the route cannot be Value-scored from it. A payload that
+    predates the stamp returns None; only a caller that explicitly opts in
+    may consult the live `data/intelligence.json`, and that path is
+    look-ahead CONTAMINATED (the file is overwritten each sweep, so today's
+    value is not the value that day saw).
+    """
+    st = (payload.get("routes") or {}).get(route)
+    if isinstance(st, dict) and "iq" in st:
+        return st.get("iq")
+    return None
+
+def has_iq_stamp(payload: dict, route: str) -> bool:
+    """Whether the snapshot carries a D3 `iq` key for this route AT ALL.
+
+    `iq_asof` returns None both when a snapshot predates the D3 stamp and
+    when it carries the stamp with a null value, and those two mean opposite
+    things: the first may legitimately fall back to another source, the
+    second records that the day genuinely had no IQ and must NOT be filled
+    in from elsewhere. Callers that own such a fallback ask this first.
+    """
+    st = (payload.get("routes") or {}).get(route)
+    return isinstance(st, dict) and "iq" in st
+
+def _crown_value_regrets(dated: list) -> list[float]:
+    """Per-transition crown VALUE regret - the same walk, the metric moved.
+
+    Item 2 (owner decision set 2026-09-12, D4): the gate's crown SELECTION is
+    unchanged - the crowned route is still the board's own choice, the lowest
+    projected $/M (`_crown_regrets`), and the comparator is still the same
+    route. What moves is the METRIC the ratio is taken on: Value on BOTH
+    sides, never mixed, so a Value regret can never be a ratio of one route's
+    Value to another's cost.
+
+        regret = value(comparator) / value(crowned) - 1
+
+    Oriented like the cost ratio: 0 is perfect, positive is shortfall, and
+    the SAME `GATE_TOL` is the landing bar. Value is higher-is-better, so the
+    ratio is inverted relative to cost - the crowned route's Value sits in the
+    denominator - which is what makes `<= GATE_TOL` mean "landed" for both.
+
+    The Value leg reads each snapshot's OWN as-of `iq` stamp via `iq_asof`,
+    so a past day's crown is scored on what that day knew. A transition where
+    either Value is unresolvable (no as-of IQ, no positive realized eff) is
+    DROPPED, never counted as a failure - `value_n` therefore measures
+    RESOLUTION, and a short `n` is a statement about the input, not a verdict.
+    """
+    from probe import basis, value  # probe.basis/value import this module
+
+    regrets: list[float] = []
+    if not isinstance(dated, list):
+        return regrets
+    for i, (older, newer) in enumerate(itertools.pairwise(dated)):
+        if not isinstance(older[1], dict) or not isinstance(newer[1], dict):
+            continue
+        routes_old = older[1].get("routes") or {}
+        routes_new = newer[1].get("routes") or {}
+        history = dated[:i + 1]
+        comp: list[tuple[str, float, float]] = []
+        for route, st in routes_old.items():
+            if not isinstance(st, dict) or (st.get("reqs") or 0) < MIN_REQS:
+                continue
+            real = (routes_new.get(route) or {}).get("eff_per_mtok")
+            if not real or real <= 0:
+                continue
+            p = basis.projected(older[1], route, history)
+            if p is None or p <= 0:
+                continue
+            comp.append((route, p, real))
+        if len(comp) < 3:
+            continue
+        crowned = min(comp, key=lambda row: row[1])
+        comparator = min(comp, key=lambda row: row[2])
+        ref = value.fleet_tps_ref(older[1])
+        v_crowned = value.value_of(
+            iq_asof(older[1], crowned[0]), crowned[2],
+            value.tps_of(older[1], crowned[0], ref), ref)
+        v_comp = value.value_of(
+            iq_asof(older[1], comparator[0]), comparator[2],
+            value.tps_of(older[1], comparator[0], ref), ref)
+        if v_crowned and v_comp and v_crowned > 0:
+            regrets.append(v_comp / v_crowned - 1)
+    return regrets
+
 def projection_gate(dated: list) -> dict:
     """Backtest: does the route the board would CROWN realize near-cheapest?
 
@@ -304,12 +393,31 @@ def projection_gate(dated: list) -> dict:
     the forward view has not yet earned the crown.
 
     Recomputed every render from committed history; nothing about the basis
-    is hardcoded. Returns {"n", "land", "share", "tol", "min_n", "pass"}.
+    is hardcoded. Returns {"n", "land", "share", "tol", "min_n", "pass"} for
+    the COST leg plus the parallel VALUE leg (see `_crown_value_regrets`).
+
+    THE TWO LEGS, AND WHICH ONE DRIVES `pass`. Item 2 (D4, 2026-09-12) moved
+    what the gate MEASURES onto Value without moving what it CROWNS. The
+    Value leg is therefore reported ALONGSIDE the cost leg, and `pass` stays
+    the cost verdict until the ship-or-hold decision is taken on the measured
+    Value number - the constants (GATE_TOL / GATE_SHARE / GATE_MIN_N) are the
+    same for both legs and are owner property, never re-tuned to make a leg
+    pass. A reader must never treat `value_pass: false` with a short
+    `value_n` as a verdict about Value: `value_n` measures how many
+    transitions could be Value-scored at all (as-of IQ present, realized eff
+    positive), so `value_status` says which case applies.
     """
     regrets = _crown_regrets(dated)
     n = len(regrets)
     land = sum(1 for r in regrets if r <= GATE_TOL)
     share = land / n if n else None
+
+    value_regrets = _crown_value_regrets(dated)
+    value_n = len(value_regrets)
+    value_land = sum(1 for r in value_regrets if r <= GATE_TOL)
+    value_share = value_land / value_n if value_n else None
+    value_pass = (value_n >= GATE_MIN_N and value_share is not None
+                  and value_share >= GATE_SHARE)
     return {
         "n": n,
         "land": land,
@@ -317,6 +425,16 @@ def projection_gate(dated: list) -> dict:
         "tol": GATE_TOL,
         "min_n": GATE_MIN_N,
         "pass": n >= GATE_MIN_N and share is not None and share >= GATE_SHARE,
+        # The Value leg - measured, reported, not yet the gate's verdict.
+        "value_n": value_n,
+        "value_land": value_land,
+        "value_share": round(value_share, 3) if value_share is not None else None,
+        "value_tol": GATE_TOL,
+        "value_min_n": GATE_MIN_N,
+        "value_pass": value_pass,
+        # `value_n == 0` is a RESOLUTION limit of the input (no as-of IQ on
+        # the snapshot), never evidence that the Value leg failed.
+        "value_status": "measured" if value_n else "unresolved",
     }
 
 

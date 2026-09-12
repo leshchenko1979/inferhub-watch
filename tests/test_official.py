@@ -8,13 +8,16 @@ from probe import pricing
 from probe import official_compare
 from probe.official_compare import (
     _crown_regrets,
+    _crown_value_regrets,
     blended_eff,
     cache_rule_stats,
     comparison_rows,
     drift_flag,
     fleet_tps_prior,
+    has_iq_stamp,
     hit_series,
     inferhub_eff,
+    iq_asof,
     official_eff,
     projection_gate,
     projection_hit,
@@ -377,6 +380,132 @@ class ProjectionGateTest(unittest.TestCase):
         self.assertFalse(projection_gate([])["pass"])
         self.assertFalse(projection_gate({})["pass"])
         self.assertFalse(projection_gate([("d", "not-a-payload")])["pass"])
+
+class GateValueLegTest(unittest.TestCase):
+    """Item 2 (D4): the gate scores BOTH the cost regret and the Value regret.
+
+    Crown selection is the board's ordering for both legs - the crowned route
+    is the lowest projected $/M and the comparator is the same route. Only the
+    METRIC the ratio is taken on differs, and it is taken on that metric on
+    BOTH sides, never mixed. These fixtures pin the three states the Value leg
+    can be in: unresolvable (no D3 as-of iq stamp), landed, and failed while
+    the cost leg still passes.
+    """
+
+    ROUTES: ClassVar[tuple] = ("r/a", "r/b", "r/c")
+    MULTS: ClassVar[tuple] = (1.0, 2.0, 3.0)
+    REALIZED: ClassVar[dict] = {"r/a": 1.0, "r/b": 2.0, "r/c": 3.0}
+
+    @classmethod
+    def _stats(cls, mult: float, iq: float | None = None,
+               realized: float | None = None) -> dict:
+        st = {
+            "ask_in": 0.14 * mult, "ask_out": 0.42 * mult, "cache_pct": 50.0,
+            "reqs": 200, "tok_in": 1_000_000, "tok_out": 100_000,
+            "cached": 500_000,
+        }
+        if iq is not None:
+            st["iq"] = iq
+        if realized is not None:
+            st["eff_per_mtok"] = realized
+        return st
+
+    @classmethod
+    def _series(cls, days: int, iq: dict | None = None,
+                realized: dict | None = None) -> list:
+        """`days + 1` snapshots; every transition crowns r/a (lowest projected).
+
+        Projections scale with MULTS, so the crown is always r/a. `iq` is
+        stamped only for the routes the map names, so an omitted route is a
+        payload with no stamp at all. The realized side is stamped verbatim on
+        the newer payload of each pair.
+        """
+        out = []
+        for i in range(days + 1):
+            day = {}
+            for j, route in enumerate(cls.ROUTES):
+                day[route] = cls._stats(
+                    cls.MULTS[j],
+                    iq=(iq or {}).get(route),
+                    realized=((realized or {}).get(route) if i > 0 else None),
+                )
+            out.append((f"2026-08-{i + 1:02d}", {"routes": day}))
+        return out
+
+    def test_value_leg_reports_unresolved_without_a_d3_iq_stamp(self):
+        """No iq anywhere: cost scores, Value cannot - and says which it is."""
+        gate = projection_gate(self._series(12, realized=self.REALIZED))
+        self.assertEqual(gate["n"], 12)
+        self.assertEqual(gate["land"], 12)
+        self.assertTrue(gate["pass"])
+        # Not one transition is Value-scorable. That is a RESOLUTION limit of
+        # the input, never evidence that Value scored badly.
+        self.assertEqual(gate["value_n"], 0)
+        self.assertIsNone(gate["value_share"])
+        self.assertFalse(gate["value_pass"])
+        self.assertEqual(gate["value_status"], "unresolved")
+
+    def test_value_leg_scores_on_as_of_iq_and_lands(self):
+        iq = {"r/a": 90.0, "r/b": 40.0, "r/c": 20.0}
+        gate = projection_gate(
+            self._series(12, iq=iq, realized=self.REALIZED))
+        self.assertEqual(gate["value_status"], "measured")
+        self.assertEqual(gate["value_n"], 12)
+        self.assertEqual(gate["value_land"], 12)
+        self.assertEqual(gate["value_share"], 1.0)
+        self.assertTrue(gate["value_pass"])
+
+    def test_value_leg_can_fail_while_the_cost_leg_passes(self):
+        """The legs measure different things and must be able to disagree.
+
+        r/a is the crown and realizes 10% above cheapest, so the COST leg
+        lands (0.10 <= GATE_TOL). But r/a carries a far lower IQ than the
+        cheapest-realized route, so its Value is far worse and the VALUE leg
+        fails. A gate that reported one number for both could not show this.
+        """
+        realized = {"r/a": 1.10, "r/b": 1.00, "r/c": 2.00}
+        iq = {"r/a": 1.0, "r/b": 100.0, "r/c": 1.0}
+        gate = projection_gate(
+            self._series(12, iq=iq, realized=realized))
+        self.assertEqual(gate["n"], 12)
+        self.assertEqual(gate["land"], 12)
+        self.assertTrue(gate["pass"])
+        self.assertEqual(gate["value_n"], 12)
+        self.assertEqual(gate["value_land"], 0)
+        self.assertEqual(gate["value_share"], 0.0)
+        self.assertFalse(gate["value_pass"])
+
+    def test_value_regret_is_oriented_like_the_cost_leg(self):
+        """0 is perfect, positive is shortfall - for BOTH ratios.
+
+        The same transition is a COST loss (+0.10) and a VALUE lead (negative),
+        which is only possible if the Value ratio is inverted the way the cost
+        ratio is: value(comparator) / value(crowned) - 1. A crowned/comparator
+        ratio would have come out positive here.
+        """
+        realized = {"r/a": 1.10, "r/b": 1.00, "r/c": 2.00}
+        iq = {"r/a": 100.0, "r/b": 1.0, "r/c": 1.0}
+        dated = self._series(1, iq=iq, realized=realized)
+        self.assertAlmostEqual(_crown_regrets(dated)[0], 0.10, places=9)
+        value_regrets = _crown_value_regrets(dated)
+        self.assertEqual(len(value_regrets), 1)
+        self.assertLess(value_regrets[0], 0)
+        self.assertAlmostEqual(
+            value_regrets[0], (1.0 / 1.00) / (100.0 / 1.10) - 1, places=9)
+
+    def test_a_null_iq_stamp_is_never_filled_in_from_elsewhere(self):
+        """`iq: null` and an absent stamp mean opposite things.
+
+        The first records that the day genuinely had no IQ; the second says
+        the payload predates D3 and a caller may legitimately backfill it.
+        `iq_asof` returns None for both, so `has_iq_stamp` carries the
+        distinction - without it, a real gap would be silently backfilled.
+        """
+        self.assertTrue(has_iq_stamp({"routes": {"r/a": {"iq": None}}}, "r/a"))
+        self.assertIsNone(iq_asof({"routes": {"r/a": {"iq": None}}}, "r/a"))
+        self.assertFalse(has_iq_stamp({"routes": {"r/a": {}}}, "r/a"))
+        self.assertFalse(has_iq_stamp({}, "r/a"))
+        self.assertFalse(has_iq_stamp({"routes": {}}, "r/missing"))
 
 class CrownLadderTest(unittest.TestCase):
     """The owner's 15% ruling, reproduced on the committed crown history.
