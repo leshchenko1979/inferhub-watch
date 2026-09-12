@@ -10,3 +10,4 @@ site/dist/
 .pytest_cache/
 .impeccable/
 .ruff_cache/
+data/switcher_state.json

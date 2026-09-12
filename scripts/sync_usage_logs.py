@@ -157,6 +157,38 @@ def resolve_slug(route: str, aa_map: dict, slugs: dict) -> str | None:
     return None
 
 
+def _log_floor_point(route: str, m: dict, previous: float | None = None) -> None:
+    """One receipt line per route naming the floor ladder point it came from.
+
+    Issue #27 item 3: the floor ask must be a pinned function of the ladder
+    (probe.floor), and the point actually selected must be visible on every
+    pull -- a floor that moves between syncs then explains itself instead of
+    silently re-ranking the board. A change against the previous pull is
+    flagged so a flip is visible without diffing two catalog snapshots.
+    """
+    ask_in = m.get("ask_in")
+    ask_out = m.get("ask_out")
+    in_pubs = m.get("ask_in_publishers")
+    out_pubs = m.get("ask_out_publishers")
+    if ask_in is None:
+        print(f"  floor point {route}: none (no filled ladder point)")
+        return
+    in_desc = f"{float(ask_in):.6f}"
+    if in_pubs is not None:
+        in_desc += f"@{int(in_pubs)}p"
+    if ask_out is None:
+        out_desc = "-"
+    else:
+        out_desc = f"{float(ask_out):.6f}"
+        if out_pubs is not None:
+            out_desc += f"@{int(out_pubs)}p"
+    flip = ""
+    if previous is not None and previous != float(ask_in):
+        ratio = float(ask_in) / previous if previous else float("inf")
+        flip = f"  <== FLOOR FLIP from {previous:.6f} ({ratio:.2f}x)"
+    print(f"  floor point {route}: in={in_desc} out={out_desc}{flip}")
+
+
 def sync_route_metrics(conn, live_models: dict[str, dict] | None = None) -> int:
     """D3 decision layer: upsert catalog asks + AA IQ per route into
     route_metrics, the table the dashboard's scatter/panels join against."""
@@ -188,6 +220,10 @@ def sync_route_metrics(conn, live_models: dict[str, dict] | None = None) -> int:
                 updated_at timestamptz not null default now()
             )
         """)
+        cur.execute("select route, ask_in from route_metrics")
+        previous: dict[str, float | None] = {
+            r: (float(a) if a is not None else None) for r, a in cur.fetchall()
+        }
         n = 0
         for route, m in models.items():
             slug = resolve_slug(route, aa_map, slugs)
@@ -208,6 +244,10 @@ def sync_route_metrics(conn, live_models: dict[str, dict] | None = None) -> int:
             """, (route, m.get("ask_in"), m.get("ask_out"),
                   m.get("official_in"), m.get("official_out"),
                   m.get("supports_cache"), iq))
+            # Floor-point receipt (#27 item 3): name the ladder point this
+            # route's floor came from, so a floor that flips between pulls is
+            # visible in the sync log instead of silently moving the ranking.
+            _log_floor_point(route, m, previous.get(route))
             n += 1
     return n
 

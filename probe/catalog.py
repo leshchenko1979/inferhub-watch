@@ -22,6 +22,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from probe import floor
 from probe.costs import MANAGEMENT, _get_json
 from probe.registry import atomic_write_text, repo_root
 
@@ -47,14 +48,23 @@ def fetch_models(key: str) -> dict[str, dict]:
                 continue
             # Live asks ride pricePointsIn/Out as [price, provider_count] pairs
             # (asksIn/asksOut exist only on the /pricing page JSON, not the API).
-            points_in = [float(p[0]) for p in model.get("pricePointsIn") or [] if len(p) > 1]
-            points_out = [float(p[0]) for p in model.get("pricePointsOut") or [] if len(p) > 1]
+            # The floor point is chosen by probe.floor — the single owner of the
+            # ladder rule (issue #27). A bare min() here used to ignore the
+            # publisher count and could select an advertised-but-unfilled point,
+            # disagreeing with probe.pricing on the same pull.
+            asks = floor.floor_pair(model)
+            (_in_price, in_pubs), (_out_price, out_pubs) = floor.floor_pair_detail(model)
             models[f"{prefix}/{name}"] = {
                 "official_in": float(model.get("officialIn") or 0.0),
                 "official_out": float(model.get("officialOut") or 0.0),
                 "supports_cache": bool(model.get("supportsCache")),
-                "ask_in": min(points_in) if points_in else None,
-                "ask_out": min(points_out) if points_out else None,
+                "ask_in": asks[0] if asks else None,
+                "ask_out": asks[1] if asks else None,
+                # The selected ladder point, carried through so the hourly sync
+                # can log which point a route's floor came from (#27 item 3).
+                # Price and publisher count come off the SAME selection.
+                "ask_in_publishers": in_pubs if asks else None,
+                "ask_out_publishers": out_pubs if asks else None,
             }
     return models
 

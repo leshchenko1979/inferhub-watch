@@ -138,6 +138,11 @@ class LiveCatalogTests(unittest.TestCase):
             def execute(self, sql, params=None):
                 self.executed.append((sql, params))
 
+            def fetchall(self):
+                # the previous-floor read that #27's floor-point receipt
+                # diffs against; empty = first pull, nothing to compare
+                return []
+
             def __enter__(self):
                 return self
 

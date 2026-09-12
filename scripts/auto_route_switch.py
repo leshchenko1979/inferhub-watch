@@ -57,6 +57,24 @@ DEFAULT_TPS_REF = 50.0  # Fallback reference baseline TPS when fleet prior is un
 TPS_REF = DEFAULT_TPS_REF  # Backwards compatibility alias
 TPS_WEIGHT_EXPONENT = 0.50  # Square-root power-law exponent for TPS weight
 
+# --- Issue #27: basis consistency, dwell, floor-point pinning ---------------
+# The thrash incident: the incumbent was ranked on its realized (billed)
+# basis while the challenger was ranked on its projected floor basis, and
+# the 58x gap between those two bases read as a 561% "gain". Every
+# evaluation now computes ONE basis for every candidate.
+BASIS_FLOOR = "floor"
+BASIS_REALIZED = "realized"
+BASIS_MIN_SAMPLES = 5
+"""Streaming samples a candidate needs in the rolling 24h window before the
+realized basis is admissible at all. Below this the whole evaluation drops
+to the projected floor basis."""
+DWELL_SECONDS = 6 * 3600
+"""Minimum dwell after a real switch before another flip is eligible."""
+DWELL_OVERRIDE_GAIN = 3.0
+"""Gain on the CONSISTENT basis that overrides the dwell gate (>300%)."""
+SWITCHER_STATE_NAME = "switcher_state.json"
+
+
 # Inferhub Watch Telegram group whose bound session receives switch alerts (Issue #14).
 INFERHUB_WATCH_CHAT_ID = "-1004379632866"
 # HQ forum topic (thread) inside that group — the switch alert is owner-facing, so it
@@ -99,6 +117,10 @@ class RouteCandidate:
     supports_tools: bool
     supports_cache: bool
     tps_source: str = "fallback"  # "prod", "qual", "fallback"
+    # Issue #27: both bases are carried, but only ONE is ever ranked on.
+    floor_price: float = 0.0  # projected/catalog floor basis
+    realized_price: float | None = None  # billed basis (None = no billing)
+    realized_samples: int = 0  # streaming samples behind realized_price
 
 
 def calculate_value(
@@ -136,25 +158,8 @@ def calculate_value(
     return base_val * tps_multiplier
 
 
-def resolve_effective_price(
-    route: str,
-    info: dict[str, Any],
-    pricing_payload: dict[str, Any] | None = None,
-    dated_snapshots: list | None = None,
-    use_proj: bool = True,
-) -> float:
-    """Resolve effective price matching board crown basis (probe/basis.py).
-
-    If the route has billed history and projection gate passes, uses board_basis().
-    Fallback for cold-start/unbilled catalog routes: uses catalog asks with fleet hit prior.
-    """
-    if pricing_payload is not None:
-        dated = dated_snapshots if dated_snapshots is not None else []
-        b_price = basis.board_basis(pricing_payload, route, dated, use_proj=use_proj)
-        if b_price is not None and b_price > 0:
-            return float(b_price)
-
-    # Cold start fallback using catalog asks and fleet prior hit rate
+def _catalog_floor_price(route: str, info: dict[str, Any], pricing_payload: dict[str, Any] | None) -> float:
+    """Cold-start floor: catalog asks discounted by the fleet hit prior."""
     try:
         ask_in = float(info.get("ask_in") or 0.0)
         ask_out = float(info.get("ask_out") or 0.0)
@@ -176,6 +181,122 @@ def resolve_effective_price(
         eff_in = ask_in
 
     return (0.99 * eff_in) + (0.01 * ask_out)
+
+def resolve_floor_price(
+    route: str,
+    info: dict[str, Any],
+    pricing_payload: dict[str, Any] | None = None,
+    dated_snapshots: list | None = None,
+    use_proj: bool = True,
+) -> float:
+    """The PROJECTED/FLOOR basis price for a route (issue #27).
+
+    Forward-looking and traffic-independent: the smoothed projection once
+    the crown gate passes, else the catalog floor ask with the fleet hit
+    prior. It never reads billed history, so it does not move when a
+    route's traffic moves — which is exactly why it is safe to rank
+    every candidate on.
+    """
+    if pricing_payload is not None:
+        dated = dated_snapshots if dated_snapshots is not None else []
+        if use_proj:
+            proj = basis.projected(pricing_payload, route, dated)
+            if proj is not None and proj > 0:
+                return float(proj)
+
+    return _catalog_floor_price(route, info, pricing_payload)
+
+def resolve_realized_price(
+    route: str,
+    pricing_payload: dict[str, Any] | None = None,
+) -> tuple[float | None, int]:
+    """The REALIZED (billed) basis price and the streaming samples behind it.
+
+    Returns ``(price, samples)``. ``price`` is None when the route has no
+    billed history; ``samples`` counts the streaming samples in the same
+    rolling 24h perf window, which is what gates the realized basis.
+
+    The frozen-median trap (#27): a route that has just lost its traffic
+    stops accumulating billed rows, so its median billed ask freezes at
+    whatever it was when traffic left. That is why the realized basis is
+    only admissible when EVERY candidate can supply it.
+    """
+    if pricing_payload is None:
+        return None, 0
+    eff = basis.realized(pricing_payload, route)
+    perf_models = ((pricing_payload.get("perf") or {}).get("models") or {})
+    entry = perf_models.get(route) or {}
+    samples = int(entry.get("tps_samples") or 0)
+    if eff is None:
+        return None, samples
+    try:
+        eff_f = float(eff)
+    except (TypeError, ValueError):
+        return None, samples
+    if eff_f <= 0:
+        return None, samples
+    return eff_f, samples
+
+def select_basis(
+    candidates: list[RouteCandidate],
+    min_samples: int = BASIS_MIN_SAMPLES,
+) -> str:
+    """One basis for the whole evaluation (issue #27 item 1).
+
+    Realized is admissible only when EVERY candidate carries at least
+    ``min_samples`` streaming samples in the same 24h window. Any
+    candidate short of that — a cold route, or one whose traffic just
+    stopped — drops the whole evaluation to the floor basis, because a
+    MIXED evaluation is what produced the thrash: incumbent on frozen
+    realized, challenger on floor, and the gap between the two bases read
+    as a real value delta.
+    """
+    if not candidates:
+        return BASIS_FLOOR
+    for cand in candidates:
+        if cand.realized_price is None or cand.realized_samples < min_samples:
+            return BASIS_FLOOR
+    return BASIS_REALIZED
+
+def apply_basis(
+    candidates: list[RouteCandidate],
+    mode: str,
+    tps_ref: float | None = None,
+) -> None:
+    """Set every candidate's ranked price and value on ONE basis in place."""
+    if tps_ref is None:
+        tps_ref = TPS_REF
+    for cand in candidates:
+        if mode == BASIS_REALIZED and cand.realized_price is not None:
+            cand.eff_price = cand.realized_price
+        else:
+            cand.eff_price = cand.floor_price
+        cand.value = (
+            calculate_value(cand.iq, eff_price=cand.eff_price, tps=cand.tps, tps_ref=tps_ref)
+            if (cand.iq > 0 and cand.eff_price > 0)
+            else 0.0
+        )
+
+def resolve_effective_price(
+    route: str,
+    info: dict[str, Any],
+    pricing_payload: dict[str, Any] | None = None,
+    dated_snapshots: list | None = None,
+    use_proj: bool = True,
+) -> float:
+    """Deprecated single-price view (pre-#27 shape).
+
+    Retained for callers that only want "a price" — it is the floor basis,
+    never a realized/floor mix. Evaluation code must use
+    ``resolve_floor_price`` + ``resolve_realized_price`` + ``select_basis``.
+    """
+    return resolve_floor_price(
+        route,
+        info,
+        pricing_payload=pricing_payload,
+        dated_snapshots=dated_snapshots,
+        use_proj=use_proj,
+    )
 
 
 def resolve_fleet_tps_ref(pricing_payload: dict[str, Any] | None = None) -> float:
@@ -338,29 +459,37 @@ def evaluate_candidates(
         except (ValueError, TypeError):
             ask_in, ask_out = 0.0, 0.0
 
-        eff_price = resolve_effective_price(
+        floor_price = resolve_floor_price(
             route,
             info,
             pricing_payload=pricing_payload,
             dated_snapshots=dated_snapshots,
             use_proj=use_proj,
         )
+        realized_price, realized_samples = resolve_realized_price(
+            route, pricing_payload=pricing_payload
+        )
         tps, tps_source = resolve_route_tps(
             route, pricing_payload=pricing_payload, qual_runs=qual_runs, default_tps=tps_ref
         )
-        val = calculate_value(iq or 0.0, eff_price=eff_price, tps=tps, tps_ref=tps_ref) if (iq is not None and eff_price > 0) else 0.0
+        # Provisional ranking is on the floor basis; find_best_route re-applies
+        # whichever basis the WHOLE evaluation selects (issue #27 item 1).
+        val = calculate_value(iq or 0.0, eff_price=floor_price, tps=tps, tps_ref=tps_ref) if (iq is not None and floor_price > 0) else 0.0
 
         candidates[route] = RouteCandidate(
             route=route,
             iq=iq or 0.0,
             ask_in=ask_in,
             ask_out=ask_out,
-            eff_price=eff_price,
+            eff_price=floor_price,
             tps=tps,
             value=val,
             supports_tools=supports_tools,
             supports_cache=supports_cache,
             tps_source=tps_source,
+            floor_price=floor_price,
+            realized_price=realized_price,
+            realized_samples=realized_samples,
         )
     return candidates
 
@@ -379,11 +508,16 @@ def find_best_route(
     client: Any | None = None,
     qual_path: Path | None = None,
     tps_ref: float | None = None,
+    out: dict[str, Any] | None = None,
 ) -> tuple[bool, RouteCandidate | None, RouteCandidate | None, str]:
     """Determine if a route switch is needed.
 
     Returns:
         (should_switch, best_candidate, current_candidate, reason)
+
+    ``out``, when given, is filled with diagnostics — notably
+    ``basis_mode`` (issue #27 item 1), the ONE basis every candidate in
+    this evaluation was ranked on.
     """
     if tps_ref is None:
         tps_ref = resolve_fleet_tps_ref(pricing_payload)
@@ -407,7 +541,24 @@ def find_best_route(
     ]
 
     if not qualified_candidates:
+        if out is not None:
+            out["basis_mode"] = BASIS_FLOOR
         return False, None, current_cand, "No qualified candidates found meeting IQ and tool requirements."
+
+    # --- Issue #27 item 1: ONE basis for the whole evaluation ----------------
+    # The comparison set is every qualified challenger PLUS the incumbent, so
+    # the incumbent can never be ranked on a basis that no challenger supplies
+    # (that mix is what made a 58x basis gap read as a 561% gain).
+    basis_pool = list(qualified_candidates)
+    if current_cand is not None and all(c is not current_cand for c in basis_pool):
+        basis_pool.append(current_cand)
+    basis_mode = select_basis(basis_pool)
+    apply_basis(list(candidates.values()), basis_mode, tps_ref=tps_ref)
+    if out is not None:
+        out["basis_mode"] = basis_mode
+        out["basis_samples"] = min(
+            (c.realized_samples for c in basis_pool), default=0
+        )
 
     # Sort descending by value
     qualified_candidates.sort(key=lambda c: c.value, reverse=True)
@@ -442,7 +593,7 @@ def find_best_route(
     best = qualified_candidates[0]
 
     if current_cand is None or current_cand.value <= 0:
-        return True, best, current_cand, f"Current model {current_model} not evaluated or has 0 value; selecting top candidate {best.route}."
+        return True, best, current_cand, f"Current model {current_model} not evaluated or has 0 value; selecting top candidate {best.route} (basis={basis_mode})."
 
     gain = (best.value - current_cand.value) / current_cand.value
     if best.route != current_model and gain > threshold:
@@ -450,14 +601,14 @@ def find_best_route(
             True,
             best,
             current_cand,
-            f"Candidate {best.route} (Val={best.value:.1f}, TPS={best.tps:.1f}[{best.tps_source}]) exceeds {current_model} (Val={current_cand.value:.1f}, TPS={current_cand.tps:.1f}[{current_cand.tps_source}]) by {gain * 100:.1f}% (threshold {threshold * 100:.0f}%).",
+            f"Candidate {best.route} (Val={best.value:.1f}, TPS={best.tps:.1f}[{best.tps_source}]) exceeds {current_model} (Val={current_cand.value:.1f}, TPS={current_cand.tps:.1f}[{current_cand.tps_source}]) by {gain * 100:.1f}% (threshold {threshold * 100:.0f}%, basis={basis_mode}).",
         )
 
     return (
         False,
         best,
         current_cand,
-        f"Top candidate {best.route} (Val={best.value:.1f}, TPS={best.tps:.1f}[{best.tps_source}]) gain over {current_model} is {gain * 100:.1f}% (<= {threshold * 100:.0f}% threshold).",
+        f"Top candidate {best.route} (Val={best.value:.1f}, TPS={best.tps:.1f}[{best.tps_source}]) gain over {current_model} is {gain * 100:.1f}% (<= {threshold * 100:.0f}% threshold, basis={basis_mode}).",
     )
 
 
@@ -680,6 +831,129 @@ def get_current_model(config_path: Path) -> str:
     )
 
 
+def gain_of(best: RouteCandidate | None, current: RouteCandidate | None) -> float:
+    """Fractional value gain of ``best`` over ``current`` (0.0 when unknown)."""
+    if best is None or current is None or current.value <= 0:
+        return 0.0
+    return (best.value - current.value) / current.value
+
+def switcher_state_path(root_dir: Path = ROOT_DIR) -> Path:
+    """Where the last real switch is recorded (dwell bookkeeping, #27)."""
+    return Path(root_dir) / "data" / SWITCHER_STATE_NAME
+
+def load_switcher_state(root_dir: Path = ROOT_DIR) -> dict[str, Any]:
+    """Last real switch, or {} when never switched / state unreadable.
+
+    An unreadable or absent state file must never BLOCK switching — a
+    corrupt state file is not a reason to freeze the fleet — so every
+    failure path returns an empty dict (no dwell recorded).
+    """
+    path = switcher_state_path(root_dir)
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        logger.warning(f"switcher state unreadable ({exc}); treating as no prior switch")
+        return {}
+    return data if isinstance(data, dict) else {}
+
+def save_switcher_state(
+    root_dir: Path,
+    from_model: str,
+    to_model: str,
+    basis_mode: str,
+    when: datetime | None = None,
+) -> Path:
+    """Record a real switch for dwell bookkeeping. Returns the state path."""
+    when = when or datetime.now(timezone.utc)
+    path = switcher_state_path(root_dir)
+    payload = {
+        "last_switch_at": when.isoformat(timespec="seconds"),
+        "from_model": from_model,
+        "to_model": to_model,
+        "basis_mode": basis_mode,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return path
+
+def check_dwell_gate(
+    root_dir: Path = ROOT_DIR,
+    *,
+    current_model: str | None = None,
+    target_model: str | None = None,
+    gain: float = 0.0,
+    dwell_seconds: float = DWELL_SECONDS,
+    override_gain: float = DWELL_OVERRIDE_GAIN,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """May a flip happen now, or must the fleet dwell? (issue #27 item 2)
+
+    A flip is refused inside ``dwell_seconds`` of the last real switch
+    unless the gain on the CONSISTENT basis exceeds ``override_gain``.
+    Two flips 11 minutes apart — each migrating 1,294 sessions and
+    resetting prompt-cache warmth — are what this gate exists to stop.
+
+    Returns a dict with ``allowed`` (bool) and a ``detail`` line for the
+    log/report; ``reason`` names the gate that decided.
+    """
+    now = now or datetime.now(timezone.utc)
+    state = load_switcher_state(root_dir)
+    last_raw = state.get("last_switch_at")
+    if not last_raw:
+        return {
+            "allowed": True,
+            "reason": "no_prior_switch",
+            "elapsed_s": None,
+            "detail": "no prior switch recorded; dwell gate open",
+        }
+    try:
+        last = datetime.fromisoformat(str(last_raw))
+    except ValueError:
+        return {
+            "allowed": True,
+            "reason": "unparseable_state",
+            "elapsed_s": None,
+            "detail": f"state timestamp {last_raw!r} unparseable; dwell gate open",
+        }
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    elapsed = (now - last).total_seconds()
+    remaining = dwell_seconds - elapsed
+    if elapsed >= dwell_seconds:
+        return {
+            "allowed": True,
+            "reason": "dwell_elapsed",
+            "elapsed_s": elapsed,
+            "detail": (
+                f"dwell elapsed ({elapsed/3600:.1f}h >= {dwell_seconds/3600:.1f}h since "
+                f"{state.get('to_model')} @ {last_raw})"
+            ),
+        }
+    if gain > override_gain:
+        return {
+            "allowed": True,
+            "reason": "override_gain",
+            "elapsed_s": elapsed,
+            "detail": (
+                f"dwell overridden: gain {gain*100:.0f}% > {override_gain*100:.0f}% "
+                f"on the consistent basis ({elapsed/60:.0f}m into a "
+                f"{dwell_seconds/3600:.1f}h dwell)"
+            ),
+        }
+    return {
+        "allowed": False,
+        "reason": "dwell_active",
+        "elapsed_s": elapsed,
+        "detail": (
+            f"last switch to {state.get('to_model')} was {elapsed/60:.0f}m ago; "
+            f"dwell requires {dwell_seconds/3600:.1f}h and gain {gain*100:.0f}% "
+            f"does not exceed the {override_gain*100:.0f}% override "
+            f"({remaining/60:.0f}m remaining)"
+        ),
+    }
+
 def run_auto_route_switch(
     root_dir: Path = ROOT_DIR,
     config_path: Path = DEFAULT_CONFIG_PATH,
@@ -692,10 +966,15 @@ def run_auto_route_switch(
     threshold: float = SWITCH_THRESHOLD,
     catalog_models: dict[str, dict] | None = None,
     use_db_catalog: bool = False,
+    dwell_seconds: float = DWELL_SECONDS,
+    override_gain: float = DWELL_OVERRIDE_GAIN,
+    now: datetime | None = None,
 ) -> dict[str, Any]:
     """Main pipeline execution for auto route switching."""
     if db_paths is None:
         db_paths = [DEFAULT_DB_PATH, DEFAULT_ROOT_DB_PATH]
+    if now is None:
+        now = datetime.now(timezone.utc)
 
     catalog_path = root_dir / "data" / "catalog.json"
     intel_path = root_dir / "data" / "intelligence.json"
@@ -778,6 +1057,7 @@ def run_auto_route_switch(
             client = InferHubClient(api_key)
 
     current_model = get_current_model(config_path)
+    diag: dict[str, Any] = {}
     should_switch, best, current, reason = find_best_route(
         catalog_models,
         intel_slugs,
@@ -791,7 +1071,24 @@ def run_auto_route_switch(
         use_proj=use_proj,
         client=client,
         qual_path=qual_path,
+        out=diag,
     )
+    basis_mode = diag.get("basis_mode", BASIS_FLOOR)
+
+    # --- Issue #27 item 2: dwell gate --------------------------------------
+    # A real switch is recorded in the state file; a second flip inside the
+    # dwell window is refused unless the gain on the CONSISTENT basis clears
+    # DWELL_OVERRIDE_GAIN. The thrash flipped twice in 11 minutes.
+    dwell = check_dwell_gate(
+        root_dir,
+        current_model=current_model,
+        target_model=best.route if best else None,
+        gain=gain_of(best, current),
+        dwell_seconds=dwell_seconds,
+        override_gain=override_gain,
+        now=now,
+    )
+    should_switch = should_switch and dwell["allowed"]
 
     result: dict[str, Any] = {
         "should_switch": should_switch,
@@ -803,7 +1100,13 @@ def run_auto_route_switch(
         "sessions_updated": 0,
         "notification_sent": False,
         "catalog_source": catalog_source,
+        "basis_mode": basis_mode,
+        "basis_samples": diag.get("basis_samples", 0),
+        "dwell": dwell,
     }
+    if not dwell["allowed"]:
+        result["reason"] = f"{reason} | DWELL GATE: {dwell['detail']}"
+        logger.info(f"Dwell gate held the switch: {dwell['detail']}")
 
     if not should_switch or best is None:
         return result
@@ -824,7 +1127,18 @@ def run_auto_route_switch(
             total_sessions += cnt
     result["sessions_updated"] = total_sessions
 
-    # 3. Notification via opencrabs session notify (Issue #14).
+    # 3. Record the switch for dwell bookkeeping (issue #27 item 2). This runs
+    # BEFORE the notification so a notify failure cannot lose the dwell state.
+    state_path = save_switcher_state(
+        root_dir,
+        from_model=current_model,
+        to_model=best.route,
+        basis_mode=basis_mode,
+        when=now,
+    )
+    result["switcher_state_path"] = str(state_path)
+
+    # 4. Notification via opencrabs session notify (Issue #14).
     if notify:
         gain_pct = ((best.value - current.value) / current.value * 100) if (current and current.value > 0) else 0.0
         msg = (
@@ -832,6 +1146,8 @@ def run_auto_route_switch(
             f"• *Old Model:* `{current_model}` (IQ={current.iq if current else 0:.1f}, In=${current.ask_in if current else 0:.5f}, Out=${current.ask_out if current else 0:.5f}, Val={current.value if current else 0:.1f})\n"
             f"• *New Model:* `{best.route}` (IQ={best.iq:.1f}, In=${best.ask_in:.5f}, Out=${best.ask_out:.5f}, Val={best.value:.1f})\n"
             f"• *Value Gain:* `+{gain_pct:.1f}%`\n"
+            f"• *Basis:* `{basis_mode}` (both candidates on one basis, min {diag.get('basis_samples', 0)} streaming samples)\n"
+            f"• *Dwell:* `{dwell['detail']}`\n"
             f"• *Active Sessions Migrated:* `{total_sessions}`\n"
             f"• *Config Updated:* `{config_path}`"
         )
@@ -861,6 +1177,10 @@ def main() -> int:
     parser.add_argument("--floor-iq", type=float, default=IQ_FLOOR, help="Floor AA IQ score")
     parser.add_argument("--threshold", type=float, default=SWITCH_THRESHOLD, help="Gain threshold (0.15 = 15%%)")
     parser.add_argument("--use-db-catalog", action="store_true", help="Attempt loading live catalog from Postgres route_metrics")
+    parser.add_argument("--dwell-hours", type=float, default=DWELL_SECONDS / 3600.0,
+                        help="Minimum dwell after a real switch before another flip is eligible (issue #27)")
+    parser.add_argument("--override-gain", type=float, default=DWELL_OVERRIDE_GAIN,
+                        help="Gain on the consistent basis that overrides the dwell gate (3.0 = 300%%)")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -871,6 +1191,8 @@ def main() -> int:
         floor_iq=args.floor_iq,
         threshold=args.threshold,
         use_db_catalog=args.use_db_catalog,
+        dwell_seconds=args.dwell_hours * 3600.0,
+        override_gain=args.override_gain,
     )
     print(json.dumps(res, indent=2))
     return 0

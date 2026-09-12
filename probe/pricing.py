@@ -29,6 +29,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from statistics import mean, median
 
+from probe import floor
 from probe.costs import MANAGEMENT, PAGE_SIZE, USER_AGENT, fetch_log_rows
 from probe.registry import atomic_write_text, load_aliases, repo_root
 
@@ -55,45 +56,26 @@ def _get(url: str, key: str) -> dict:
 
 
 def _cheapest_point(points: object) -> float | None:
-    """Cheapest price in a pricePoints histogram ([[price, count], ...]).
+    """Floor ask of a pricePoints histogram — delegates to probe.floor.
 
-    count>0 means at least one upstream provider offers the model at that
-    price; the minimum such price is the cheapest ask. Non-numeric or
-    empty entries are ignored.
+    Kept as a thin alias: probe.floor.floor_point is the single owner of
+    the ladder-point rule (issue #27), so this and probe.catalog can no
+    longer disagree on the same pull.
     """
-    if not isinstance(points, list):
-        return None
-    prices: list[float] = []
-    for point in points:
-        if not isinstance(point, (list, tuple)) or len(point) < 2:
-            continue
-        price, count = point[0], point[1]
-        if isinstance(price, (int, float)) and price >= 0 and count:
-            prices.append(float(price))
-    return min(prices) if prices else None
+    price, _count = floor.floor_point(points)
+    return price
 
 
 def _model_asks(model: dict) -> tuple[float, float] | None:
-    """(cheapest askIn, cheapest askOut) under either catalog schema.
+    """(floor askIn, floor askOut) under either catalog schema.
 
-    Legacy: asksIn/asksOut per-provider ask arrays. Current (observed
-    2026-09-04): officialIn/Out plus pricePointsIn/Out histograms of
-    [price, provider_count] — the cheapest ask is the lowest priced
-    point. Returns None when either side has no usable price.
+    Delegates to probe.floor.floor_pair — the single owner of the
+    ladder-point rule (issue #27). The pricePointsIn/Out histograms'
+    cheapest *filled* point wins, because only the ladder carries publisher
+    counts; the legacy asksIn/asksOut arrays are the fallback when no
+    filled ladder point exists.
     """
-    legacy_in = model.get("asksIn") or []
-    legacy_out = model.get("asksOut") or []
-    try:
-        pair = (min(legacy_in), min(legacy_out))
-    except (TypeError, ValueError):
-        pair = None
-    if pair is not None and all(isinstance(v, (int, float)) for v in pair):
-        return pair
-    cheap_in = _cheapest_point(model.get("pricePointsIn"))
-    cheap_out = _cheapest_point(model.get("pricePointsOut"))
-    if cheap_in is None or cheap_out is None:
-        return None
-    return cheap_in, cheap_out
+    return floor.floor_pair(model)
 
 
 def fetch_catalog(key: str) -> dict[str, tuple[float, float]]:
