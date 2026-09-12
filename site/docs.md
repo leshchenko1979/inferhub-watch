@@ -39,8 +39,13 @@ governed by IQ per $ alone; the cell's tooltip says when that happened.
 
 "Show plumbing" folds each route's ask movement (the color key sits
 under the table), ask source, ask history, cache hit, failures, window
-traffic and cost, ttft p50 and tps mean (main-traffic speed, newest
-24h), IQ, and retries (when a sweep replayed a route).
+traffic and cost, ttft p50 and tps mean (main-traffic speed, over a
+window the tooltip names), IQ, and retries (when a sweep replayed a
+route). The speed window is 24h by default and widens, per route and up
+to 7 days, when that slice held fewer than 5 valid tps samples — the
+tooltip says when a route's numbers came from a widened window, because
+a 7-day median published under a "newest 24h" label would misstate what
+was measured.
 
 Marginal $/M is billed cost over requests since the previous daily
 snapshot, dimmed when the route's only fresh traffic is sweep probes
