@@ -42,7 +42,7 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 5,
+        "w": 6,
         "x": 0,
         "y": 39
       },
@@ -101,8 +101,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 5,
-        "x": 5,
+        "w": 6,
+        "x": 12,
         "y": 39
       },
       "id": 3,
@@ -138,65 +138,6 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "Blended effective price per 1M total tokens (cost * 1M / total tokens) across non-probe traffic.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 4,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 5,
-        "x": 10,
-        "y": 39
-      },
-      "id": 32,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "postgres",
-            "uid": "inferhub-pg"
-          },
-          "format": "table",
-          "rawSql": "SELECT round((sum(cost_usdc)*1000000.0 / NULLIF(sum(prompt_tokens)+sum(completion_tokens), 0))::numeric, 4) FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at)",
-          "refId": "A"
-        }
-      ],
-      "title": "Effective $/Mtok (blended)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "inferhub-pg"
-      },
       "description": "All traffic except probe runs (is_probe=false), over the dashboard time range.",
       "fieldConfig": {
         "defaults": {
@@ -217,8 +158,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 4,
-        "x": 15,
+        "w": 6,
+        "x": 6,
         "y": 39
       },
       "id": 4,
@@ -242,7 +183,7 @@
             "uid": "inferhub-pg"
           },
           "format": "table",
-          "rawSql": "SELECT count(*) FROM (SELECT model FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY model HAVING count(*) >= 100) s",
+          "rawSql": "SELECT count(DISTINCT model) FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at)",
           "refId": "A"
         }
       ],
@@ -254,7 +195,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "All catalog routes ranked by projected $/M (blended cost of the route's 7-day token mix at current asks; cached input billed at 10%; no-traffic routes use a 0.99/0.01 in/out mix). Tier: green = in use (>=100 billed reqs/7d), yellow = light, gray = catalog/probe-only. Cache green = high, TTFT green = fast.",
+      "description": "All catalog routes ranked by projected $/M (blended cost of the route's 7-day token mix at current asks; cached input billed at 10%; no-traffic routes use a 0.75/0.25 in/out mix). Tier: green = in use (>=100 billed reqs/7d), yellow = light, gray = catalog/probe-only. Cache green = high, TTFT green = fast.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -696,7 +637,7 @@
             "uid": "inferhub-pg"
           },
           "format": "table",
-          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.99*ask_in + 0.01*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.route AS \"Route\",\n  round(px.projected::numeric,4) AS \"Projected $/M\",\n  round(px.iq / NULLIF(px.projected,0)) AS \"IQ per $\",\n  round(px.ask_in::numeric,4) AS \"Ask in $/M\",\n  round(px.ask_out::numeric,4) AS \"Ask out $/M\",\n  round(px.iq) AS \"AA IQ\",\n  CASE px.tier WHEN 'in use' THEN 2 WHEN 'probed' THEN 1 ELSE 0 END AS \"Tier\",\n  u.reqs AS \"Reqs (7d)\",\n  u.tok AS \"Tokens (7d)\",\n  u.cache_pct AS \"Cache %\",\n  u.ttft AS \"TTFT ms\",\n  u.tps AS \"TPS\",\n  u.cost AS \"Cost $\",\n  u.realized AS \"Realized $/M\"\nFROM px\nLEFT JOIN (\n  SELECT model,\n    count(*) FILTER (WHERE NOT is_probe) AS reqs,\n    sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe) AS tok,\n    round(100.0*sum(cached_tokens) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens) FILTER (WHERE NOT is_probe),0),1) AS cache_pct,\n    round(avg(ttft_ms) FILTER (WHERE NOT is_probe)) AS ttft,\n    round(percentile_cont(0.5) WITHIN GROUP (ORDER BY (completion_tokens / ((duration_ms - ttft_ms)/1000.0))) FILTER (WHERE NOT is_probe AND duration_ms > ttft_ms + 100 AND ttft_ms > 0 AND completion_tokens >= 30)::numeric, 1) AS tps,\n    round(sum(cost_usdc) FILTER (WHERE NOT is_probe)::numeric,4) AS cost,\n    round((sum(cost_usdc) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe),0)*1e6)::numeric,4) AS realized\n  FROM usage_logs WHERE created_at > now() - interval '7 days' GROUP BY 1\n) u ON u.model = px.route\nORDER BY px.projected ASC NULLS LAST",
+          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.route AS \"Route\",\n  round(px.projected::numeric,4) AS \"Projected $/M\",\n  round(px.iq / NULLIF(px.projected,0)) AS \"IQ per $\",\n  round(px.ask_in::numeric,4) AS \"Ask in $/M\",\n  round(px.ask_out::numeric,4) AS \"Ask out $/M\",\n  round(px.iq) AS \"AA IQ\",\n  CASE px.tier WHEN 'in use' THEN 2 WHEN 'probed' THEN 1 ELSE 0 END AS \"Tier\",\n  u.reqs AS \"Reqs (7d)\",\n  u.tok AS \"Tokens (7d)\",\n  u.cache_pct AS \"Cache %\",\n  u.ttft AS \"TTFT ms\",\n  u.tps AS \"TPS\",\n  u.cost AS \"Cost $\",\n  u.realized AS \"Realized $/M\"\nFROM px\nLEFT JOIN (\n  SELECT model,\n    count(*) FILTER (WHERE NOT is_probe) AS reqs,\n    sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe) AS tok,\n    round(100.0*sum(cached_tokens) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens) FILTER (WHERE NOT is_probe),0),1) AS cache_pct,\n    round(avg(ttft_ms) FILTER (WHERE NOT is_probe)) AS ttft,\n    round(percentile_cont(0.5) WITHIN GROUP (ORDER BY (completion_tokens / ((duration_ms - ttft_ms)/1000.0))) FILTER (WHERE NOT is_probe AND duration_ms > ttft_ms + 50 AND ttft_ms > 0 AND completion_tokens > 0 AND (completion_tokens / ((duration_ms - ttft_ms)/1000.0)) <= 500)::numeric, 1) AS tps,\n    round(sum(cost_usdc) FILTER (WHERE NOT is_probe)::numeric,4) AS cost,\n    round((sum(cost_usdc) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe),0)*1e6)::numeric,4) AS realized\n  FROM usage_logs WHERE created_at > now() - interval '7 days' GROUP BY 1\n) u ON u.model = px.route\nORDER BY px.projected ASC NULLS LAST",
           "refId": "A"
         }
       ],
@@ -856,7 +797,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 60
       },
@@ -880,71 +821,6 @@
         }
       ],
       "title": "Cache hit % by model (in use)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "inferhub-pg"
-      },
-      "description": "Effective price per 1M total tokens (cost * 1M / total tokens) over time per model (in-use only).",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "fillOpacity": 10,
-            "lineWidth": 2,
-            "showPoints": "never"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byType",
-              "options": "number"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "${__field.labels.model}"
-              },
-              {
-                "id": "unit",
-                "value": "currencyUSD"
-              },
-              {
-                "id": "decimals",
-                "value": 5
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 60
-      },
-      "id": 11,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "format": "time_series",
-          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round((sum(u.cost_usdc)*1000000.0 / NULLIF(sum(u.prompt_tokens)+sum(u.completion_tokens), 0))::numeric, 5) AS eff_px FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model WHERE u.is_probe = false AND $__timeFilter(u.created_at) GROUP BY 1, 2 HAVING sum(u.prompt_tokens)+sum(u.completion_tokens) > 0 ORDER BY 1"
-        }
-      ],
-      "title": "Effective $/Mtok by model (in use)",
       "type": "timeseries"
     },
     {
@@ -1139,7 +1015,7 @@
         "type": "postgres",
         "uid": "inferhub-pg"
       },
-      "description": "Each route: X = projected $/M (7-day token mix at current asks, cached input at 10%, no-traffic fallback 0.99/0.01), Y = AA IQ. Green = in use (>=100 billed reqs/7d), yellow = light, gray = catalog/probe-only. X log scale: cheap left, expensive right. Hover for route name + values.",
+      "description": "Each route: X = projected $/M (7-day token mix at current asks, cached input at 10%, no-traffic fallback 0.75/0.25), Y = AA IQ. Green = in use (>=100 billed reqs/7d), yellow = light, gray = catalog/probe-only. X log scale: cheap left, expensive right. Hover for route name + values.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1378,7 +1254,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.99*ask_in + 0.01*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.projected::float AS \"projected $/M\",\n       px.iq::float        AS \"AA IQ\",\n       px.req24::float     AS \"Reqs 24h\",\n       px.route            AS \"Route\",\n       CASE px.tier WHEN 'in use' THEN 2 WHEN 'probed' THEN 1 ELSE 0 END::float AS \"Tier\"\nFROM px ORDER BY px.projected",
+          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.projected::float AS \"projected $/M\",\n       px.iq::float        AS \"AA IQ\",\n       px.req24::float     AS \"Reqs 24h\",\n       px.route            AS \"Route\",\n       CASE px.tier WHEN 'in use' THEN 2 WHEN 'probed' THEN 1 ELSE 0 END::float AS \"Tier\"\nFROM px ORDER BY px.projected",
           "refId": "A"
         }
       ],
@@ -1403,7 +1279,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "Cheapest in-use route by the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the crown gate is closed, projected once it passes. The value names the basis in use.",
+      "description": "Cheapest in-use route by the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the backtest gate is closed, projected once it passes. The value names the basis in use.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1455,7 +1331,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "AA IQ per $ for the best value route, on the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the crown gate is closed, projected once it passes. The value names the basis in use.",
+      "description": "AA IQ per $ for the best value route, on the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the backtest gate is closed, projected once it passes. The value names the basis in use.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1507,7 +1383,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "Runner-up in-use route by the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the crown gate is closed, projected once it passes. The value names the basis in use.",
+      "description": "Runner-up in-use route by the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the backtest gate is closed, projected once it passes. The value names the basis in use.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1559,7 +1435,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "AA IQ per $ for the alternate route, on the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the crown gate is closed, projected once it passes. The value names the basis in use.",
+      "description": "AA IQ per $ for the alternate route, on the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the backtest gate is closed, projected once it passes. The value names the basis in use.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1633,8 +1509,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 5,
-        "x": 19,
+        "w": 6,
+        "x": 18,
         "y": 39
       },
       "id": 31,
@@ -1876,10 +1752,134 @@
       "targets": [
         {
           "format": "time_series",
-          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round(avg(CASE WHEN duration_ms > ttft_ms + 100 AND ttft_ms > 0 AND completion_tokens >= 30 THEN completion_tokens / ((duration_ms - ttft_ms)/1000.0) END)::numeric, 1) AS avg_tps FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model WHERE u.is_probe = false AND $__timeFilter(u.created_at) GROUP BY 1, 2 HAVING avg(CASE WHEN duration_ms > ttft_ms + 100 AND ttft_ms > 0 AND completion_tokens >= 30 THEN completion_tokens / ((duration_ms - ttft_ms)/1000.0) END) IS NOT NULL ORDER BY 1"
+          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round(avg(CASE WHEN duration_ms > ttft_ms + 50 AND ttft_ms > 0 AND completion_tokens > 0 AND (completion_tokens / ((duration_ms - ttft_ms)/1000.0)) <= 500 THEN completion_tokens / ((duration_ms - ttft_ms)/1000.0) END)::numeric, 1) AS avg_tps FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model WHERE u.is_probe = false AND $__timeFilter(u.created_at) GROUP BY 1, 2 HAVING avg(CASE WHEN duration_ms > ttft_ms + 50 AND ttft_ms > 0 AND completion_tokens > 0 AND (completion_tokens / ((duration_ms - ttft_ms)/1000.0)) <= 500 THEN completion_tokens / ((duration_ms - ttft_ms)/1000.0) END) IS NOT NULL ORDER BY 1"
         }
       ],
       "title": "TPS by model (in use)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "Blended effective price per 1M total tokens (cost * 1M / total tokens) across non-probe traffic.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 10,
+        "y": 39
+      },
+      "id": 32,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "inferhub-pg"
+          },
+          "format": "table",
+          "rawSql": "SELECT round((sum(cost_usdc)*1000000.0 / NULLIF(sum(prompt_tokens)+sum(completion_tokens), 0))::numeric, 4) FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at)",
+          "refId": "A"
+        }
+      ],
+      "title": "Effective $/Mtok (blended)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "inferhub-pg"
+      },
+      "description": "Effective price per 1M total tokens (cost * 1M / total tokens) over time per model (in-use only).",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.model}"
+              },
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 5
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 60
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round((sum(u.cost_usdc)*1000000.0 / NULLIF(sum(u.prompt_tokens)+sum(u.completion_tokens), 0))::numeric, 5) AS eff_px FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model WHERE u.is_probe = false AND $__timeFilter(u.created_at) GROUP BY 1, 2 HAVING sum(u.prompt_tokens)+sum(u.completion_tokens) > 0 ORDER BY 1"
+        }
+      ],
+      "title": "Effective $/Mtok by model (in use)",
       "type": "timeseries"
     }
   ],
@@ -1937,5 +1937,6 @@
   "timezone": "browser",
   "title": "InferHub Watch",
   "uid": "inferhub-watch",
-  "version": 13
+  "version": 13,
+  "editable": false
 }
