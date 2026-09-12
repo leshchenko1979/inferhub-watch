@@ -340,5 +340,57 @@ class LoadRouteMetricsTests(unittest.TestCase):
         n = pgstore.publish_route_basis(conn, [{"route": "", "realized": 1.0}])
         self.assertEqual(n, 0)
 
+class WritePermissionTests(unittest.TestCase):
+    """#36 — a read-only role must be DETECTED, not discovered by raising."""
+
+    def _conn(self) -> mock.Mock:
+        conn = mock.MagicMock()
+        conn.cursor.return_value.__enter__ = mock.Mock()
+        conn.cursor.return_value.__exit__ = mock.Mock(return_value=False)
+        return conn
+
+    def test_upsert_rows_does_not_run_a_migration(self) -> None:
+        # A schema migration needs CREATE on schema public, which the CI role
+        # does not have BY DESIGN — running it on the write path made every CI
+        # cache write fail on the DDL before inserting a single row.
+        conn = self._conn()
+        rows = [{"id": "test-req-0001", "ts": "2026-09-07T08:00:00Z",
+                 "model": "m", "prompt_tokens": 1}]
+        with mock.patch.object(pgstore, "_connect", return_value=conn), \
+                mock.patch.object(pgstore, "ensure_schema") as schema, \
+                mock.patch("psycopg2.extras.execute_values"):
+            pgstore.upsert_rows(rows, conn=conn)
+        schema.assert_not_called()
+
+    def test_write_permitted_true_when_insertable(self) -> None:
+        conn = self._conn()
+        cur = conn.cursor.return_value.__enter__.return_value
+        cur.fetchone.return_value = (True,)
+        self.assertTrue(pgstore.write_permitted(conn))
+
+    def test_write_permitted_false_when_read_only(self) -> None:
+        conn = self._conn()
+        cur = conn.cursor.return_value.__enter__.return_value
+        cur.fetchone.return_value = (False,)
+        self.assertFalse(pgstore.write_permitted(conn))
+
+    def test_write_permitted_asks_the_server_about_the_table(self) -> None:
+        # Guarded by to_regclass so a fresh database answers False rather than
+        # raising UndefinedTable.
+        conn = self._conn()
+        cur = conn.cursor.return_value.__enter__.return_value
+        cur.fetchone.return_value = (False,)
+        pgstore.write_permitted(conn)
+        sql = cur.execute.call_args.args[0]
+        self.assertIn("to_regclass", sql)
+        self.assertIn("has_table_privilege", sql)
+        self.assertIn("INSERT", sql)
+
+    def test_write_permitted_false_when_no_row_returned(self) -> None:
+        conn = self._conn()
+        cur = conn.cursor.return_value.__enter__.return_value
+        cur.fetchone.return_value = None
+        self.assertFalse(pgstore.write_permitted(conn))
+
 if __name__ == "__main__":
     unittest.main()

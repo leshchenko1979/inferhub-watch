@@ -194,12 +194,41 @@ def main() -> int:
 
         rows = fetch_log_rows(key, range_="24h", after=started - timedelta(minutes=5))
         # Cache the raw rows so pricing's 30d aggregate can read them from
-        # Postgres (P0a). A cache failure must not break the run.
+        # Postgres (P0a). A cache failure must not break the run — but it must
+        # not be SILENT either (#36). The CI identity is READ-ONLY BY DESIGN
+        # (it exists to read the 30-day window), so on CI the skip is EXPECTED:
+        # ask the server rather than discovering it by raising, and record the
+        # answer in the run payload so the artifact carries the fact.
+        cache_status = "unknown"
         try:
-            cached = upsert_rows(rows)
-            print(f"pgstore: cached {cached} rows")
+            from probe.pgstore import _connect, load_env, write_permitted
+
+            env = load_env()
+            if not env.get("PGPASSWORD"):
+                cache_status = "unconfigured"
+                print("pgstore: no PG credentials — cache write skipped")
+            else:
+                cache_conn = _connect(env)
+                try:
+                    if not write_permitted(cache_conn):
+                        cache_status = "read-only"
+                        print(
+                            "::warning::pgstore: connected role cannot INSERT into "
+                            "usage_logs — cache write SKIPPED (read-only role). The "
+                            "run is still valid; the PG cache was NOT updated.",
+                            file=sys.stderr,
+                        )
+                    else:
+                        cached = upsert_rows(rows, conn=cache_conn)
+                        cache_status = f"written:{cached}"
+                        print(f"pgstore: cached {cached} rows")
+                finally:
+                    cache_conn.close()
         except Exception as exc:  # noqa: BLE001
-            print(f"warning: pgstore cache failed: {exc}", file=sys.stderr)
+            cache_status = f"failed:{exc}"
+            run_payload["runner_errors"].append(f"pgstore cache write failed: {exc}")
+            print(f"::warning::pgstore cache failed: {exc}", file=sys.stderr)
+        run_payload["cache_status"] = cache_status
         costs = attribute_costs(run_payload, rows)
         run_payload["cost"] = costs
     except Exception as exc:  # noqa: BLE001 — cost reporting must never break a run

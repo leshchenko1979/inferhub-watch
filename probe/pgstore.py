@@ -195,6 +195,13 @@ def _connect(env: dict[str, str]):
 
 
 def ensure_schema(conn) -> None:
+    """Establish the cache schema. EXPLICIT MIGRATION STEP ONLY (#36).
+
+    This needs CREATE on schema public, so a read-only role cannot run it —
+    which is why it must never sit on a hot write path (`upsert_rows`). Call it
+    from a migration/startup step (`scripts/sync_usage_logs.py`,
+    `scripts/predictor_scoreboard.py`), not from a per-run write.
+    """
     with conn.cursor() as cur:
         cur.execute(DDL)
         cur.execute(GATE_DDL)
@@ -202,6 +209,25 @@ def ensure_schema(conn) -> None:
         cur.execute(SCOREBOARD_DDL)
         cur.execute(GRANT_DDL)
     conn.commit()
+
+def write_permitted(conn) -> bool:
+    """Can this connection INSERT into the usage_logs cache? (#36)
+
+    Asked of the SERVER rather than discovered by raising. The CI identity is
+    read-only BY DESIGN (it exists to read the 30-day window), so `upsert_rows`
+    there must skip cleanly and say so, instead of failing on a DDL it was never
+    going to be allowed to run and leaving the job green.
+
+    Guarded with `to_regclass` so a fresh database (no table yet) answers False
+    rather than raising UndefinedTable.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "select to_regclass('public.usage_logs') is not null"
+            " and has_table_privilege(current_user, 'usage_logs', 'INSERT')"
+        )
+        row = cur.fetchone()
+    return bool(row and row[0])
 
 GATE_ID = "projection_gate"
 
@@ -396,7 +422,13 @@ def upsert_rows(rows: list[dict], conn=None) -> int:
     try:
         from psycopg2.extras import execute_values
 
-        ensure_schema(conn)
+        # NOTE: ensure_schema() is deliberately NOT called here (#36). A schema
+        # migration is not a hot-write-path step: it needs CREATE on schema
+        # public, which the CI role does not have BY DESIGN, so calling it made
+        # every CI cache write fail on the DDL before inserting a single row.
+        # The schema is established by an explicit migration/startup step
+        # (scripts/sync_usage_logs.py, scripts/predictor_scoreboard.py), and the
+        # caller probes write_permitted() first so the skip is explicit.
         tuples = []
         for row in rows:
             fields = row_fields(row)
