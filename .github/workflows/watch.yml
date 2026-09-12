@@ -75,6 +75,7 @@ jobs:
           PG_CI_SSH_USER: ${{ secrets.PG_CI_SSH_USER }}
           PG_CI_DB_USER: ${{ secrets.PG_CI_DB_USER }}
           PG_CI_DB_PASSWORD: ${{ secrets.PG_CI_DB_PASSWORD }}
+          PG_CI_KNOWN_HOSTS: ${{ secrets.PG_CI_KNOWN_HOSTS }}
         run: |
           set -eu
           if [ -z "${PG_CI_SSH_KEY:-}" ]; then
@@ -84,10 +85,19 @@ jobs:
           keyfile="$RUNNER_TEMP/ci_pg_key"
           printf '%s\n' "$PG_CI_SSH_KEY" > "$keyfile"
           chmod 600 "$keyfile"
-          mkdir -p "$HOME/.ssh"
-          ssh-keyscan -H "$PG_CI_SSH_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          # The host key is PINNED, not discovered. `ssh-keyscan` opens three
+          # bare pre-auth connections, which fail2ban's sshd jail counts as
+          # three failures — maxretry=3 — so the runner's own IP is banned
+          # before the tunnel connects and the job dies on
+          # "connect to host ... port 22: Connection timed out"
+          # (observed 2026-09-12 11:15:43Z: Found x3 then "Ban
+          # 52.153.175.196"). Pinning also removes the TOFU window.
+          khfile="$RUNNER_TEMP/ci_known_hosts"
+          printf '%s\n' "$PG_CI_KNOWN_HOSTS" > "$khfile"
+          chmod 600 "$khfile"
           ssh -f -N -o ExitOnForwardFailure=yes -o ConnectTimeout=15 \
               -o IdentitiesOnly=yes -o BatchMode=yes -i "$keyfile" \
+              -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$khfile" \
               -L 15432:127.0.0.1:5432 "$PG_CI_SSH_USER@$PG_CI_SSH_HOST"
           pid=$(pgrep -f "[s]sh .*-L 15432:127.0.0.1:5432" | head -1)
           echo "tunnel open (pid $pid): 127.0.0.1:15432 -> $PG_CI_SSH_HOST:5432"
@@ -144,7 +154,7 @@ jobs:
         run: |
           if [ -n "${TUNNEL_PID:-}" ]; then kill "$TUNNEL_PID" 2>/dev/null || true; fi
           pkill -f "[s]sh .*-L 15432:127.0.0.1:5432" 2>/dev/null || true
-          rm -f "$RUNNER_TEMP/ci_pg_key"
+          rm -f "$RUNNER_TEMP/ci_pg_key" "$RUNNER_TEMP/ci_known_hosts"
           echo "tunnel closed, key removed"
 
   pages:
