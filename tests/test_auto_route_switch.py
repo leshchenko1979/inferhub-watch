@@ -26,18 +26,18 @@ from scripts.auto_route_switch import (
 
 
 def test_calculate_value():
-    # Value = (IQ / eff_price) * (tps / 50.0) ** 0.25
+    # Value = (IQ / eff_price) * (tps / 50.0) ** 0.50
     # When using raw asks with default tps=50.0:
     # IQ = 39.4, ask_in = 0.00375, ask_out = 0.01875
     # denom = 0.99 * 0.00375 + 0.01 * 0.01875 = 0.0037125 + 0.0001875 = 0.0039
-    # value = (39.4 / 0.0039) * (50/50)^0.25 = 10102.564...
+    # value = (39.4 / 0.0039) * (50/50)^0.50 = 10102.564...
     val = calculate_value(39.4, ask_in=0.00375, ask_out=0.01875)
     assert round(val, 1) == 10102.6
 
     # With eff_price and TPS weighting
     val_tps = calculate_value(39.4, eff_price=0.0039, tps=200.0)
-    # (39.4 / 0.0039) * (200 / 50)**0.25 = 10102.564 * 1.41421356 = 14287.18
-    assert round(val_tps, 1) == 14287.2
+    # (39.4 / 0.0039) * (200 / 50)**0.50 = 10102.564 * 2.0 = 20205.128...
+    assert round(val_tps, 1) == 20205.1
 
     assert calculate_value(35.0, ask_in=0, ask_out=0) == 0.0
     assert calculate_value(35.0, ask_in=-1, ask_out=-1) == 0.0

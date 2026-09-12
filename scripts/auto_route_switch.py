@@ -5,7 +5,7 @@ gated projected effective price (matching the board crown, probe/basis.py), and
 empirical throughput (TPS) weighting. Automatically switches the active route when a qualified
 alternative offers >15% higher Value:
 
-    Value = (IQ / eff_price) * (tps / 50.0) ** 0.25
+    Value = (IQ / eff_price) * (tps / 50.0) ** 0.50
 
 Criteria:
 - AA IQ >= 35.0 (hard floor)
@@ -50,7 +50,7 @@ DEFAULT_ROOT_DB_PATH = Path("/root/.opencrabs/opencrabs.db")
 IQ_FLOOR = 35.0
 SWITCH_THRESHOLD = 0.15  # >15% higher value
 TPS_REF = 50.0  # Reference baseline TPS for fleet
-TPS_WEIGHT_EXPONENT = 0.25  # Sub-linear power-law exponent for TPS weight
+TPS_WEIGHT_EXPONENT = 0.50  # Square-root power-law exponent for TPS weight
 
 # Inferhub Watch Telegram group whose bound session receives switch alerts (Issue #14).
 INFERHUB_WATCH_CHAT_ID = "-1004379632866"
