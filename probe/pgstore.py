@@ -12,6 +12,7 @@ credentials in /root/.inferhub_pg.env (chmod 600, gitignored host file).
 """
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -99,7 +100,14 @@ END $$;
 """
 
 def load_env(path: Path | None = None) -> dict[str, str]:
-    """Parse the env file (never raises — callers handle empty gracefully)."""
+    """Parse the env file (never raises — callers handle empty gracefully).
+
+    Environment variables WIN over the file. CI has no
+    /root/.inferhub_pg.env and supplies the same five keys as job env vars
+    (the workflow writes them to $GITHUB_ENV), so a file-only lookup would
+    silently drop CI back onto the 12k-row API path — the Finding B defect
+    in a new costume.
+    """
     env: dict[str, str] = {}
     p = path or ENV_FILE
     try:
@@ -110,6 +118,10 @@ def load_env(path: Path | None = None) -> dict[str, str]:
                 env[k.strip()] = v.strip()
     except OSError:
         pass
+    for k in ("PGHOST", "PGPORT", "PGDATABASE", "PGUSER", "PGPASSWORD"):
+        v = os.environ.get(k)
+        if v:
+            env[k] = v
     return env
 
 

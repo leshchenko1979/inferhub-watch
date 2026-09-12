@@ -573,30 +573,82 @@ def perf_stats(rows: list[dict], window_hours: int = 24) -> dict:
         out_models[model] = entry
     return {"window_hours": window_hours, "models": dict(sorted(out_models.items(), key=lambda kv: -kv[1]["reqs"]))}
 
-def _log_rows(key: str) -> tuple[list[dict], str]:
-    """(rows, source) — pgstore first (full 30d), Management API fallback.
+class PgRequiredError(RuntimeError):
+    """Postgres credentials are present but the usage-log window failed.
 
-    pgstore serves the newest 30d of cached rows; the API path keeps the old
-    12k-row-capped behavior for when the tunnel/DB is down. Marked in the
-    payload so a reader can tell which basis produced the numbers.
+    Distinct from an ordinary connection error because the caller must NOT
+    fall back to the API: the 12k-row cap masquerading as `range: 30d` is
+    exactly Finding B (#27), so a quiet degrade is the defect, not the cure.
     """
+
+def _window_of(rows: list[dict], declared_range: str) -> dict:
+    """The window the rows ACTUALLY cover, so the artifact self-describes.
+
+    Finding B (#27): the payload declared `range: 30d` beside
+    `requests_scanned: 12000` — 11.8 h of data reading as a 30-day
+    aggregate. `range` is the REQUEST; this block is the coverage.
+    """
+    ts = [str(r.get("ts") or "") for r in rows]
+    ts = [t for t in ts if t]
+    declared_hours = {"24h": 24.0, "7d": 168.0, "30d": 720.0}.get(declared_range)
+    out: dict = {
+        "declared_range": declared_range,
+        "declared_hours": declared_hours,
+        "rows": len(rows),
+        "first_ts": None,
+        "last_ts": None,
+        "hours": None,
+        "coverage_pct": None,
+    }
+    if not ts:
+        return out
+    first, last = min(ts), max(ts)
+    out["first_ts"], out["last_ts"] = first, last
     try:
-        from probe.pgstore import _connect, latest_ts, load_env, rows_since
-        env = load_env()
-        if env.get("PGPASSWORD"):
+        hours = (parse_ts(last) - parse_ts(first)).total_seconds() / 3600.0
+    except Exception:  # noqa: BLE001 — an odd ts must not break the snapshot
+        return out
+    out["hours"] = round(hours, 2)
+    if declared_hours:
+        out["coverage_pct"] = round(100.0 * hours / declared_hours, 2)
+    return out
+
+def _log_rows(key: str) -> tuple[list[dict], str]:
+    """(rows, source) — Postgres when configured, Management API otherwise.
+
+    Postgres is the ONLY source when credentials are present: it carries the
+    true 30d window, where the API is capped at MAX_PAGES x PAGE_SIZE rows.
+    A failure there RAISES (PgRequiredError) instead of degrading, because
+    the silent degrade IS the #27 Finding B defect — 12,000 rows (11.8 h)
+    published as `range: 30d`.
+
+    With no credentials (a fork, or a local run with no env file) the API
+    path runs and `snapshot()` stamps the window it really covered.
+    """
+    from probe.pgstore import _connect, latest_ts, load_env, rows_since
+
+    env = load_env()
+    if env.get("PGPASSWORD"):
+        try:
             conn = _connect(env)
-            try:
-                lt = latest_ts(conn)
-                if lt is not None:
-                    from datetime import timedelta
-                    rows = rows_since(lt - timedelta(days=30), conn=conn)
-                    if rows:
-                        return rows, "pgstore"
-            finally:
-                conn.close()
-    except Exception as exc:  # noqa: BLE001 — fallback is the contract
-        print(f"warning: pgstore unavailable ({exc}); using Management API",
-              file=sys.stderr)
+        except Exception as exc:  # noqa: BLE001 — creds present: never degrade
+            raise PgRequiredError(
+                f"Postgres credentials present but the connection failed: {exc}"
+            ) from exc
+        try:
+            lt = latest_ts(conn)
+            rows = rows_since(lt - timedelta(days=30), conn=conn) if lt is not None else []
+        except Exception as exc:  # noqa: BLE001
+            raise PgRequiredError(
+                f"Postgres credentials present but the usage_logs window failed: {exc}"
+            ) from exc
+        finally:
+            conn.close()
+        if not rows:
+            raise PgRequiredError(
+                "Postgres credentials present but usage_logs returned no rows in 30 days"
+            )
+        return rows, "pg"
     return fetch_log_rows(key, range_="30d",
                           max_pages=MAX_PAGES, pace_s=0.25), "api"
 
@@ -605,20 +657,30 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
              candidates: list[str] | None = None) -> dict:
     """Build the full pricing payload; candidate routes are flagged as such.
 
-    Row source: the Postgres usage-log cache (probe/pgstore) when reachable,
-    falling back to the paginated Management API (capped at 12k rows) when
-    the tunnel/DB is unavailable. The cache carries the full 30d window.
+    Row source: Postgres (probe/pgstore) whenever credentials are present —
+    it carries the full 30d window — and the paginated Management API
+    (capped at MAX_PAGES x PAGE_SIZE rows) otherwise. The payload always
+    declares the window the rows ACTUALLY cover (`window`), so a capped API
+    pull can never read as a 30-day aggregate again (#27 Finding B).
     """
     rows, source = _log_rows(key)
     if not rows:
-        raise RuntimeError("no usage rows from any source (pgstore + API)")
+        raise RuntimeError("no usage rows from any source (Postgres + API)")
+    window = _window_of(rows, range_)
     print(f"pricing rows: {len(rows)} from {source}")
+    print(
+        f"pricing window: {window['first_ts']} .. {window['last_ts']} = "
+        f"{window['hours']}h of the declared {window['declared_range']} "
+        f"({window['coverage_pct']}% covered)"
+    )
     # Day-series window repair (owner 2026-09-07: "why only two days on the
     # graph?"): the Management-API fallback caps at 12k rows, which at
-    # current volume spans ~2 days — the per-day spend graph collapses. The
-    # day series is the ONE aggregate the row cap breaks, so top it up from
-    # the pgstore cache when that is reachable (local runs / tunnel up) even
-    # though the row-based stats above came from the API.
+    # current volume spans ~11.8 h (measured 2026-09-12, #27 Finding B) — the
+    # per-day spend graph collapses. The day series is the ONE aggregate the
+    # row cap breaks, so top it up from the Postgres cache when that is
+    # reachable even though the row-based stats above came from the API.
+    # Postgres is the primary source when configured, so this repair path
+    # only runs on a fork / a credential-less local run.
     days_rows = rows
     days_source = source
     if source == "api" and len(rows) >= MAX_PAGES * PAGE_SIZE - PAGE_SIZE:
@@ -633,7 +695,7 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
                         from datetime import timedelta as _td
                         days_rows = rows_since(lt - _td(days=30), conn=conn)
                         if days_rows:
-                            days_source = "api+pgstore-days"
+                            days_source = "api+pg-days"
                 finally:
                     conn.close()
         except Exception as exc:  # noqa: BLE001 — best-effort repair only
@@ -690,6 +752,9 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
         "row_source": source,
         "days_source": days_source,
         "requests_scanned": len(rows),
+        # The window the rows actually cover — the declared `range` above is
+        # only what was ASKED for (#27 Finding B).
+        "window": window,
         "days": daily_series(days_rows),
         "failures": failure_stats(rows),
         "perf": perf_stats(rows),
@@ -789,6 +854,13 @@ def main() -> int:
         f"keeping previous file: {last_exc}",
         file=sys.stderr,
     )
+    # Postgres was configured and failed: this is NOT a staleness warning to
+    # be read past, it is a broken CI credential or tunnel. Exit non-zero so
+    # the job fails loudly instead of publishing an API-capped snapshot that
+    # claims a 30-day window (#27 Finding B).
+    if isinstance(last_exc, PgRequiredError):
+        print(f"::error::pricing snapshot failed with Postgres credentials present: {last_exc}")
+        return 1
     # Surface the staleness in CI — silent success is how this went unnoticed.
     print(f"::warning::pricing snapshot failed ({last_exc}); data/pricing.json is STALE")
     return 0
