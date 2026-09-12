@@ -1,15 +1,8 @@
 {
- "generated_at": "2026-09-12T07:17:01Z",
+ "generated_at": "2026-09-12T11:25:54Z",
  "source": "artificialanalysis.ai",
  "endpoint": "https://artificialanalysis.ai/api/v2/data/llms/models",
  "models": {
-  "gpt-6-astra-non-reasoning": {
-   "name": "GPT-6 Astra (Non-reasoning)",
-   "iq": 45.2,
-   "coding": 76.2,
-   "aa_in": 0,
-   "aa_out": 0
-  },
   "gpt-6-astra-high": {
    "name": "GPT-6 Astra (high)",
    "iq": 51,

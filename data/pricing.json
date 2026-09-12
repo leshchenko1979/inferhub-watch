@@ -1,129 +1,289 @@
 {
-  "generated_at": "2026-09-12T07:17:00+00:00",
+  "generated_at": "2026-09-12T11:25:52+00:00",
   "range": "30d",
-  "row_source": "api",
-  "days_source": "api",
-  "requests_scanned": 12000,
+  "row_source": "pg",
+  "days_source": "pg",
+  "requests_scanned": 86080,
+  "window": {
+    "declared_range": "30d",
+    "declared_hours": 720.0,
+    "rows": 86080,
+    "first_ts": "2026-08-31T00:05:22.827000+00:00",
+    "last_ts": "2026-09-12T11:23:53.001000+00:00",
+    "hours": 299.31,
+    "coverage_pct": 41.57
+  },
   "days": [
     {
+      "date": "2026-08-31",
+      "cost_usdc": "1.966256",
+      "requests": 1624
+    },
+    {
+      "date": "2026-09-01",
+      "cost_usdc": "4.080842",
+      "requests": 2789
+    },
+    {
+      "date": "2026-09-02",
+      "cost_usdc": "1.544958",
+      "requests": 2068
+    },
+    {
+      "date": "2026-09-03",
+      "cost_usdc": "0.584542",
+      "requests": 977
+    },
+    {
+      "date": "2026-09-04",
+      "cost_usdc": "1.362235",
+      "requests": 1992
+    },
+    {
+      "date": "2026-09-05",
+      "cost_usdc": "1.829999",
+      "requests": 2936
+    },
+    {
+      "date": "2026-09-06",
+      "cost_usdc": "0.580736",
+      "requests": 2891
+    },
+    {
+      "date": "2026-09-07",
+      "cost_usdc": "0.489209",
+      "requests": 2979
+    },
+    {
+      "date": "2026-09-08",
+      "cost_usdc": "1.099554",
+      "requests": 9609
+    },
+    {
+      "date": "2026-09-09",
+      "cost_usdc": "0.557236",
+      "requests": 11404
+    },
+    {
+      "date": "2026-09-10",
+      "cost_usdc": "0.725089",
+      "requests": 15808
+    },
+    {
       "date": "2026-09-11",
-      "cost_usdc": "0.249788",
-      "requests": 8061
+      "cost_usdc": "0.462435",
+      "requests": 20058
     },
     {
       "date": "2026-09-12",
-      "cost_usdc": "0.140113",
-      "requests": 3939
+      "cost_usdc": "0.637968",
+      "requests": 10945
     }
   ],
   "failures": {
-    "total": 12000,
-    "failed": 1,
-    "rate_pct": 0.01,
+    "total": 86080,
+    "failed": 86080,
+    "rate_pct": 100.0,
     "codes": {
-      "502": 1
+      "unknown": 86080
     },
     "by_model": {
-      "cb/deepseek-v4.1-flash": {
-        "reqs": 525,
-        "failed": 1,
+      "cbcn/glm-5.3-flash": {
+        "reqs": 29676,
+        "failed": 29676,
         "codes": {
-          "502": 1
+          "unknown": 29676
+        }
+      },
+      "cb/deepseek-v4.1-flash": {
+        "reqs": 16307,
+        "failed": 16307,
+        "codes": {
+          "unknown": 16307
+        }
+      },
+      "ag/gemini-3.7-flash-high": {
+        "reqs": 15239,
+        "failed": 15239,
+        "codes": {
+          "unknown": 15239
+        }
+      },
+      "zai/glm-5.3-flash": {
+        "reqs": 12666,
+        "failed": 12666,
+        "codes": {
+          "unknown": 12666
         }
       },
       "ag/gemini-3.8-flash-high": {
-        "reqs": 1792,
-        "failed": 0,
-        "codes": {}
+        "reqs": 9163,
+        "failed": 9163,
+        "codes": {
+          "unknown": 9163
+        }
       },
-      "ag/gemini-3.7-flash-high": {
-        "reqs": 9639,
-        "failed": 0,
-        "codes": {}
+      "ali/qwen3.8-max": {
+        "reqs": 2162,
+        "failed": 2162,
+        "codes": {
+          "unknown": 2162
+        }
+      },
+      "cb/gpt-5.6-luna": {
+        "reqs": 634,
+        "failed": 634,
+        "codes": {
+          "unknown": 634
+        }
+      },
+      "ali/deepseek-v4-pro-0813": {
+        "reqs": 32,
+        "failed": 32,
+        "codes": {
+          "unknown": 32
+        }
+      },
+      "cb/glm-5.3": {
+        "reqs": 30,
+        "failed": 30,
+        "codes": {
+          "unknown": 30
+        }
+      },
+      "cp/zai/glm-5.3-flash": {
+        "reqs": 24,
+        "failed": 24,
+        "codes": {
+          "unknown": 24
+        }
+      },
+      "cbcn/deepseek-v4-flash": {
+        "reqs": 22,
+        "failed": 22,
+        "codes": {
+          "unknown": 22
+        }
+      },
+      "ali/deepseek-v4-flash-0731": {
+        "reqs": 19,
+        "failed": 19,
+        "codes": {
+          "unknown": 19
+        }
+      },
+      "cb/gpt-5.6-sol": {
+        "reqs": 18,
+        "failed": 18,
+        "codes": {
+          "unknown": 18
+        }
+      },
+      "cb/gpt-5.6-terra": {
+        "reqs": 18,
+        "failed": 18,
+        "codes": {
+          "unknown": 18
+        }
       },
       "cx/gpt-5.6-luna": {
-        "reqs": 2,
-        "failed": 0,
-        "codes": {}
+        "reqs": 15,
+        "failed": 15,
+        "codes": {
+          "unknown": 15
+        }
       },
-      "cx/gpt-5.6-sol": {
-        "reqs": 2,
-        "failed": 0,
-        "codes": {}
+      "cb/kimi-k3": {
+        "reqs": 15,
+        "failed": 15,
+        "codes": {
+          "unknown": 15
+        }
       },
-      "cx/gpt-5.6-terra": {
-        "reqs": 2,
-        "failed": 0,
-        "codes": {}
+      "cmc/xai/grok-4.6": {
+        "reqs": 15,
+        "failed": 15,
+        "codes": {
+          "unknown": 15
+        }
       },
-      "zai/glm-5.3-flash": {
-        "reqs": 2,
-        "failed": 0,
-        "codes": {}
+      "cbcn/deepseek-v4-pro": {
+        "reqs": 10,
+        "failed": 10,
+        "codes": {
+          "unknown": 10
+        }
+      },
+      "cmc/z-ai/glm-5.3-flash": {
+        "reqs": 5,
+        "failed": 5,
+        "codes": {
+          "unknown": 5
+        }
+      },
+      "zai/glm-5.3": {
+        "reqs": 5,
+        "failed": 5,
+        "codes": {
+          "unknown": 5
+        }
       },
       "ali/kimi-k3": {
         "reqs": 2,
-        "failed": 0,
-        "codes": {}
+        "failed": 2,
+        "codes": {
+          "unknown": 2
+        }
       },
-      "ali/qwen3.8-max": {
-        "reqs": 20,
-        "failed": 0,
-        "codes": {}
-      },
-      "ali/deepseek-v4-pro-0813": {
-        "reqs": 2,
-        "failed": 0,
-        "codes": {}
-      },
-      "ali/deepseek-v4-flash-0731": {
-        "reqs": 2,
-        "failed": 0,
-        "codes": {}
+      "ocg/glm-5.3-flash": {
+        "reqs": 1,
+        "failed": 1,
+        "codes": {
+          "unknown": 1
+        }
       },
       "cbcn/deepseek-v4.1-flash": {
         "reqs": 1,
-        "failed": 0,
-        "codes": {}
+        "failed": 1,
+        "codes": {
+          "unknown": 1
+        }
       },
-      "cbcn/glm-5.3-flash": {
-        "reqs": 5,
-        "failed": 0,
-        "codes": {}
-      },
-      "cb/gpt-5.6-luna": {
-        "reqs": 4,
-        "failed": 0,
-        "codes": {}
+      "cx/gpt-5.6-terra": {
+        "reqs": 1,
+        "failed": 1,
+        "codes": {
+          "unknown": 1
+        }
       }
     }
   },
   "perf": {
     "window_hours": 24,
     "models": {
+      "cb/deepseek-v4.1-flash": {
+        "reqs": 11910,
+        "ttft_p50_ms": 2181.0,
+        "tps_mean": 242.8,
+        "tps_samples": 6954
+      },
       "ag/gemini-3.7-flash-high": {
-        "reqs": 9639,
-        "ttft_p50_ms": 1800.0,
-        "tps_mean": 373.1,
-        "tps_samples": 112
+        "reqs": 11657,
+        "ttft_p50_ms": 1848.0,
+        "tps_mean": 352.5,
+        "tps_samples": 146
       },
       "ag/gemini-3.8-flash-high": {
-        "reqs": 1792,
-        "ttft_p50_ms": 1992.5,
+        "reqs": 1819,
+        "ttft_p50_ms": 2005.0,
         "tps_mean": 377.2,
         "tps_samples": 22
       },
-      "cb/deepseek-v4.1-flash": {
-        "reqs": 525,
-        "ttft_p50_ms": 1811.0,
-        "tps_mean": 257.8,
-        "tps_samples": 276
-      },
       "ali/qwen3.8-max": {
-        "reqs": 20,
-        "ttft_p50_ms": 2131.0,
-        "tps_mean": 41.7,
-        "tps_samples": 16
+        "reqs": 105,
+        "ttft_p50_ms": 2213.0,
+        "tps_mean": 44.9,
+        "tps_samples": 66
       },
       "cbcn/glm-5.3-flash": {
         "reqs": 5,
@@ -131,82 +291,92 @@
         "tps_mean": 96.9,
         "tps_samples": 4
       },
+      "cx/gpt-5.6-luna": {
+        "reqs": 5,
+        "ttft_p50_ms": 7072.0
+      },
+      "cmc/xai/grok-4.6": {
+        "reqs": 5,
+        "ttft_p50_ms": 5069.0
+      },
       "cb/gpt-5.6-luna": {
         "reqs": 4,
         "ttft_p50_ms": 5383.0,
         "tps_mean": 173.3,
         "tps_samples": 2
       },
-      "cx/gpt-5.6-luna": {
-        "reqs": 2,
-        "ttft_p50_ms": 11552.0
+      "cbcn/deepseek-v4-flash": {
+        "reqs": 4,
+        "ttft_p50_ms": 1200.0
       },
-      "cx/gpt-5.6-sol": {
-        "reqs": 2,
-        "ttft_p50_ms": 12307.5
+      "cbcn/deepseek-v4-pro": {
+        "reqs": 4,
+        "ttft_p50_ms": 904.5
       },
-      "cx/gpt-5.6-terra": {
-        "reqs": 2,
-        "ttft_p50_ms": 2706.5,
-        "tps_mean": 21.7,
-        "tps_samples": 1
-      },
-      "zai/glm-5.3-flash": {
-        "reqs": 2,
-        "ttft_p50_ms": 5155.0
-      },
-      "ali/kimi-k3": {
-        "reqs": 2,
-        "ttft_p50_ms": 956.5
-      },
-      "ali/deepseek-v4-pro-0813": {
-        "reqs": 2,
-        "ttft_p50_ms": 1406.5
+      "zai/glm-5.3": {
+        "reqs": 4,
+        "ttft_p50_ms": 1779.5
       },
       "ali/deepseek-v4-flash-0731": {
         "reqs": 2,
-        "ttft_p50_ms": 2108.5
+        "ttft_p50_ms": 756.5
+      },
+      "ali/deepseek-v4-pro-0813": {
+        "reqs": 2,
+        "ttft_p50_ms": 1213.0
+      },
+      "ali/kimi-k3": {
+        "reqs": 2,
+        "ttft_p50_ms": 3028.0
+      },
+      "zai/glm-5.3-flash": {
+        "reqs": 2,
+        "ttft_p50_ms": 5318.0
       },
       "cbcn/deepseek-v4.1-flash": {
         "reqs": 1,
         "ttft_p50_ms": 860.0,
         "tps_mean": 179.4,
         "tps_samples": 1
+      },
+      "cx/gpt-5.6-terra": {
+        "reqs": 1,
+        "ttft_p50_ms": 4352.0
       }
     }
   },
   "routes": {
     "ali/deepseek-v4-flash-0731": {
-      "ask_in": 0.00836,
-      "ask_out": 0.02508,
-      "eff_per_mtok": 0.0079,
-      "cache_pct": 24.5,
-      "reqs": 2,
-      "tok_in": 6277,
-      "tok_out": 88,
-      "cost_usdc": "0.000050",
-      "last_ts": "2026-09-12T07:11:44.018Z",
+      "ask_in": 0.00858,
+      "ask_out": 0.02574,
+      "eff_per_mtok": 0.0102977,
+      "cache_pct": 3.9,
+      "reqs": 19,
+      "tok_in": 26291,
+      "tok_out": 317,
+      "cost_usdc": "0.000274",
+      "last_ts": "2026-09-12T11:23:10.535000+00:00",
       "hit_ask_ratio": null,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.0079,
+      "marginal_per_mtok": 0.00785546,
       "marginal_reqs": 2,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": false,
       "probe_only": true
     },
     "ali/deepseek-v4-pro-0813": {
-      "ask_in": 0.01188,
-      "ask_out": 0.03564,
-      "eff_per_mtok": 0.0104,
-      "cache_pct": 16.3,
-      "reqs": 2,
-      "tok_in": 6277,
-      "tok_out": 88,
-      "cost_usdc": "0.000066",
-      "last_ts": "2026-09-12T07:11:48.431Z",
+      "ask_in": 0.01254,
+      "ask_out": 0.03762,
+      "eff_per_mtok": 0.0178086,
+      "cache_pct": 2.2,
+      "reqs": 32,
+      "tok_in": 45955,
+      "tok_out": 427,
+      "cost_usdc": "0.000826",
+      "last_ts": "2026-09-12T11:23:14.534000+00:00",
       "hit_ask_ratio": null,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.0104,
+      "marginal_per_mtok": 0.010415,
       "marginal_reqs": 2,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": false,
@@ -215,17 +385,17 @@
     "ali/qwen3.8-max": {
       "ask_in": 0.016,
       "ask_out": 0.048,
-      "eff_per_mtok": 0.008,
-      "cache_pct": 64.8,
-      "reqs": 20,
-      "tok_in": 648528,
-      "tok_out": 22207,
-      "cost_usdc": "0.005389",
-      "last_ts": "2026-09-12T07:11:51.830Z",
+      "eff_per_mtok": 0.0301631,
+      "cache_pct": 66.7,
+      "reqs": 2162,
+      "tok_in": 124702999,
+      "tok_out": 2416922,
+      "cost_usdc": "3.834331",
+      "last_ts": "2026-09-12T11:23:18.340000+00:00",
       "hit_ask_ratio": 0.1,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.008,
-      "marginal_reqs": 20,
+      "marginal_per_mtok": 0.00797017,
+      "marginal_reqs": 113,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": false,
       "probe_only": false
@@ -233,53 +403,53 @@
     "ali/kimi-k3": {
       "ask_in": 0.024,
       "ask_out": 0.12,
-      "eff_per_mtok": 0.019,
+      "eff_per_mtok": 0.018956,
       "cache_pct": 44.1,
       "reqs": 2,
       "tok_in": 3480,
       "tok_out": 160,
       "cost_usdc": "0.000069",
-      "last_ts": "2026-09-12T07:11:58.479Z",
+      "last_ts": "2026-09-12T11:23:29.022000+00:00",
       "hit_ask_ratio": null,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.019,
+      "marginal_per_mtok": 0.018956,
       "marginal_reqs": 2,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": false,
       "probe_only": true
     },
     "zai/glm-5.3-flash": {
-      "ask_in": 0.0105,
-      "ask_out": 0.035,
-      "eff_per_mtok": 0.0091,
-      "cache_pct": 48.2,
-      "reqs": 2,
-      "tok_in": 2786,
-      "tok_out": 84,
-      "cost_usdc": "0.000026",
-      "last_ts": "2026-09-12T07:12:09.717Z",
-      "hit_ask_ratio": null,
+      "ask_in": 0.0672,
+      "ask_out": 0.224,
+      "eff_per_mtok": 0.0110027,
+      "cache_pct": 89.9,
+      "reqs": 12666,
+      "tok_in": 811722335,
+      "tok_out": 6361995,
+      "cost_usdc": "9.001151",
+      "last_ts": "2026-09-12T11:23:40.543000+00:00",
+      "hit_ask_ratio": 0.1,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.0091,
+      "marginal_per_mtok": 0.00908138,
       "marginal_reqs": 2,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": false,
       "probe_only": true
     },
     "cx/gpt-5.6-terra": {
-      "ask_in": 0.064,
-      "ask_out": 0.384,
-      "eff_per_mtok": 0.0784,
+      "ask_in": 0.03,
+      "ask_out": 0.18,
+      "eff_per_mtok": 0.034354,
       "cache_pct": 0.0,
-      "reqs": 2,
-      "tok_in": 2606,
-      "tok_out": 122,
-      "cost_usdc": "0.000214",
-      "last_ts": "2026-09-12T07:12:19.100Z",
+      "reqs": 1,
+      "tok_in": 1303,
+      "tok_out": 36,
+      "cost_usdc": "0.000046",
+      "last_ts": "2026-09-12T11:23:45.876000+00:00",
       "hit_ask_ratio": null,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.0784,
-      "marginal_reqs": 2,
+      "marginal_per_mtok": 0.034354,
+      "marginal_reqs": 1,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": false,
       "probe_only": true
@@ -287,53 +457,48 @@
     "cx/gpt-5.6-sol": {
       "ask_in": 0.075,
       "ask_out": 0.45,
-      "eff_per_mtok": 0.092,
-      "cache_pct": 0.0,
-      "reqs": 2,
-      "tok_in": 2606,
-      "tok_out": 123,
-      "cost_usdc": "0.000251",
-      "last_ts": "2026-09-12T07:12:45.823Z",
+      "eff_per_mtok": null,
+      "cache_pct": null,
+      "reqs": 0,
+      "tok_in": 0,
+      "tok_out": 0,
+      "cost_usdc": null,
+      "last_ts": null,
       "hit_ask_ratio": null,
-      "source": "usage-logs",
-      "marginal_per_mtok": 0.092,
-      "marginal_reqs": 2,
-      "marginal_since": "2026-09-11T07:26:11+00:00",
-      "marginal_ts_truncated": false,
-      "probe_only": true
+      "source": "catalog"
     },
     "cx/gpt-5.6-luna": {
-      "ask_in": 0.003,
-      "ask_out": 0.018,
-      "eff_per_mtok": 0.0075,
+      "ask_in": 0.0039,
+      "ask_out": 0.0234,
+      "eff_per_mtok": 0.00898721,
       "cache_pct": 0.0,
-      "reqs": 2,
-      "tok_in": 2606,
-      "tok_out": 59,
-      "cost_usdc": "0.000020",
-      "last_ts": "2026-09-12T07:13:10.899Z",
+      "reqs": 15,
+      "tok_in": 17196,
+      "tok_out": 162,
+      "cost_usdc": "0.000156",
+      "last_ts": "2026-09-12T09:55:41.305000+00:00",
       "hit_ask_ratio": null,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.0075,
-      "marginal_reqs": 2,
+      "marginal_per_mtok": 0.00916004,
+      "marginal_reqs": 5,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": false
     },
     "ag/gemini-3.7-flash-high": {
       "ask_in": 0.00075,
       "ask_out": 0.00375,
-      "eff_per_mtok": 0.0005,
-      "cache_pct": 86.2,
-      "reqs": 9639,
-      "tok_in": 708691036,
-      "tok_out": 2569602,
-      "cost_usdc": "0.324639",
-      "last_ts": "2026-09-12T07:13:15.241Z",
-      "hit_ask_ratio": 0.1016,
+      "eff_per_mtok": 0.000569395,
+      "cache_pct": 86.0,
+      "reqs": 15239,
+      "tok_in": 1079780831,
+      "tok_out": 3883348,
+      "cost_usdc": "0.617033",
+      "last_ts": "2026-09-12T11:23:48.886000+00:00",
+      "hit_ask_ratio": 0.1012,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.0005,
-      "marginal_reqs": 9639,
+      "marginal_per_mtok": 0.000481108,
+      "marginal_reqs": 11681,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": true,
       "probe_only": false
@@ -341,71 +506,240 @@
     "ag/gemini-3.8-flash-high": {
       "ask_in": 0.00075,
       "ask_out": 0.00375,
-      "eff_per_mtok": 0.0004,
-      "cache_pct": 85.9,
-      "reqs": 1792,
-      "tok_in": 114879679,
-      "tok_out": 781233,
-      "cost_usdc": "0.044423",
-      "last_ts": "2026-09-12T07:13:19.596Z",
-      "hit_ask_ratio": 0.1024,
+      "eff_per_mtok": 0.000442419,
+      "cache_pct": 87.2,
+      "reqs": 9163,
+      "tok_in": 657722007,
+      "tok_out": 2662727,
+      "cost_usdc": "0.292167",
+      "last_ts": "2026-09-12T07:25:11.858000+00:00",
+      "hit_ask_ratio": 0.1013,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.0004,
-      "marginal_reqs": 1792,
+      "marginal_per_mtok": 0.000383062,
+      "marginal_reqs": 1863,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": true,
       "probe_only": false
     },
-    "cb/deepseek-v4.1-flash": {
-      "ask_in": 0.00015,
-      "ask_out": 0.0006,
-      "eff_per_mtok": 0.0004,
-      "cache_pct": 85.1,
-      "reqs": 525,
-      "tok_in": 40460837,
-      "tok_out": 837461,
-      "cost_usdc": "0.014579",
-      "last_ts": "2026-09-11T23:30:37.368Z",
-      "hit_ask_ratio": 0.7456,
+    "cmc/z-ai/glm-5.3-flash": {
+      "ask_in": 0.006,
+      "ask_out": 0.02,
+      "eff_per_mtok": 0.00631136,
+      "cache_pct": 0.0,
+      "reqs": 5,
+      "tok_in": 23317,
+      "tok_out": 925,
+      "cost_usdc": "0.000153",
+      "last_ts": "2026-09-11T07:22:05.332000+00:00",
+      "hit_ask_ratio": null,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.0004,
-      "marginal_reqs": 525,
+      "candidate": true
+    },
+    "cb/gpt-5.6-luna": {
+      "ask_in": 0.002,
+      "ask_out": 0.012,
+      "eff_per_mtok": 0.000559437,
+      "cache_pct": 82.9,
+      "reqs": 634,
+      "tok_in": 43452675,
+      "tok_out": 155488,
+      "cost_usdc": "0.024396",
+      "last_ts": "2026-09-11T20:08:13.110000+00:00",
+      "hit_ask_ratio": 0.1002,
+      "source": "usage-logs",
+      "marginal_per_mtok": 0.0246973,
+      "marginal_reqs": 8,
       "marginal_since": "2026-09-11T07:26:11+00:00",
-      "marginal_ts_truncated": true,
+      "marginal_ts_truncated": false,
+      "probe_only": false
+    },
+    "cb/glm-5.3": {
+      "ask_in": 0.014,
+      "ask_out": 0.044,
+      "eff_per_mtok": 0.0139295,
+      "cache_pct": 48.2,
+      "reqs": 30,
+      "tok_in": 31495,
+      "tok_out": 308,
+      "cost_usdc": "0.000443",
+      "last_ts": "2026-09-11T10:30:24.536000+00:00",
+      "hit_ask_ratio": 0.4632,
+      "source": "usage-logs",
+      "marginal_per_mtok": 0.0117383,
+      "marginal_reqs": 3,
+      "marginal_since": "2026-09-11T07:26:11+00:00",
+      "marginal_ts_truncated": false,
+      "probe_only": false
+    },
+    "cbcn/deepseek-v4-flash": {
+      "ask_in": 0.0033,
+      "ask_out": 0.0099,
+      "eff_per_mtok": 0.00962188,
+      "cache_pct": 41.3,
+      "reqs": 22,
+      "tok_in": 23840,
+      "tok_out": 1311,
+      "cost_usdc": "0.000242",
+      "last_ts": "2026-09-12T09:55:53.679000+00:00",
+      "hit_ask_ratio": 3.0349,
+      "source": "usage-logs",
+      "marginal_per_mtok": 0.00833247,
+      "marginal_reqs": 8,
+      "marginal_since": "2026-09-11T07:26:11+00:00",
+      "marginal_ts_truncated": false,
       "probe_only": false
     },
     "cbcn/glm-5.3-flash": {
-      "ask_in": 0.00225,
-      "ask_out": 0.0075,
-      "eff_per_mtok": 0.0127,
-      "cache_pct": 0.0,
-      "reqs": 5,
-      "tok_in": 216,
-      "tok_out": 3708,
-      "cost_usdc": "0.000050",
-      "last_ts": "2026-09-12T00:47:12.352Z",
-      "hit_ask_ratio": null,
+      "ask_in": 0.00375,
+      "ask_out": 0.0125,
+      "eff_per_mtok": 0.000727951,
+      "cache_pct": 92.4,
+      "reqs": 29676,
+      "tok_in": 2089898213,
+      "tok_out": 9104625,
+      "cost_usdc": "1.527971",
+      "last_ts": "2026-09-12T00:47:12.352000+00:00",
+      "hit_ask_ratio": 0.1,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.0127,
+      "marginal_per_mtok": 0.0127421,
       "marginal_reqs": 5,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": false,
       "probe_only": false
     },
-    "cb/gpt-5.6-luna": {
-      "ask_in": 0.0078,
-      "ask_out": 0.0468,
-      "eff_per_mtok": 0.0473,
+    "cb/gpt-5.6-sol": {
+      "ask_in": 0.045,
+      "ask_out": 0.27,
+      "eff_per_mtok": 0.0350732,
+      "cache_pct": 43.2,
+      "reqs": 18,
+      "tok_in": 40836,
+      "tok_out": 1333,
+      "cost_usdc": "0.001479",
+      "last_ts": "2026-09-07T09:08:26.096000+00:00",
+      "hit_ask_ratio": 0.1502,
+      "source": "usage-logs"
+    },
+    "cb/gpt-5.6-terra": {
+      "ask_in": 0.028,
+      "ask_out": 0.168,
+      "eff_per_mtok": 0.021303,
+      "cache_pct": 43.2,
+      "reqs": 18,
+      "tok_in": 40836,
+      "tok_out": 1130,
+      "cost_usdc": "0.000894",
+      "last_ts": "2026-09-07T09:08:32.762000+00:00",
+      "hit_ask_ratio": 0.1526,
+      "source": "usage-logs"
+    },
+    "cb/kimi-k3": {
+      "ask_in": 0.027,
+      "ask_out": 0.135,
+      "eff_per_mtok": 0.0200012,
+      "cache_pct": 55.9,
+      "reqs": 15,
+      "tok_in": 49437,
+      "tok_out": 2560,
+      "cost_usdc": "0.001040",
+      "last_ts": "2026-09-05T17:35:48.560000+00:00",
+      "hit_ask_ratio": 0.1077,
+      "source": "usage-logs"
+    },
+    "cp/zai/glm-5.3-flash": {
+      "ask_in": 0.02775,
+      "ask_out": 0.0925,
+      "eff_per_mtok": 0.0259046,
+      "cache_pct": 1.6,
+      "reqs": 24,
+      "tok_in": 48378,
+      "tok_out": 841,
+      "cost_usdc": "0.001275",
+      "last_ts": "2026-09-08T09:10:20.464000+00:00",
+      "hit_ask_ratio": null,
+      "source": "usage-logs"
+    },
+    "ocg/glm-5.3-flash": {
+      "ask_in": null,
+      "ask_out": null,
+      "eff_per_mtok": null,
+      "cache_pct": null,
+      "reqs": 1,
+      "tok_in": 0,
+      "tok_out": 0,
+      "cost_usdc": "0.000000",
+      "last_ts": "2026-09-09T07:26:56.591000+00:00",
+      "hit_ask_ratio": null,
+      "source": "usage-logs"
+    },
+    "cbcn/deepseek-v4-pro": {
+      "ask_in": 0.0099,
+      "ask_out": 0.0297,
+      "eff_per_mtok": 0.0131226,
+      "cache_pct": 37.3,
+      "reqs": 10,
+      "tok_in": 10294,
+      "tok_out": 527,
+      "cost_usdc": "0.000142",
+      "last_ts": "2026-09-12T09:56:05.677000+00:00",
+      "hit_ask_ratio": 1.3306,
+      "source": "usage-logs",
+      "marginal_per_mtok": 0.0114068,
+      "marginal_reqs": 7,
+      "marginal_since": "2026-09-11T07:26:11+00:00",
+      "marginal_ts_truncated": false,
+      "probe_only": false
+    },
+    "cmc/xai/grok-4.6": {
+      "ask_in": 0.458,
+      "ask_out": 1.374,
+      "eff_per_mtok": 0.607678,
       "cache_pct": 0.0,
-      "reqs": 4,
-      "tok_in": 147,
-      "tok_out": 2285,
-      "cost_usdc": "0.000115",
-      "last_ts": "2026-09-11T20:08:13.110Z",
+      "reqs": 15,
+      "tok_in": 19809,
+      "tok_out": 1890,
+      "cost_usdc": "0.013186",
+      "last_ts": "2026-09-12T09:57:05.698000+00:00",
       "hit_ask_ratio": null,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.0473,
-      "marginal_reqs": 4,
+      "marginal_per_mtok": 0.539639,
+      "marginal_reqs": 10,
+      "marginal_since": "2026-09-11T07:26:11+00:00",
+      "marginal_ts_truncated": false,
+      "probe_only": false
+    },
+    "cb/deepseek-v4.1-flash": {
+      "ask_in": 0.00015,
+      "ask_out": 0.0006,
+      "eff_per_mtok": 0.000432649,
+      "cache_pct": 90.2,
+      "reqs": 16307,
+      "tok_in": 1376838097,
+      "tok_out": 17559950,
+      "cost_usdc": "0.603285",
+      "last_ts": "2026-09-12T11:23:53.001000+00:00",
+      "hit_ask_ratio": 0.4996,
+      "source": "usage-logs",
+      "marginal_per_mtok": 0.000432649,
+      "marginal_reqs": 16307,
+      "marginal_since": "2026-09-11T07:26:11+00:00",
+      "marginal_ts_truncated": true,
+      "probe_only": false
+    },
+    "zai/glm-5.3": {
+      "ask_in": 0.1204,
+      "ask_out": 0.3784,
+      "eff_per_mtok": 0.0797916,
+      "cache_pct": 32.5,
+      "reqs": 5,
+      "tok_in": 6105,
+      "tok_out": 36,
+      "cost_usdc": "0.000490",
+      "last_ts": "2026-09-12T09:56:32.911000+00:00",
+      "hit_ask_ratio": null,
+      "source": "usage-logs",
+      "marginal_per_mtok": 0.0797916,
+      "marginal_reqs": 5,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": false,
       "probe_only": false
@@ -413,16 +747,16 @@
     "cbcn/deepseek-v4.1-flash": {
       "ask_in": 0.00015,
       "ask_out": 0.0006,
-      "eff_per_mtok": 0.0093,
+      "eff_per_mtok": 0.00932836,
       "cache_pct": 0.0,
       "reqs": 1,
       "tok_in": 72,
       "tok_out": 1000,
       "cost_usdc": "0.000010",
-      "last_ts": "2026-09-12T05:24:36.520Z",
+      "last_ts": "2026-09-12T05:24:36.520000+00:00",
       "hit_ask_ratio": null,
       "source": "usage-logs",
-      "marginal_per_mtok": 0.0093,
+      "marginal_per_mtok": 0.00932836,
       "marginal_reqs": 1,
       "marginal_since": "2026-09-11T07:26:11+00:00",
       "marginal_ts_truncated": false,
