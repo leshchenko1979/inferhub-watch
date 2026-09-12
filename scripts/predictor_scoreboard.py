@@ -50,7 +50,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from probe import basis, official_compare, pricing  # noqa: E402
+from probe import basis, official_compare, pricing, value  # noqa: E402
 from probe.registry import aa_slug  # noqa: E402
 
 INTELLIGENCE = ROOT_DIR / "data" / "intelligence.json"
@@ -96,24 +96,22 @@ def _iq_asof(payload: dict, route: str, models: dict, fallback: bool) -> float |
 
 
 def _fleet_tps_ref(payload: dict) -> float:
-    prior = official_compare.fleet_tps_prior(payload)
-    return float(prior) if prior else 50.0
+    """Thin alias — the formula's single owner is `probe.value`."""
+    return value.fleet_tps_ref(payload)
 
 
 def _tps_of(payload: dict, route: str, ref: float) -> float:
-    stats = ((payload.get("perf") or {}).get("models") or {}).get(route) or {}
-    tps = stats.get("tps_mean")
-    n = stats.get("tps_samples") or 0
-    if tps is not None and n >= 5 and 1.0 <= float(tps) <= 500.0:
-        return float(tps)
-    return ref
+    """Thin alias — kept by name because tests call it directly."""
+    return value.tps_of(payload, route, ref)
 
 
 def value_of(iq: float | None, eff: float | None, tps: float, ref: float) -> float | None:
-    """Value = (IQ / eff) * (tps / ref) ** 0.5 - the switcher's own metric."""
-    if not eff or eff <= 0 or not iq or iq <= 0:
-        return None
-    return (iq / eff) * ((tps or ref) / ref) ** 0.5
+    """Value = (IQ / eff) * (tps / ref) ** 0.5 — the North Star metric.
+
+    Delegates to `probe.value`, the single owner of the formula; the name is
+    retained for this module's call sites and tests.
+    """
+    return value.value_of(iq, eff, tps, ref)
 
 
 def _comparables(older: dict, real_map: dict, hist: list) -> list[tuple[str, float, float]]:

@@ -24,6 +24,19 @@ on the realized "30d" figure. The board's caption carries the live gate
 state (transitions crowned within the tolerance of the cheapest realized
 route) on every sweep.
 
+**Value** is the North Star metric: `(IQ / effective $/M) × sqrt(tps /
+fleet reference)`, the TPS-adjusted realized ask a route delivers. It is
+a labelled **view**, not the board's sort — the board stays cost-first
+because it is the cost-transparency surface, and the projection gate
+certifies that ordering. A route's Value and its rank therefore need not
+agree: a cheap route with slow production speed can sit high on the board
+and low on Value. The switcher's crown maximizes Value, so a route can be
+board-first and still not be the active fleet winner. A dash means the
+route has no IQ or no positive effective $/M — a gap, not a zero. When a
+route has fewer than 5 production speed samples it is normalized against
+the fleet reference, which makes the TPS weight 1.0 and leaves Value
+governed by IQ per $ alone; the cell's tooltip says when that happened.
+
 "Show plumbing" folds each route's ask movement (the color key sits
 under the table), ask source, ask history, cache hit, failures, window
 traffic and cost, ttft p50 and tps mean (main-traffic speed, newest

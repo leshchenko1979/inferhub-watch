@@ -15,7 +15,7 @@ import rundata
 from chrome import _viz_cell, docs_href, section_title
 from spend import DELTA_TIP, _ask_spark, ask_delta_bits, spend_block
 
-from probe import basis, official_compare, pricing
+from probe import basis, official_compare, pricing, value
 from probe.registry import repo_root
 
 ROOT = repo_root()
@@ -209,6 +209,61 @@ def _marginal_cell(row: dict, runs: list[dict]) -> tuple[str, str] | None:
         f'<span data-tip="{marg_tip}">{marg_label}</span>',
     )
 
+def _iq_raw(route: str, intel: dict | None) -> float | None:
+    """The route's raw IQ, or None when unmapped / no snapshot.
+
+    Separate from `_iq_value`, which returns FORMATTED labels — Value needs
+    the number, not the rendering, and parsing it back out of a label that
+    may be an em-dash is a bug waiting to happen."""
+    if not intel:
+        return None
+    slug = rundata.aa_slug(route)
+    entry = (intel.get("models") or {}).get(slug) if slug else None
+    iq = entry.get("iq") if entry else None
+    try:
+        return float(iq) if iq is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _value_cell(iq: float | None, route: str, eff: float | None,
+                payload: dict, ref: float) -> str:
+    """The board's **Value** column — the North Star metric, read-only.
+
+    Value = (IQ / eff) * (tps / ref) ** 0.50, over the board's OWN ranking
+    basis and the route's production tps. Owner ruling (D2, 2026-09-12): the
+    board's sort stays cost-first — this column is a LABELED VIEW, never a
+    re-ranking. It exists so the North Star metric is visible beside the cost
+    the board ranks on, and so the divergence between them is legible instead
+    of implied.
+
+    A route with no IQ or no positive eff renders a dash rather than a
+    bottom-of-the-table 0.0 — an unscored route is a gap, not a loser.
+    """
+    tps = value.tps_of(payload, route, ref)
+    v = value.value_of(iq, eff, tps, ref)
+    if v is None:
+        return ('<td class="num" data-label="Value" data-tip="North Star metric: '
+                'the TPS-adjusted realized ask. Not scored for this route &#8212; '
+                'no IQ or no positive effective $/M.">&#8212;</td>')
+    stats = ((payload.get("perf") or {}).get("models") or {}).get(route) or {}
+    n = stats.get("tps_samples") or 0
+    tps_note = (
+        f"production tps {tps:.1f} over {n} samples"
+        if n >= 5 else
+        f"tps below the 5-sample evidence bar &#8212; normalized against the "
+        f"fleet reference {ref:.1f}, so the TPS weight is 1.0"
+    )
+    return (
+        '<td class="num" data-label="Value" '
+        f'data-tip="North Star metric: (IQ / effective $/M) &times; sqrt(tps / '
+        f'{ref:.1f}) &#8212; the TPS-adjusted realized ask. A LABELED VIEW, not '
+        f'the board&#8217;s sort: the board ranks on effective $/M (cost '
+        f'transparency), the switcher maximizes this. {tps_note}.">'
+        f"{v:,.1f}</td>"
+    )
+
+
 def _pricing_caption(span: str, use_proj: bool, gate: dict) -> str:
     """The board caption: one live line (gate state) + reading-guide link.
 
@@ -252,6 +307,11 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
     ]
     bar_lo = min(board_prices) if board_prices else 0.001
     bar_hi = max(board_prices) if board_prices else 10.0
+    # North Star metric (D2, owner 2026-09-12): the fleet TPS reference is
+    # computed ONCE for the whole board, so every route's Value is normalized
+    # against the same prior — a per-row reference would make the column
+    # incomparable with itself.
+    tps_ref = value.fleet_tps_ref(payload)
     body_rows = []
     for row in rows:
         logged = row.get("source") == "usage-logs"
@@ -381,6 +441,8 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
             'data-tip="Intelligence (Artificial Analysis index) divided by the '
             'route&#8217;s ranking $/M &#8212; higher is smarter per dollar.">'
             f"{iq[1] if iq else '&#8212;'}</td>"
+            + _value_cell(_iq_raw(str(row["route"]), intel), str(row["route"]),
+                          ranking_basis, payload, tps_ref)
             + chip
             + "</tr>"
             + plumb_cells_row
