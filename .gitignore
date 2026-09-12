@@ -12,3 +12,4 @@ site/dist/
 .ruff_cache/
 data/switcher_state.json
 data/qual_runs.json
+data/scoreboard.json
