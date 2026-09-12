@@ -40,7 +40,10 @@
       "tok_out": 13527,
       "cost_usdc": "0.007219",
       "last_ts": "2026-08-28T21:20:32.355Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cp/cline-pass/deepseek-v4-pro": {
       "ask_in": 0.06534,
@@ -52,7 +55,10 @@
       "tok_out": 466722,
       "cost_usdc": "4.839531",
       "last_ts": "2026-08-28T21:21:02.081Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/qwen3.8-max": {
       "ask_in": 0.014,
@@ -64,7 +70,10 @@
       "tok_out": 3852556,
       "cost_usdc": "1.458094",
       "last_ts": "2026-08-28T21:21:44.233Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "zai/glm-5.3-flash": {
       "ask_in": 0.03,
@@ -76,7 +85,10 @@
       "tok_out": 183,
       "cost_usdc": "0.000285",
       "last_ts": "2026-08-28T21:21:14.355Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cmc/deepseek/deepseek-v4-pro": {
       "ask_in": 0.09834,
@@ -88,7 +100,10 @@
       "tok_out": 2966,
       "cost_usdc": "0.005929",
       "last_ts": "2026-08-28T21:21:19.890Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ocg/deepseek-v4-flash": {
       "ask_in": 0.00484,
@@ -101,7 +116,10 @@
       "cost_usdc": "0.041145",
       "last_ts": "2026-08-28T21:21:42.505Z",
       "source": "usage-logs",
-      "candidate": true
+      "candidate": true,
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/deepseek-v4-pro-0813": {
       "ask_in": 0.04884,
@@ -114,7 +132,10 @@
       "cost_usdc": "0.002779",
       "last_ts": "2026-08-28T21:21:44.558Z",
       "source": "usage-logs",
-      "candidate": true
+      "candidate": true,
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cbcn/glm-5.3-flash": {
       "ask_in": 0.00705,
@@ -127,7 +148,10 @@
       "cost_usdc": "0.000053",
       "last_ts": "2026-08-28T21:21:51.054Z",
       "source": "usage-logs",
-      "candidate": true
+      "candidate": true,
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     }
   }
 }

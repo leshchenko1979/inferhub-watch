@@ -32,7 +32,14 @@ from statistics import mean, median
 
 from probe import floor
 from probe.costs import MANAGEMENT, PAGE_SIZE, USER_AGENT, fetch_log_rows
-from probe.registry import atomic_write_text, load_aliases, repo_root
+from probe.registry import (
+    aa_slug,
+    atomic_write_text,
+    intelligence_models,
+    load_aliases,
+    repo_root,
+)
+
 
 CATALOG_TIMEOUT = 30
 RANGE = "30d"
@@ -707,6 +714,15 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
     marginal = marginal_stats(rows, cutoff)
     cand = set(candidates or [])
     probe_windows = _probe_windows_from_runs(repo_root())
+    perf = perf_stats(rows)
+    # D3 (owner 2026-09-12): the snapshot carries the two inputs a historical
+    # North Star / Value backtest needs, because neither is recoverable later
+    # — data/intelligence.json is OVERWRITTEN each sweep (so today's IQ is not
+    # the IQ a past day saw) and `perf` is only as good as the window the
+    # build fetched. Stamping them at build time is the only way a Value
+    # crown can ever be reconstructed from history.
+    intel = intelligence_models()
+    perf_models = perf.get("models") or {}
 
     from probe.official_compare import cache_rule_stats
 
@@ -733,6 +749,16 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
                 m["ts"], m["reqs"], entry["marginal_ts_truncated"],
                 probe_windows, alias,
             )
+        # D3: the North Star / Value inputs, stamped at build time so a past
+        # day's crown can be reconstructed. `iq` is the value intelligence.json
+        # carried THAT day (None when the route has no AA slug — never guessed);
+        # tps_* is this build's own perf window for the route (None when the
+        # route had no valid streaming sample).
+        slug = aa_slug(alias)
+        entry["iq"] = (intel.get(slug) or {}).get("iq") if slug else None
+        ps = perf_models.get(alias) or {}
+        entry["tps_mean"] = ps.get("tps_mean")
+        entry["tps_samples"] = ps.get("tps_samples")
         return entry
 
     # Owner 2026-09-08: every model with billed usage stays in the snapshot.
@@ -757,7 +783,7 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
         "window": window,
         "days": daily_series(days_rows),
         "failures": failure_stats(rows),
-        "perf": perf_stats(rows),
+        "perf": perf,
         "routes": {
             alias: _entry(alias) for alias in [*aliases, *cand, *usage_routes]
         },

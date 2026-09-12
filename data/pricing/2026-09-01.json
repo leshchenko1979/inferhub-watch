@@ -158,7 +158,10 @@
       "cost_usdc": "0.001830",
       "last_ts": "2026-09-01T20:07:01.821Z",
       "hit_ask_ratio": 1.3161,
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": 51.8,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/deepseek-v4-pro-0813": {
       "ask_in": 0.0132,
@@ -171,7 +174,10 @@
       "cost_usdc": "0.006878",
       "last_ts": "2026-09-01T20:07:06.732Z",
       "hit_ask_ratio": 0.1003,
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": 53.2,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/qwen3.8-max": {
       "ask_in": 0.04,
@@ -184,7 +190,10 @@
       "cost_usdc": "19.626750",
       "last_ts": "2026-09-01T20:07:10.505Z",
       "hit_ask_ratio": 0.1,
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": 58.1,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/kimi-k3": {
       "ask_in": 0.06,
@@ -197,7 +206,10 @@
       "cost_usdc": "0.000700",
       "last_ts": "2026-09-01T20:07:17.143Z",
       "hit_ask_ratio": null,
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": 59.7,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "zai/glm-5.3-flash": {
       "ask_in": 0.0672,
@@ -210,7 +222,10 @@
       "cost_usdc": "5.126233",
       "last_ts": "2026-09-01T20:10:59.763Z",
       "hit_ask_ratio": 0.1,
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": 57.5,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-terra": {
       "ask_in": 0.032,
@@ -223,7 +238,10 @@
       "cost_usdc": "0.000234",
       "last_ts": "2026-09-01T20:08:42.197Z",
       "hit_ask_ratio": null,
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": 56.6,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-sol": {
       "ask_in": 0.085,
@@ -236,7 +254,10 @@
       "cost_usdc": "0.000545",
       "last_ts": "2026-09-01T20:09:04.397Z",
       "hit_ask_ratio": null,
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": 60.9,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-luna": {
       "ask_in": 0.0034,
@@ -249,7 +270,10 @@
       "cost_usdc": "0.000190",
       "last_ts": "2026-09-01T20:11:00.659Z",
       "hit_ask_ratio": null,
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": 52.3,
+      "tps_mean": null,
+      "tps_samples": null
     }
   }
 }

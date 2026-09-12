@@ -40,7 +40,10 @@
       "tok_out": 35105,
       "cost_usdc": "0.039363",
       "last_ts": "2026-08-27T22:56:48.374Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cp/cline-pass/deepseek-v4-pro": {
       "ask_in": 0.32934,
@@ -52,7 +55,10 @@
       "tok_out": 487185,
       "cost_usdc": "5.033813",
       "last_ts": "2026-08-27T22:57:11.915Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/qwen3.8-max": {
       "ask_in": 0.014,
@@ -64,7 +70,10 @@
       "tok_out": 464744,
       "cost_usdc": "0.168351",
       "last_ts": "2026-08-27T23:30:33.202Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "zai/glm-5.3": {
       "ask_in": 0.14,
@@ -76,7 +85,10 @@
       "tok_out": 2049,
       "cost_usdc": "0.002627",
       "last_ts": "2026-08-27T22:57:58.299Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cmc/deepseek/deepseek-v4-pro": {
       "ask_in": 0.09834,
@@ -88,7 +100,10 @@
       "tok_out": 1637,
       "cost_usdc": "0.001858",
       "last_ts": "2026-08-27T22:58:22.387Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ocg/deepseek-v4-pro": {
       "ask_in": 0.22968,
@@ -101,7 +116,10 @@
       "cost_usdc": "0.002424",
       "last_ts": "2026-08-27T22:58:53.922Z",
       "source": "usage-logs",
-      "candidate": true
+      "candidate": true,
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cbcn/deepseek-v4-pro": {
       "ask_in": 0.02178,
@@ -114,7 +132,10 @@
       "cost_usdc": "0.051604",
       "last_ts": "2026-08-27T22:59:21.961Z",
       "source": "usage-logs",
-      "candidate": true
+      "candidate": true,
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-luna": {
       "ask_in": 0.0014,
@@ -127,7 +148,10 @@
       "cost_usdc": "0.000845",
       "last_ts": "2026-08-27T22:59:44.471Z",
       "source": "usage-logs",
-      "candidate": true
+      "candidate": true,
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cb/gpt-5.6-luna": {
       "ask_in": 0.0056,
@@ -140,7 +164,10 @@
       "cost_usdc": "0.002998",
       "last_ts": "2026-08-27T22:59:59.447Z",
       "source": "usage-logs",
-      "candidate": true
+      "candidate": true,
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cp/cline-pass/qwen3.8-max": {
       "ask_in": 0.998,
@@ -153,7 +180,10 @@
       "cost_usdc": "0.569039",
       "last_ts": "2026-08-27T23:00:20.295Z",
       "source": "usage-logs",
-      "candidate": true
+      "candidate": true,
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cmc/deepseek-v4-flash": {
       "ask_in": null,
@@ -166,7 +196,10 @@
       "cost_usdc": null,
       "last_ts": null,
       "source": "none",
-      "candidate": true
+      "candidate": true,
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cbcn/deepseek-v4-flash": {
       "ask_in": 0.0033,
@@ -179,7 +212,10 @@
       "cost_usdc": "0.108413",
       "last_ts": "2026-08-27T23:00:38.919Z",
       "source": "usage-logs",
-      "candidate": true
+      "candidate": true,
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cb/glm-5.3": {
       "ask_in": 0.0392,
@@ -192,7 +228,10 @@
       "cost_usdc": "0.001017",
       "last_ts": "2026-08-27T23:00:58.052Z",
       "source": "usage-logs",
-      "candidate": true
+      "candidate": true,
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     }
   }
 }

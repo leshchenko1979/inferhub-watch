@@ -137,7 +137,10 @@
       "source": "usage-logs",
       "marginal_per_mtok": 0.0214,
       "marginal_reqs": 8,
-      "marginal_since": "2026-09-02T10:48:35+00:00"
+      "marginal_since": "2026-09-02T10:48:35+00:00",
+      "iq": 51.8,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/deepseek-v4-pro-0813": {
       "ask_in": 0.033,
@@ -153,7 +156,10 @@
       "source": "usage-logs",
       "marginal_per_mtok": 0.0091,
       "marginal_reqs": 7,
-      "marginal_since": "2026-09-02T10:48:35+00:00"
+      "marginal_since": "2026-09-02T10:48:35+00:00",
+      "iq": 53.2,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/qwen3.8-max": {
       "ask_in": 0.16,
@@ -169,7 +175,10 @@
       "source": "usage-logs",
       "marginal_per_mtok": 0.0061,
       "marginal_reqs": 95,
-      "marginal_since": "2026-09-02T10:48:35+00:00"
+      "marginal_since": "2026-09-02T10:48:35+00:00",
+      "iq": 58.1,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/kimi-k3": {
       "ask_in": 0.045,
@@ -185,7 +194,10 @@
       "source": "usage-logs",
       "marginal_per_mtok": 0.0239,
       "marginal_reqs": 2,
-      "marginal_since": "2026-09-02T10:48:35+00:00"
+      "marginal_since": "2026-09-02T10:48:35+00:00",
+      "iq": 59.7,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "zai/glm-5.3-flash": {
       "ask_in": 0.0672,
@@ -201,7 +213,10 @@
       "source": "usage-logs",
       "marginal_per_mtok": 0.0111,
       "marginal_reqs": 1707,
-      "marginal_since": "2026-09-02T10:48:35+00:00"
+      "marginal_since": "2026-09-02T10:48:35+00:00",
+      "iq": 57.5,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-terra": {
       "ask_in": 0.033,
@@ -217,7 +232,10 @@
       "source": "usage-logs",
       "marginal_per_mtok": 0.0451,
       "marginal_reqs": 2,
-      "marginal_since": "2026-09-02T10:48:35+00:00"
+      "marginal_since": "2026-09-02T10:48:35+00:00",
+      "iq": 56.6,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-sol": {
       "ask_in": 0.085,
@@ -233,7 +251,10 @@
       "source": "usage-logs",
       "marginal_per_mtok": 0.0373,
       "marginal_reqs": 2,
-      "marginal_since": "2026-09-02T10:48:35+00:00"
+      "marginal_since": "2026-09-02T10:48:35+00:00",
+      "iq": 60.9,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-luna": {
       "ask_in": 0.0038,
@@ -249,7 +270,10 @@
       "source": "usage-logs",
       "marginal_per_mtok": 0.0082,
       "marginal_reqs": 7,
-      "marginal_since": "2026-09-02T10:48:35+00:00"
+      "marginal_since": "2026-09-02T10:48:35+00:00",
+      "iq": 52.3,
+      "tps_mean": null,
+      "tps_samples": null
     }
   }
 }

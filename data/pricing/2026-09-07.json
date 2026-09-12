@@ -212,7 +212,10 @@
       "marginal_reqs": 11,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 40.8,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/deepseek-v4-pro-0813": {
       "ask_in": 0.00594,
@@ -230,7 +233,10 @@
       "marginal_reqs": 11,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 42.1,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/qwen3.8-max": {
       "ask_in": 0.016,
@@ -248,7 +254,10 @@
       "marginal_reqs": 486,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": true,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 46.9,
+      "tps_mean": 42.7,
+      "tps_samples": 38
     },
     "ali/kimi-k3": {
       "ask_in": 0.024,
@@ -266,7 +275,10 @@
       "marginal_reqs": 6,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": true,
+      "iq": 50.2,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "zai/glm-5.3-flash": {
       "ask_in": 0.0672,
@@ -284,7 +296,10 @@
       "marginal_reqs": 568,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": true,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 46.2,
+      "tps_mean": 52.1,
+      "tps_samples": 322
     },
     "cx/gpt-5.6-terra": {
       "ask_in": 0.034,
@@ -302,7 +317,10 @@
       "marginal_reqs": 5,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": true,
+      "iq": 46.8,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-sol": {
       "ask_in": 0.085,
@@ -320,7 +338,10 @@
       "marginal_reqs": 5,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": true,
+      "iq": 51.3,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-luna": {
       "ask_in": 0.0038,
@@ -338,7 +359,10 @@
       "marginal_reqs": 11,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 43.4,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cbcn/glm-5.3-flash": {
       "ask_in": 0.00495,
@@ -357,7 +381,10 @@
       "marginal_reqs": 10573,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": true,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 46.2,
+      "tps_mean": 44.7,
+      "tps_samples": 5924
     },
     "cp/zai/glm-5.3-flash": {
       "ask_in": 0.0075,
@@ -376,7 +403,10 @@
       "marginal_reqs": 4,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 46.2,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cb/gpt-5.6-luna": {
       "ask_in": 0.002,
@@ -395,7 +425,10 @@
       "marginal_reqs": 4,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 43.4,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cb/gpt-5.6-sol": {
       "ask_in": 0.04,
@@ -414,7 +447,10 @@
       "marginal_reqs": 4,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 51.3,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cb/gpt-5.6-terra": {
       "ask_in": 0.02,
@@ -433,7 +469,10 @@
       "marginal_reqs": 4,
       "marginal_since": "2026-09-06T17:59:49+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 46.8,
+      "tps_mean": 15.8,
+      "tps_samples": 1
     }
   }
 }

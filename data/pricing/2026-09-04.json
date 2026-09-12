@@ -133,7 +133,10 @@
         "2026-09-04T10:40:56.867Z",
         "2026-09-04T10:40:55.488Z"
       ],
-      "marginal_ts_truncated": false
+      "marginal_ts_truncated": false,
+      "iq": 51.8,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/deepseek-v4-pro-0813": {
       "ask_in": 0.0066,
@@ -161,7 +164,10 @@
         "2026-09-04T10:21:26.800Z",
         "2026-09-04T10:21:25.393Z"
       ],
-      "marginal_ts_truncated": false
+      "marginal_ts_truncated": false,
+      "iq": 53.2,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/qwen3.8-max": {
       "ask_in": 0.16,
@@ -365,7 +371,10 @@
         "2026-09-03T19:24:05.717Z",
         "2026-09-03T19:22:54.278Z"
       ],
-      "marginal_ts_truncated": false
+      "marginal_ts_truncated": false,
+      "iq": 58.1,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/kimi-k3": {
       "ask_in": 0.03,
@@ -388,7 +397,10 @@
         "2026-09-04T10:41:10.234Z",
         "2026-09-04T10:41:06.305Z"
       ],
-      "marginal_ts_truncated": false
+      "marginal_ts_truncated": false,
+      "iq": 59.7,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "zai/glm-5.3-flash": {
       "ask_in": 0.0672,
@@ -807,7 +819,10 @@
         "2026-09-04T15:59:01.798Z",
         "2026-09-04T15:58:42.126Z"
       ],
-      "marginal_ts_truncated": true
+      "marginal_ts_truncated": true,
+      "iq": 57.5,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-terra": {
       "ask_in": 0.033,
@@ -830,7 +845,10 @@
         "2026-09-04T10:41:26.894Z",
         "2026-09-04T10:41:23.702Z"
       ],
-      "marginal_ts_truncated": false
+      "marginal_ts_truncated": false,
+      "iq": 56.6,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-sol": {
       "ask_in": 0.085,
@@ -853,7 +871,10 @@
         "2026-09-04T10:41:31.875Z",
         "2026-09-04T10:41:29.379Z"
       ],
-      "marginal_ts_truncated": false
+      "marginal_ts_truncated": false,
+      "iq": 60.9,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-luna": {
       "ask_in": 0.0038,
@@ -881,7 +902,10 @@
         "2026-09-04T10:21:01.453Z",
         "2026-09-04T10:20:59.546Z"
       ],
-      "marginal_ts_truncated": false
+      "marginal_ts_truncated": false,
+      "iq": 52.3,
+      "tps_mean": null,
+      "tps_samples": null
     }
   }
 }

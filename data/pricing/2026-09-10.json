@@ -144,7 +144,10 @@
       "marginal_reqs": 2,
       "marginal_since": "2026-09-09T07:31:01+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": true,
+      "iq": 34.5,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/deepseek-v4-pro-0813": {
       "ask_in": 0.0594,
@@ -162,7 +165,10 @@
       "marginal_reqs": 2,
       "marginal_since": "2026-09-09T07:31:01+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": true,
+      "iq": 36.3,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/qwen3.8-max": {
       "ask_in": 0.02,
@@ -180,7 +186,10 @@
       "marginal_reqs": 2,
       "marginal_since": "2026-09-09T07:31:01+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": true,
+      "iq": 40.3,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/kimi-k3": {
       "ask_in": 0.03,
@@ -198,7 +207,10 @@
       "marginal_reqs": 2,
       "marginal_since": "2026-09-09T07:31:01+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": true,
+      "iq": 43.8,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "zai/glm-5.3-flash": {
       "ask_in": 0.012,
@@ -216,7 +228,10 @@
       "marginal_reqs": 2,
       "marginal_since": "2026-09-09T07:31:01+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": true,
+      "iq": 41.9,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-terra": {
       "ask_in": 0.02,
@@ -234,7 +249,10 @@
       "marginal_reqs": 2,
       "marginal_since": "2026-09-09T07:31:01+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": true,
+      "iq": 42.3,
+      "tps_mean": 25.2,
+      "tps_samples": 1
     },
     "cx/gpt-5.6-sol": {
       "ask_in": 0.195,
@@ -252,7 +270,10 @@
       "marginal_reqs": 2,
       "marginal_since": "2026-09-09T07:31:01+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": true,
+      "iq": 47.1,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cx/gpt-5.6-luna": {
       "ask_in": 0.002,
@@ -270,7 +291,10 @@
       "marginal_reqs": 2,
       "marginal_since": "2026-09-09T07:31:01+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": true
+      "probe_only": true,
+      "iq": 37.5,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cmc/z-ai/glm-5.3-flash": {
       "ask_in": 0.0075,
@@ -289,7 +313,10 @@
       "marginal_reqs": 2,
       "marginal_since": "2026-09-09T07:31:01+00:00",
       "marginal_ts_truncated": false,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 41.9,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "cbcn/glm-5.3-flash": {
       "ask_in": 0.0036,
@@ -307,7 +334,10 @@
       "marginal_reqs": 11982,
       "marginal_since": "2026-09-09T07:31:01+00:00",
       "marginal_ts_truncated": true,
-      "probe_only": false
+      "probe_only": false,
+      "iq": 41.9,
+      "tps_mean": 47.1,
+      "tps_samples": 6242
     }
   }
 }

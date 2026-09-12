@@ -45,7 +45,10 @@
       "tok_out": 13899,
       "cost_usdc": "0.008340",
       "last_ts": "2026-08-30T20:48:06.367Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/deepseek-v4-pro-0813": {
       "ask_in": 0.033,
@@ -57,7 +60,10 @@
       "tok_out": 1818,
       "cost_usdc": "0.007939",
       "last_ts": "2026-08-30T20:48:10.866Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "ali/qwen3.8-max": {
       "ask_in": 0.14,
@@ -69,7 +75,10 @@
       "tok_out": 10439079,
       "cost_usdc": "18.696416",
       "last_ts": "2026-08-30T20:48:14.986Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     },
     "zai/glm-5.3-flash": {
       "ask_in": 0.0672,
@@ -81,7 +90,10 @@
       "tok_out": 31091,
       "cost_usdc": "0.020812",
       "last_ts": "2026-08-30T20:48:29.109Z",
-      "source": "usage-logs"
+      "source": "usage-logs",
+      "iq": null,
+      "tps_mean": null,
+      "tps_samples": null
     }
   }
 }
