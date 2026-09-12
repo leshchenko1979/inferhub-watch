@@ -335,3 +335,56 @@ def window_rows(window_hours: int, exclude_probes: bool = True, conn=None) -> li
     """Convenience: rows from the last N hours."""
     since = datetime.now(timezone.utc) - __import__("datetime").timedelta(hours=window_hours)
     return rows_since(since, exclude_probes=exclude_probes, conn=conn)
+
+
+def load_route_metrics(conn=None) -> tuple[dict[str, dict], datetime | None]:
+    """Load cached route_metrics models and max(updated_at) from Postgres.
+
+    Returns:
+        (models_dict, max_updated_at)
+        where models_dict maps route -> {
+            "ask_in": float | None,
+            "ask_out": float | None,
+            "official_in": float | None,
+            "official_out": float | None,
+            "supports_cache": bool,
+            "iq": float | None,
+        }
+    """
+    own = conn is None
+    if own:
+        env = load_env()
+        if not env.get("PGPASSWORD"):
+            return {}, None
+        try:
+            conn = _connect(env)
+        except Exception:
+            return {}, None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                select route, ask_in, ask_out, official_in, official_out,
+                       supports_cache, iq, updated_at
+                from route_metrics
+            """)
+            rows = cur.fetchall()
+            if not rows:
+                return {}, None
+            models: dict[str, dict] = {}
+            max_updated: datetime | None = None
+            for r, ai, ao, oi, oo, sc, iq, up in rows:
+                models[r] = {
+                    "ask_in": float(ai) if ai is not None else None,
+                    "ask_out": float(ao) if ao is not None else None,
+                    "official_in": float(oi) if oi is not None else None,
+                    "official_out": float(oo) if oo is not None else None,
+                    "supports_cache": bool(sc),
+                    "iq": float(iq) if iq is not None else None,
+                }
+                if up is not None:
+                    if max_updated is None or up > max_updated:
+                        max_updated = up
+            return models, max_updated
+    finally:
+        if own and conn is not None:
+            conn.close()

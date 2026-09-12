@@ -1,8 +1,10 @@
 """Unit tests for the automated route switching pipeline (Issue #12)."""
 
+from datetime import datetime, timedelta, timezone
 import json
 import sqlite3
 from pathlib import Path
+from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -700,4 +702,82 @@ def test_threshold_switch_hurdle():
     sw_16, b_16, _, _ = find_best_route(sub_catalog_16, intel_slugs, aa_map, current_model="current/m1", threshold=0.15)
     assert sw_16 is True
     assert b_16.route == "better_16pct/m3"
+
+
+def test_auto_route_switch_fresh_route_metrics(tmp_path):
+    """Verify run_auto_route_switch prefers fresh (<1h) Postgres route_metrics over stale catalog.json."""
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    # Stale file with old price
+    (data_dir / "catalog.json").write_text(json.dumps({
+        "models": {
+            "current/m1": {"ask_in": 0.004, "ask_out": 0.02, "supports_tools": True},
+            "new/m2": {"ask_in": 0.010, "ask_out": 0.05, "supports_tools": True},
+        }
+    }))
+    (data_dir / "intelligence.json").write_text(json.dumps({
+        "models": {"m1": {"iq": 38.0}, "m2": {"iq": 40.0}}
+    }))
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text('[agent]\ndefault_model = "current/m1"\n')
+
+    # Mock postgres route_metrics with fresh timestamp (5m ago) and cheap price for new/m2
+    fresh_dt = datetime.now(timezone.utc) - timedelta(minutes=5)
+    db_models = {
+        "current/m1": {"ask_in": 0.004, "ask_out": 0.02, "supports_tools": True, "iq": 38.0},
+        "new/m2": {"ask_in": 0.0001, "ask_out": 0.0005, "supports_tools": True, "iq": 40.0},
+    }
+
+    with mock.patch("scripts.auto_route_switch.pgstore.load_route_metrics", return_value=(db_models, fresh_dt)):
+        res = run_auto_route_switch(
+            root_dir=tmp_path,
+            config_path=cfg_file,
+            db_paths=[],
+            dry_run=True,
+            notify=False,
+            use_db_catalog=True,
+        )
+        assert res["should_switch"] is True
+        assert res["best_model"] == "new/m2"
+        assert "postgres_route_metrics" in res["catalog_source"]
+
+
+def test_auto_route_switch_stale_route_metrics_fallback(tmp_path):
+    """Verify run_auto_route_switch ignores stale (>1h) Postgres route_metrics and falls back."""
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    # File with cheap price for new/m2
+    (data_dir / "catalog.json").write_text(json.dumps({
+        "models": {
+            "current/m1": {"ask_in": 0.004, "ask_out": 0.02, "supports_tools": True},
+            "new/m2": {"ask_in": 0.0001, "ask_out": 0.0005, "supports_tools": True},
+        }
+    }))
+    (data_dir / "intelligence.json").write_text(json.dumps({
+        "models": {"m1": {"iq": 38.0}, "m2": {"iq": 40.0}}
+    }))
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text('[agent]\ndefault_model = "current/m1"\n')
+
+    # Stale DB (2 hours ago) where new/m2 was expensive
+    stale_dt = datetime.now(timezone.utc) - timedelta(hours=2)
+    db_models = {
+        "current/m1": {"ask_in": 0.004, "ask_out": 0.02, "supports_tools": True, "iq": 38.0},
+        "new/m2": {"ask_in": 0.020, "ask_out": 0.10, "supports_tools": True, "iq": 40.0},
+    }
+
+    with mock.patch("scripts.auto_route_switch.pgstore.load_route_metrics", return_value=(db_models, stale_dt)):
+        res = run_auto_route_switch(
+            root_dir=tmp_path,
+            config_path=cfg_file,
+            db_paths=[],
+            dry_run=True,
+            notify=False,
+            use_db_catalog=True,
+        )
+        # Should ignore stale DB and use file catalog.json where new/m2 is cheap
+        assert res["should_switch"] is True
+        assert res["best_model"] == "new/m2"
+        assert res["catalog_source"] == "data/catalog.json"
+
 

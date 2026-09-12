@@ -178,6 +178,38 @@ class PublishTests(unittest.TestCase):
         cur = conn.cursor.return_value.__enter__.return_value
         self.assertIn("delete from route_basis",
                       cur.execute.call_args.args[0])
+
+
+class LoadRouteMetricsTests(unittest.TestCase):
+    def _conn(self) -> mock.Mock:
+        conn = mock.MagicMock()
+        conn.cursor.return_value.__enter__ = mock.Mock()
+        conn.cursor.return_value.__exit__ = mock.Mock(return_value=False)
+        return conn
+
+    def test_load_route_metrics_no_env(self) -> None:
+        with mock.patch.object(pgstore, "load_env", return_value={}):
+            models, max_updated = pgstore.load_route_metrics()
+            self.assertEqual(models, {})
+            self.assertIsNone(max_updated)
+
+    def test_load_route_metrics_success(self) -> None:
+        from datetime import datetime, timezone
+        conn = self._conn()
+        cur = conn.cursor.return_value.__enter__.return_value
+        dt = datetime(2026, 9, 12, 3, 0, 0, tzinfo=timezone.utc)
+        cur.fetchall.return_value = [
+            ("cb/model-a", "0.00015", "0.00060", "0.15", "0.60", True, "39.5", dt),
+            ("ag/model-b", None, None, "0.50", "1.50", False, None, dt),
+        ]
+        models, max_updated = pgstore.load_route_metrics(conn=conn)
+        self.assertEqual(len(models), 2)
+        self.assertEqual(models["cb/model-a"]["ask_in"], 0.00015)
+        self.assertEqual(models["cb/model-a"]["ask_out"], 0.0006)
+        self.assertTrue(models["cb/model-a"]["supports_cache"])
+        self.assertEqual(models["cb/model-a"]["iq"], 39.5)
+        self.assertIsNone(models["ag/model-b"]["ask_in"])
+        self.assertEqual(max_updated, dt)
         cur.executemany.assert_not_called()
 
     def test_route_basis_skips_rows_without_a_route(self) -> None:

@@ -22,6 +22,7 @@ Criteria:
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import logging
 import os
@@ -690,6 +691,7 @@ def run_auto_route_switch(
     floor_iq: float = IQ_FLOOR,
     threshold: float = SWITCH_THRESHOLD,
     catalog_models: dict[str, dict] | None = None,
+    use_db_catalog: bool = False,
 ) -> dict[str, Any]:
     """Main pipeline execution for auto route switching."""
     if db_paths is None:
@@ -699,11 +701,41 @@ def run_auto_route_switch(
     intel_path = root_dir / "data" / "intelligence.json"
     models_toml_path = root_dir / "models.toml"
 
+    catalog_source = "provided" if catalog_models is not None else "file"
+    if catalog_models is None and use_db_catalog:
+        # Check Postgres route_metrics first for fresh hourly catalog asks (< 1h)
+        try:
+            db_models, max_updated = pgstore.load_route_metrics()
+            if db_models and max_updated is not None:
+                now_utc = datetime.now(timezone.utc)
+                age_s = (now_utc - (max_updated if max_updated.tzinfo else max_updated.replace(tzinfo=timezone.utc))).total_seconds()
+                if age_s <= 3600.0:
+                    catalog_models = db_models
+                    catalog_source = f"postgres_route_metrics (age: {age_s/60:.1f}m)"
+                    logger.debug(f"Loaded {len(catalog_models)} fresh catalog models from Postgres route_metrics (age: {age_s/60:.1f}m)")
+        except Exception as exc:
+            logger.debug(f"Postgres route_metrics load skipped ({exc}); falling back to file.")
+
+    if catalog_models is None:
+        # Fallback to live API fetch if key available
+        try:
+            api_key = resolve_inferhub_key(config_path=config_path)
+            if api_key:
+                from probe.catalog import fetch_models
+                live_models = fetch_models(api_key)
+                if live_models:
+                    catalog_models = live_models
+                    catalog_source = "live_api"
+                    logger.debug(f"Loaded {len(catalog_models)} fresh catalog models directly from live API")
+        except Exception as exc:
+            logger.debug(f"Live API catalog fetch skipped ({exc}); falling back to file.")
+
     if catalog_models is None:
         if not catalog_path.exists() or not intel_path.exists():
             return {"status": "error", "message": "Catalog or intelligence data missing"}
         catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
         catalog_models = catalog.get("models", {})
+        catalog_source = "data/catalog.json"
     else:
         if not intel_path.exists():
             return {"status": "error", "message": "Intelligence data missing"}
@@ -770,6 +802,7 @@ def run_auto_route_switch(
         "config_updated": False,
         "sessions_updated": 0,
         "notification_sent": False,
+        "catalog_source": catalog_source,
     }
 
     if not should_switch or best is None:
@@ -827,6 +860,7 @@ def main() -> int:
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH, help="Path to config.toml")
     parser.add_argument("--floor-iq", type=float, default=IQ_FLOOR, help="Floor AA IQ score")
     parser.add_argument("--threshold", type=float, default=SWITCH_THRESHOLD, help="Gain threshold (0.15 = 15%%)")
+    parser.add_argument("--use-db-catalog", action="store_true", help="Attempt loading live catalog from Postgres route_metrics")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -836,6 +870,7 @@ def main() -> int:
         notify=not args.no_notify,
         floor_iq=args.floor_iq,
         threshold=args.threshold,
+        use_db_catalog=args.use_db_catalog,
     )
     print(json.dumps(res, indent=2))
     return 0
