@@ -151,6 +151,42 @@ def _order_block(regrets: list[float]) -> dict:
     }
 
 
+def _value_resolution(n: int) -> dict:
+    """Why the Value leg has the `n` it has — a RESOLUTION limit, not a verdict.
+
+    `n == 0` must never be read as "the Value leg failed". IQ history is
+    DAILY: `data/intelligence.json` is git-tracked at one version per sweep
+    day, and the dated snapshots it joins against are daily too. An HOURLY
+    boundary therefore has no as-of IQ to read, and the Value leg cannot
+    resolve at hourly cadence AT ALL — no volume of data fixes it, because
+    the resolution of the input is a day.
+
+    Stated IN the artifact so a reader — or a dashboard panel — cannot
+    mistake `n: 0` / `share: null` for a measured failure.
+    """
+    if n:
+        return {
+            "status": "measured",
+            "n": n,
+            "basis": ("each snapshot's own as-of iq stamp (D3), itself "
+                      "backfilled from the git-tracked data/intelligence.json "
+                      "history at the commit at-or-before that snapshot's date "
+                      "— real historical values, never interpolated"),
+        }
+    return {
+        "status": "unresolved",
+        "n": 0,
+        "limit": "IQ history is daily-only",
+        "note": ("NOT a measured failure. The Value leg cannot be scored at "
+                 "this cadence: data/intelligence.json is a DAILY series (one "
+                 "git-tracked version per sweep day) and the dated snapshots "
+                 "it joins against are daily, so an hourly boundary has no "
+                 "as-of IQ. `share: null` and `pass: false` on this leg are "
+                 "artifacts of that resolution limit and carry NO evidence "
+                 "about Value. The daily leg is the leg that can be scored."),
+    }
+
+
 def score(dated: list, models: dict, real_maps: list | None = None,
           iq_fallback: bool = False) -> dict:
     """Ordering (cost + Value regret) and level error over a dated series.
@@ -201,7 +237,12 @@ def score(dated: list, models: dict, real_maps: list | None = None,
                      "value_regret": _order_block(value_regrets),
                      "value_iq_source": ("live intelligence.json (LOOK-AHEAD "
                                          "CONTAMINATED)" if iq_fallback
-                                         else "snapshot as-of iq (D3)")},
+                                         else "snapshot as-of iq (D3)"),
+                     # n == 0 on the Value leg is a resolution limit of the
+                     # INPUT (daily IQ vs an hourly boundary), never a verdict.
+                     # Stated here so no reader and no panel can read
+                     # `pass: false` as evidence about Value.
+                     "value_resolution": _value_resolution(len(value_regrets))},
         "level": {
             "n_pairs": len(ratios),
             "median_ratio": round(statistics.median(ratios), 3) if ratios else None,
@@ -314,9 +355,14 @@ def main() -> int:
             continue
         o, lv = blk["ordering"]["cost_regret"], blk["level"]
         v = blk["ordering"]["value_regret"]
+        res = blk["ordering"].get("value_resolution") or {}
+        # `pass=False` on an unresolved Value leg is a resolution artifact, not
+        # a verdict — never print the bare boolean without the status.
+        vpass = (("pass=%s" % v["pass"]) if res.get("status") == "measured"
+                 else "pass=n/a (unresolved: %s)" % res.get("limit", "?"))
         print(f"  {key:18s} transitions={blk['transitions']:4d} "
               f"cost n={o['n']:3d} share={o['share']} pass={o['pass']} | "
-              f"value n={v['n']:3d} share={v['share']} | "
+              f"value n={v['n']:3d} share={v['share']} {vpass} | "
               f"level n={lv['n_pairs']:4d} median={lv['median_ratio']}")
     return 0
 
