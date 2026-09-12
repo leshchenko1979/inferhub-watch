@@ -11,11 +11,12 @@ safely are left without a cost rather than guessed.
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 MANAGEMENT = "https://inferhub.dev/api"
 PAGE_SIZE = 100
@@ -80,6 +81,24 @@ def _get_json(url: str, key: str) -> dict:
     raise AssertionError("unreachable: the loop returns or raises")
 
 
+_RANGE_RE = re.compile(r"^(\d+)\s*([dhms])$")
+_RANGE_UNITS = {"d": "days", "h": "hours", "m": "minutes", "s": "seconds"}
+
+
+def range_delta(range_: str) -> timedelta | None:
+    """A declared window like '24h' / '30d' as a timedelta; None if unparseable.
+
+    #44: the Management API does not honour `range` as a window (`range=1d`
+    reports ~5x the rows of `range=24h`), so the declared window is enforced
+    LOCALLY from this value instead of being delegated to the server.
+    """
+    match = _RANGE_RE.match((range_ or "").strip())
+    if not match:
+        return None
+    value, unit = int(match.group(1)), match.group(2)
+    return timedelta(**{_RANGE_UNITS[unit]: value})
+
+
 def fetch_log_rows(
     key: str,
     *,
@@ -93,9 +112,21 @@ def fetch_log_rows(
     `max_pages` raises the cap for wide ranges (30d needs ~60 pages).
     `pace_s` spaces page fetches to stay under the rate limit; 429s are
     retried in place with the server's Retry-After either way.
+
+    The window is enforced HERE, not by the server (#44). `range` is not
+    honoured as a window (range=1d returns ~5x the rows of range=24h) and the
+    page cap silently bounds how far back any pull can reach, so a caller that
+    passed only `range_` used to get a narrower window than it asked for with
+    no indication. When the caller gives no `after`, it is derived from
+    `range_`; rows older than it are dropped; and a pull that hits the cap
+    before reaching it warns on stderr.
     """
     cap = max_pages if max_pages is not None else MAX_PAGES
+    declared = range_delta(range_)
+    if after is None and declared is not None:
+        after = datetime.now(timezone.utc) - declared
     rows: list[dict] = []
+    reached_after = after is None
     page = 1
     while page <= cap:
         url = (
@@ -105,16 +136,31 @@ def fetch_log_rows(
         body = _get_json(url, key)
         batch = body.get("rows") or []
         if not batch:
+            reached_after = True
             break
-        rows.extend(batch)
+        for row in batch:
+            ts = row.get("ts")
+            if after is not None and ts and parse_ts(ts) < after:
+                continue
+            rows.append(row)
         if after is not None and parse_ts(batch[-1]["ts"]) < after:
+            reached_after = True
             break
         total = int(body.get("rangeTotal") or 0)
         if page * PAGE_SIZE >= total:
+            reached_after = True
             break
         page += 1
         if pace_s > 0:
             time.sleep(pace_s)
+    if after is not None and not reached_after:
+        print(
+            f"::warning::usage/logs: page cap reached ({cap} pages) before the "
+            f"requested window start {after.isoformat()}; oldest row fetched "
+            f"{rows[-1]['ts'] if rows else 'none'}. The returned window is "
+            f"NARROWER than requested (range={range_}).",
+            file=sys.stderr,
+        )
     return rows
 
 

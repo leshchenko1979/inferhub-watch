@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 import unittest
+from datetime import datetime, timedelta, timezone
 
 from typing_extensions import Self
 
@@ -256,6 +258,109 @@ class RateLimitRetryTests(unittest.TestCase):
         # One pacing sleep between page 1 -> 2 (loop ends at page 2, full page).
         self.assertEqual(sleep_mock.call_count, 1)
         sleep_mock.assert_called_with(0.25)
+
+
+class WindowEnforcementTests(unittest.TestCase):
+    """#44 — the declared window is enforced LOCALLY, not by the server."""
+
+    @staticmethod
+    def _ts(delta: timedelta) -> str:
+        return (datetime.now(timezone.utc) - delta).isoformat().replace("+00:00", "Z")
+
+    def test_window_is_enforced_locally_not_by_the_server(self) -> None:
+        # The live defect: `range=1d` returns ~5x the rows of `range=24h`, so a
+        # 1d pull hands back a week of rows. Only the declared 24h may survive.
+        from unittest import mock
+
+        from probe import costs
+
+        batch = [
+            {"ts": self._ts(timedelta(hours=h))} for h in (1, 6, 20, 30, 100, 160)
+        ]
+
+        def fake_get_json(url, key):
+            return {"rows": batch, "rangeTotal": str(len(batch))}
+
+        with mock.patch.object(costs, "_get_json", side_effect=fake_get_json), \
+                mock.patch.object(costs.time, "sleep"):
+            rows = costs.fetch_log_rows("k", range_="1d", max_pages=1)
+
+        self.assertEqual(len(rows), 3, "only the rows inside 24h should survive")
+        oldest = parse_ts(rows[-1]["ts"])
+        self.assertGreater(oldest, datetime.now(timezone.utc) - timedelta(days=1))
+
+    def test_explicit_after_still_wins_over_the_declared_range(self) -> None:
+        # A caller that passes `after` must not have it overridden by `range_`.
+        from unittest import mock
+
+        from probe import costs
+
+        batch = [{"ts": self._ts(timedelta(hours=h))} for h in (1, 5, 40, 90)]
+
+        def fake_get_json(url, key):
+            return {"rows": batch, "rangeTotal": str(len(batch))}
+
+        after = datetime.now(timezone.utc) - timedelta(hours=2)
+        with mock.patch.object(costs, "_get_json", side_effect=fake_get_json), \
+                mock.patch.object(costs.time, "sleep"):
+            rows = costs.fetch_log_rows("k", range_="30d", after=after, max_pages=1)
+
+        self.assertEqual(len(rows), 1, "only the 1h-old row is newer than after")
+
+    def test_warning_when_the_page_cap_truncates_the_window(self) -> None:
+        # The page cap, not `range`, is the real bound. When it is hit before
+        # the requested start, that must be LOUD rather than a silent short read.
+        from unittest import mock
+
+        from probe import costs
+
+        batch = [
+            {"ts": self._ts(timedelta(minutes=m))} for m in (10, 30)
+        ]
+
+        def fake_get_json(url, key):
+            return {"rows": batch, "rangeTotal": "10000"}
+
+        stderr = io.StringIO()
+        with mock.patch.object(costs, "_get_json", side_effect=fake_get_json), \
+                mock.patch.object(costs.time, "sleep"), \
+                mock.patch.object(costs.sys, "stderr", stderr):
+            rows = costs.fetch_log_rows("k", range_="1d", max_pages=2)
+
+        self.assertEqual(len(rows), 4, "both pages kept: all rows are inside 24h")
+        warning = stderr.getvalue()
+        self.assertIn("NARROWER than requested", warning)
+        self.assertIn("page cap reached (2 pages)", warning)
+
+    def test_no_warning_when_the_window_is_reached(self) -> None:
+        # The honest path must stay quiet: reaching `after` is not a defect.
+        from unittest import mock
+
+        from probe import costs
+
+        batch = [{"ts": self._ts(timedelta(hours=h))} for h in (1, 30)]
+
+        def fake_get_json(url, key):
+            return {"rows": batch, "rangeTotal": str(len(batch))}
+
+        stderr = io.StringIO()
+        with mock.patch.object(costs, "_get_json", side_effect=fake_get_json), \
+                mock.patch.object(costs.time, "sleep"), \
+                mock.patch.object(costs.sys, "stderr", stderr):
+            rows = costs.fetch_log_rows("k", range_="1d", max_pages=1)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(stderr.getvalue(), "")
+
+    def test_range_delta_parses_the_declared_windows(self) -> None:
+        from probe import costs
+
+        self.assertEqual(costs.range_delta("1d"), timedelta(days=1))
+        self.assertEqual(costs.range_delta("24h"), timedelta(days=1))
+        self.assertEqual(costs.range_delta("30d"), timedelta(days=30))
+        self.assertEqual(costs.range_delta("15m"), timedelta(minutes=15))
+        self.assertIsNone(costs.range_delta("bogus"))
+        self.assertIsNone(costs.range_delta(""))
 
 
 if __name__ == "__main__":
