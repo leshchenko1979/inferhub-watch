@@ -33,6 +33,18 @@ from probe import basis, pricing
 
 REPO = Path(__file__).resolve().parents[1]
 
+# The accuracy floor a `EFF_SIG_FIGS`-significant-figure quantizer can promise.
+# Its quantum is 10**(floor(log10(v)) - (n-1)), so the worst-case relative error
+# is half that over v: for n=6 that is 5e-6 at the top of a decade (measured
+# 4.86e-6 across this snapshot's rows). 1e-6 — the bound these tests used to
+# assert — is FIVE TIMES tighter than the quantizer can deliver, so it held only
+# while every route's raw ask happened to land luckily inside it; the first
+# Postgres-backed snapshot (#27 Finding B) broke it on
+# `ali/deepseek-v4-flash-0731`, raw 0.010297654840649428 -> stored 0.0102977
+# (4.39e-6). Assert the designed identity exactly, and the accuracy only to the
+# bound the design actually guarantees.
+SIG_FIG_REL = 1e-5
+
 # The receipted pair from #27 Finding A (raw values from the committed
 # snapshot's own cost/token inputs).
 INCUMBENT = "cb/deepseek-v4.1-flash"
@@ -67,7 +79,8 @@ class TestTheOldLatticeIsGone:
         assert stored is not None
         # the old quantizer's fingerprint — this is the regression
         assert stored != round(raw, 4)
-        assert stored == pytest.approx(raw, rel=1e-6)
+        # the designed identity, exactly: route_entry stores sig_round(raw).
+        assert stored == pricing.sig_round(raw)
 
     def test_the_receipted_pair_does_not_compare_equal(self):
         """The two cheapest routes on the board must not tie."""
@@ -102,6 +115,19 @@ class TestSigRoundContract:
         10^(e - sig + 1), so the half-quantum is half of that.
         """
         return 0.5 * 10.0 ** (math.floor(math.log10(abs(value))) - sig + 1)
+
+    def test_sig_fig_rel_is_never_tighter_than_the_design_promises(self):
+        """`SIG_FIG_REL` is a FLOOR on accuracy, not a tuning knob.
+
+        The half-quantum bound is proportional to the ask, so the worst-case
+        relative error is its maximum at the BOTTOM of a decade:
+        `0.5 * 10^(e - sig + 1) / 10^e` = `0.5 * 10^(1 - sig)`. For sig=6
+        that is 5e-6 — the tightest any assertion of the designed quantizer
+        may be. Tightening `SIG_FIG_REL` below it re-creates the #27 Finding B
+        failure: a green suite that only held while raw asks landed luckily.
+        """
+        designed = 0.5 * 10.0 ** (1 - pricing.EFF_SIG_FIGS)
+        assert SIG_FIG_REL >= designed, (SIG_FIG_REL, designed)
 
     @pytest.mark.parametrize("value", [None, 0.0])
     def test_none_and_zero_pass_through(self, value):
@@ -138,8 +164,9 @@ class TestSigRoundContract:
         assert abs(pricing.sig_round(tiny) - tiny) < abs(pricing.sig_round(large) - large)
 
     def test_negative_values_round_on_magnitude(self):
-        assert pricing.sig_round(-0.000353017) == pytest.approx(-0.000353017, rel=1e-6)
-
+        assert pricing.sig_round(-0.000353017) == pytest.approx(
+            -0.000353017, rel=SIG_FIG_REL
+        )
 
 class TestTheDecisionPathSeesFullPrecision:
     """`basis.realized` and the board rank must read the unsnapped value."""
@@ -180,7 +207,7 @@ class TestTheDecisionPathSeesFullPrecision:
         """The scatter's X value shares the decision quantizer."""
         raw = 0.000353017
         assert pricing.sig_round(raw) != round(raw, 4)
-        assert pricing.sig_round(raw) == pytest.approx(raw, rel=1e-6)
+        assert pricing.sig_round(raw) == pytest.approx(raw, rel=SIG_FIG_REL)
 
 
 class TestTheCommittedSnapshotIsClean:
@@ -204,7 +231,12 @@ class TestTheCommittedSnapshotIsClean:
         for route in ("cb/deepseek-v4.1-flash", "ag/gemini-3.7-flash-high",
                       "ag/gemini-3.8-flash-high", "ali/deepseek-v4-flash-0731"):
             row = by_route[route]
-            assert row["stored"] == pytest.approx(row["raw"], rel=1e-6), route
+            # the designed identity, exactly — the stored ask IS the
+            # sig-fig round of the raw ask, not a separate rounding.
+            assert row["stored"] == pricing.sig_round(row["raw"]), route
+            # and the accuracy, to the bound the design actually guarantees
+            # (`SIG_FIG_REL`), never tighter (#27 Finding B broke 1e-6).
+            assert row["stored"] == pytest.approx(row["raw"], rel=SIG_FIG_REL), route
 
     def test_the_lattice_captures_nothing(self, receipt):
         assert receipt["lattice"] == 0, receipt["lattice"]
