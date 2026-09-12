@@ -575,3 +575,73 @@ def test_run_auto_route_switch_unresolvable_session_fails_loudly(tmp_path):
     assert res["notification_sent"] is False
     assert "Cannot resolve notify session" in res["notification_error"]
     assert res["config_updated"] is True
+
+
+def test_orthogonal_constraints():
+    """Verify that IQ floor, tool support, and TPS/value calculation are completely orthogonal."""
+    catalog_models = {
+        "current/m1": {"ask_in": 0.004, "ask_out": 0.02, "supports_tools": True},
+        # High TPS and cheap price, but fails IQ floor (< 35.0) -> must NOT qualify
+        "sub_floor/m2": {"ask_in": 0.0001, "ask_out": 0.0005, "supports_tools": True},
+        # High IQ and cheap price, but lacks tool support -> must NOT qualify
+        "no_tools/m3": {"ask_in": 0.0001, "ask_out": 0.0005, "supports_tools": False},
+        # Valid route meeting all orthogonal criteria
+        "valid/m4": {"ask_in": 0.002, "ask_out": 0.01, "supports_tools": True},
+    }
+    intel_slugs = {
+        "m1": {"iq": 38.0},
+        "m2": {"iq": 32.0},  # Below 35.0 floor
+        "m3": {"iq": 45.0},  # High IQ but no tools
+        "m4": {"iq": 40.0},
+    }
+    aa_map = {}
+
+    should_switch, best, current, reason = find_best_route(
+        catalog_models, intel_slugs, aa_map, current_model="current/m1", floor_iq=35.0, threshold=0.15
+    )
+    assert should_switch is True
+    assert best.route == "valid/m4"
+
+
+def test_qualification_gates():
+    """Verify individual qualification gates operate independently."""
+    # Negative/zero pricing rejects
+    assert is_qualified("m/zero_in", {"ask_in": 0.0, "ask_out": 0.01, "supports_tools": True}, 40.0) is False
+    assert is_qualified("m/zero_out", {"ask_in": 0.01, "ask_out": 0.0, "supports_tools": True}, 40.0) is False
+    # Non-tool naming patterns reject
+    assert is_qualified("pub/whisper-large-v3", {"ask_in": 0.01, "ask_out": 0.01, "supports_tools": True}, 40.0) is False
+    assert is_qualified("pub/flux-schnell", {"ask_in": 0.01, "ask_out": 0.01, "supports_tools": True}, 40.0) is False
+
+
+def test_threshold_switch_hurdle():
+    """Verify 15% switch hurdle threshold is respected."""
+    # Exactly 15% or less gain does not trigger switch; >15% triggers switch
+    catalog_models = {
+        "current/m1": {"ask_in": 0.004, "ask_out": 0.02, "supports_tools": True},
+        "better_14pct/m2": {"ask_in": 0.00355, "ask_out": 0.01775, "supports_tools": True},
+        "better_16pct/m3": {"ask_in": 0.0034, "ask_out": 0.017, "supports_tools": True},
+    }
+    intel_slugs = {
+        "m1": {"iq": 38.0},
+        "m2": {"iq": 38.0},
+        "m3": {"iq": 38.0},
+    }
+    aa_map = {}
+
+    # 14% gain -> False
+    sub_catalog = {
+        "current/m1": catalog_models["current/m1"],
+        "better_14pct/m2": catalog_models["better_14pct/m2"],
+    }
+    sw_14, b_14, _, _ = find_best_route(sub_catalog, intel_slugs, aa_map, current_model="current/m1", threshold=0.15)
+    assert sw_14 is False
+
+    # 16% gain -> True
+    sub_catalog_16 = {
+        "current/m1": catalog_models["current/m1"],
+        "better_16pct/m3": catalog_models["better_16pct/m3"],
+    }
+    sw_16, b_16, _, _ = find_best_route(sub_catalog_16, intel_slugs, aa_map, current_model="current/m1", threshold=0.15)
+    assert sw_16 is True
+    assert b_16.route == "better_16pct/m3"
+

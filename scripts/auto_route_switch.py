@@ -189,8 +189,8 @@ def resolve_route_tps(
         models_perf = perf.get("models") or {}
         model_stats = models_perf.get(route) or {}
         tps_mean = model_stats.get("tps_mean")
-        n_req = model_stats.get("n", 0)
-        if tps_mean is not None and n_req >= 5 and 1.0 <= float(tps_mean) <= 500.0:
+        n_samples = model_stats.get("tps_samples") or model_stats.get("reqs") or model_stats.get("n", 0)
+        if tps_mean is not None and n_samples >= 5 and 1.0 <= float(tps_mean) <= 500.0:
             return float(tps_mean)
 
     # Tier 2: Candidate qualification probe runs

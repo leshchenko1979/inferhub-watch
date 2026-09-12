@@ -251,18 +251,17 @@ def _crown_regrets(dated: list) -> list[float]:
 def projection_gate(dated: list) -> dict:
     """Backtest: does the route the board would CROWN realize near-cheapest?
 
-    The gate exists to decide when the forward view earns the IQ per $
-    crown (ONTOLOGY.md). It does not score a whole-ranking correlation: the
-    crown is what the switcher acts on, so what matters is the SEVERITY of a
-    wrong crown. For every pair of consecutive dated snapshots, take the
-    route the board would have crowned on day t (lowest projected $/M), look
-    up that route's realized cost in the following window, and compare it to
-    the true cheapest realized cost; a transition LANDS when that realized
-    cost is within GATE_TOL of the cheapest (see `_crown_regrets`). The gate
-    passes only when at least GATE_MIN_N transitions exist and a GATE_SHARE
-    fraction of them land - until then the verdict and board sorting stay on
-    the realized basis, because the forward view has not yet earned the
-    crown.
+    The gate exists to decide when the forward view earns the Board Cost
+    Crown (ONTOLOGY.md). It does not score a whole-ranking correlation: the
+    gated projected basis is what both the board and the automated switcher act on,
+    so what matters is the SEVERITY of a wrong crown. For every pair of consecutive
+    dated snapshots, take the route the board would have crowned on day t (lowest
+    projected $/M), look up that route's realized cost in the following window, and
+    compare it to the true cheapest realized cost; a transition LANDS when that realized
+    cost is within GATE_TOL of the cheapest (see `_crown_regrets`). The gate passes
+    only when at least GATE_MIN_N transitions exist and a GATE_SHARE fraction of them
+    land - until then the verdict and board sorting stay on the realized basis, because
+    the forward view has not yet earned the crown.
 
     Recomputed every render from committed history; nothing about the basis
     is hardcoded. Returns {"n", "land", "share", "tol", "min_n", "pass"}.
