@@ -156,6 +156,46 @@ def fleet_hit_prior(routes: dict) -> float | None:
     return (hits[mid - 1] + hits[mid]) / 2
 
 
+def fleet_tps_prior(perf_or_pricing: dict | None, min_samples: int = 5) -> float | None:
+    """Median throughput (TPS) across routes with confident production traffic.
+
+    Calculates median tps_mean across models with tps_samples >= min_samples
+    (or reqs / n >= min_samples) in rolling production perf stats.
+    Returns None if no models meet the confidence threshold.
+    """
+    if not isinstance(perf_or_pricing, dict):
+        return None
+    models = perf_or_pricing.get("perf", {}).get("models")
+    if models is None:
+        models = perf_or_pricing.get("models")
+    if models is None and isinstance(perf_or_pricing, dict):
+        models = perf_or_pricing
+    if not isinstance(models, dict):
+        return None
+
+    tpss: list[float] = []
+    for _m, stat in models.items():
+        if not isinstance(stat, dict):
+            continue
+        tps = stat.get("tps_mean")
+        samples = stat.get("tps_samples") or stat.get("reqs") or stat.get("n", 0)
+        if (
+            tps is not None
+            and isinstance(tps, (int, float))
+            and samples >= min_samples
+            and 1.0 <= float(tps) <= 500.0
+        ):
+            tpss.append(float(tps))
+
+    if not tpss:
+        return None
+    tpss.sort()
+    mid = len(tpss) // 2
+    if len(tpss) % 2:
+        return tpss[mid]
+    return (tpss[mid - 1] + tpss[mid]) / 2
+
+
 def projection_hit(
     dated: list, route: str, stats: dict, routes: dict,
 ) -> tuple[float | None, str]:

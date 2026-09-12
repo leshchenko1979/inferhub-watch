@@ -101,3 +101,9 @@ def incumbent_bar(routes: dict, incumbents: list[str]) -> float | None:
         if eff is not None and (best is None or eff < best):
             best = eff
     return best
+
+
+def fleet_tps_prior(payload_or_perf: dict | None) -> float | None:
+    """Median throughput (TPS) across routes with confident production traffic."""
+    return official_compare.fleet_tps_prior(payload_or_perf)
+

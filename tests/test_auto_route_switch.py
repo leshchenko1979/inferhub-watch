@@ -22,7 +22,63 @@ from scripts.auto_route_switch import (
     send_session_notification,
     update_active_sessions,
     update_opencrabs_config,
+    resolve_fleet_tps_ref,
+    resolve_route_tps,
 )
+
+
+def test_resolve_fleet_tps_ref():
+    # When pricing payload carries confident models
+    pricing_payload = {
+        "perf": {
+            "models": {
+                "m1": {"tps_mean": 60.0, "tps_samples": 10},
+                "m2": {"tps_mean": 90.0, "tps_samples": 20},
+                "m3": {"tps_mean": 300.0, "tps_samples": 15},
+            }
+        }
+    }
+    assert resolve_fleet_tps_ref(pricing_payload) == 90.0
+
+    # When missing or empty, falls back to DEFAULT_TPS_REF (50.0)
+    assert resolve_fleet_tps_ref(None) == 50.0
+    assert resolve_fleet_tps_ref({}) == 50.0
+
+
+def test_resolve_route_tps_hierarchy():
+    pricing_payload = {
+        "perf": {
+            "models": {
+                "prod_model": {"tps_mean": 240.0, "tps_samples": 100},
+                "thin_prod": {"tps_mean": 30.0, "tps_samples": 2},  # < 5 samples
+                "m_fleet1": {"tps_mean": 100.0, "tps_samples": 10},
+                "m_fleet2": {"tps_mean": 200.0, "tps_samples": 10},
+            }
+        }
+    }
+    qual_runs = {
+        "models": {
+            "qual_model": {"tps": 180.0},
+            "thin_prod": {"tps": 150.0},
+        }
+    }
+
+    # 1. Prod traffic wins
+    tps, src = resolve_route_tps("prod_model", pricing_payload=pricing_payload, qual_runs=qual_runs)
+    assert tps == 240.0
+    assert src == "prod"
+
+    # 2. Thin prod falls through to qual probe
+    tps_q, src_q = resolve_route_tps("thin_prod", pricing_payload=pricing_payload, qual_runs=qual_runs)
+    assert tps_q == 150.0
+    assert src_q == "qual"
+
+    # 3. Unprobed model falls through to dynamic fleet prior
+    tps_f, src_f = resolve_route_tps("unprobed_model", pricing_payload=pricing_payload, qual_runs=qual_runs)
+    # Fleet prior over prod_model (240), m_fleet1 (100), m_fleet2 (200) -> median 200.0
+    assert tps_f == 200.0
+    assert src_f == "fallback"
+
 
 
 def test_calculate_value():

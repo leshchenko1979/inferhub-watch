@@ -52,7 +52,8 @@ DEFAULT_DB_PATH = Path("/root/.opencrabs/profiles/ops/opencrabs.db")
 DEFAULT_ROOT_DB_PATH = Path("/root/.opencrabs/opencrabs.db")
 IQ_FLOOR = 35.0
 SWITCH_THRESHOLD = 0.15  # >15% higher value
-TPS_REF = 50.0  # Reference baseline TPS for fleet
+DEFAULT_TPS_REF = 50.0  # Fallback reference baseline TPS when fleet prior is unavailable
+TPS_REF = DEFAULT_TPS_REF  # Backwards compatibility alias
 TPS_WEIGHT_EXPONENT = 0.50  # Square-root power-law exponent for TPS weight
 
 # Inferhub Watch Telegram group whose bound session receives switch alerts (Issue #14).
@@ -176,20 +177,31 @@ def resolve_effective_price(
     return (0.99 * eff_in) + (0.01 * ask_out)
 
 
+def resolve_fleet_tps_ref(pricing_payload: dict[str, Any] | None = None) -> float:
+    """Resolve reference baseline TPS from live rolling fleet production median."""
+    prior = official_compare.fleet_tps_prior(pricing_payload)
+    if prior is not None and 1.0 <= prior <= 500.0:
+        return float(prior)
+    return DEFAULT_TPS_REF
+
+
 def resolve_route_tps(
     route: str,
     pricing_payload: dict[str, Any] | None = None,
     qual_runs: dict[str, Any] | None = None,
-    default_tps: float = TPS_REF,
+    default_tps: float | None = None,
 ) -> tuple[float, str]:
     """Resolve route TPS hierarchically:
     1. 24h rolling production perf_stats from pricing_payload (n >= 5) -> ("prod")
     2. Qualified sustained TPS probe from qual_runs (1.0 <= tps <= 500.0) -> ("qual")
-    3. Fleet reference baseline (default_tps = 50.0) -> ("fallback")
+    3. Fleet empirical prior (or DEFAULT_TPS_REF fallback) -> ("fallback")
 
     Returns:
         (tps_value, source_name)
     """
+    if default_tps is None:
+        default_tps = resolve_fleet_tps_ref(pricing_payload)
+
     # Tier 1: Production 24h perf stats
     if pricing_payload is not None:
         perf = pricing_payload.get("perf") or {}
@@ -208,7 +220,7 @@ def resolve_route_tps(
         if q_tps is not None and 1.0 <= float(q_tps) <= 500.0:
             return float(q_tps), "qual"
 
-    # Tier 3: Fleet reference default
+    # Tier 3: Fleet empirical prior default
     return default_tps, "fallback"
 
 
@@ -304,8 +316,12 @@ def evaluate_candidates(
     dated_snapshots: list | None = None,
     qual_runs: dict[str, Any] | None = None,
     use_proj: bool = True,
+    tps_ref: float | None = None,
 ) -> dict[str, RouteCandidate]:
     """Evaluate and build RouteCandidate objects for all catalog models."""
+    if tps_ref is None:
+        tps_ref = resolve_fleet_tps_ref(pricing_payload)
+
     candidates: dict[str, RouteCandidate] = {}
     for route, info in catalog_models.items():
         slug = resolve_slug(route, aa_map, intel_slugs)
@@ -328,8 +344,10 @@ def evaluate_candidates(
             dated_snapshots=dated_snapshots,
             use_proj=use_proj,
         )
-        tps, tps_source = resolve_route_tps(route, pricing_payload=pricing_payload, qual_runs=qual_runs)
-        val = calculate_value(iq or 0.0, eff_price=eff_price, tps=tps) if (iq is not None and eff_price > 0) else 0.0
+        tps, tps_source = resolve_route_tps(
+            route, pricing_payload=pricing_payload, qual_runs=qual_runs, default_tps=tps_ref
+        )
+        val = calculate_value(iq or 0.0, eff_price=eff_price, tps=tps, tps_ref=tps_ref) if (iq is not None and eff_price > 0) else 0.0
 
         candidates[route] = RouteCandidate(
             route=route,
@@ -359,12 +377,16 @@ def find_best_route(
     use_proj: bool = True,
     client: Any | None = None,
     qual_path: Path | None = None,
+    tps_ref: float | None = None,
 ) -> tuple[bool, RouteCandidate | None, RouteCandidate | None, str]:
     """Determine if a route switch is needed.
 
     Returns:
         (should_switch, best_candidate, current_candidate, reason)
     """
+    if tps_ref is None:
+        tps_ref = resolve_fleet_tps_ref(pricing_payload)
+
     candidates = evaluate_candidates(
         catalog_models,
         intel_slugs,
@@ -374,6 +396,7 @@ def find_best_route(
         dated_snapshots=dated_snapshots,
         qual_runs=qual_runs,
         use_proj=use_proj,
+        tps_ref=tps_ref,
     )
     current_cand = candidates.get(current_model)
 
@@ -403,7 +426,7 @@ def find_best_route(
                 logger.info(f"Candidate {top.route} qualified: measured TPS={new_tps:.1f}")
                 top.tps = new_tps
                 top.tps_source = "qual"
-                top.value = calculate_value(top.iq, eff_price=top.eff_price, tps=top.tps)
+                top.value = calculate_value(top.iq, eff_price=top.eff_price, tps=top.tps, tps_ref=tps_ref)
                 qualified_candidates.sort(key=lambda c: c.value, reverse=True)
             else:
                 logger.warning(

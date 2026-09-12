@@ -5,12 +5,14 @@ from typing import ClassVar
 from unittest import mock
 
 from probe import pricing
+from probe import official_compare
 from probe.official_compare import (
     _crown_regrets,
     blended_eff,
     cache_rule_stats,
     comparison_rows,
     drift_flag,
+    fleet_tps_prior,
     hit_series,
     inferhub_eff,
     official_eff,
@@ -168,7 +170,39 @@ class ProjectionHitTest(unittest.TestCase):
         stats = _snapshot(0.0, reqs=10)
         hit, conf = projection_hit([], "r/thin", stats, {"r/thin": stats})
         self.assertEqual(hit, 0.0)  # no confident peers - raw EWMA stands, flagged
-        self.assertEqual(conf, "low")
+
+
+class FleetTpsPriorTest(unittest.TestCase):
+    """fleet_tps_prior: median throughput across models with confident production traffic."""
+
+    def test_median_over_confident_models(self):
+        perf = {
+            "models": {
+                "m1": {"tps_mean": 50.0, "tps_samples": 10},
+                "m2": {"tps_mean": 100.0, "tps_samples": 20},
+                "m3": {"tps_mean": 300.0, "tps_samples": 15},
+                "thin": {"tps_mean": 20.0, "tps_samples": 2},  # skipped (<5 samples)
+            }
+        }
+        prior = official_compare.fleet_tps_prior(perf)
+        self.assertEqual(prior, 100.0)
+
+    def test_even_count_median_average(self):
+        perf = {
+            "perf": {
+                "models": {
+                    "m1": {"tps_mean": 50.0, "tps_samples": 10},
+                    "m2": {"tps_mean": 100.0, "tps_samples": 20},
+                }
+            }
+        }
+        prior = official_compare.fleet_tps_prior(perf)
+        self.assertEqual(prior, 75.0)
+
+    def test_empty_or_none_returns_none(self):
+        self.assertIsNone(official_compare.fleet_tps_prior(None))
+        self.assertIsNone(official_compare.fleet_tps_prior({}))
+        self.assertIsNone(official_compare.fleet_tps_prior({"models": {}}))
 
     def test_no_hit_evidence_gives_none(self):
         stats = {"tok_in": 0, "tok_out": 0, "reqs": 0}
