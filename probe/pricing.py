@@ -502,11 +502,24 @@ def marginal_stats(rows: list[dict], cutoff: str | None) -> dict[str, dict]:
     """Per model: traffic + cost over usage rows strictly after the cutoff.
 
     The marginal realized $/M over this slice is the fair forward
-    comparator for the projection gate - realized-over-30d smears price
-    changes across the whole window, this one does not. Also keeps the
-    request timestamps (capped at MARGINAL_TS_CAP) so the board can tell
-    probe-only traffic (every request inside a sweep window) from real
-    working traffic.
+    comparator the projection gate is INTENDED to be judged against, once
+    the North Star rebase lands: realized-over-30d smears price changes
+    across the whole window, this slice does not.
+
+    It is NOT what the gate reads today. The gate's comparator is
+    `eff_per_mtok` — the realized 30-day figure, read inside
+    `official_compare._crown_regrets` — and `marginal` does not appear
+    anywhere in `probe/official_compare.py`.
+    This docstring previously asserted the marginal slice *was* the gate's
+    comparator, which the code has never done; stating the intended
+    comparator as a present fact is how a reader ends up reasoning about a
+    gate that does not exist. The same sentence is carried by the ONTOLOGY
+    **Marginal realized** row, and the two are kept aligned so they cannot
+    drift apart again (D7, owner 2026-09-12).
+
+    Also keeps the request timestamps (capped at MARGINAL_TS_CAP) so the
+    board can tell probe-only traffic (every request inside a sweep window)
+    from real working traffic.
     """
     out: dict[str, dict] = {}
     for row in rows:
