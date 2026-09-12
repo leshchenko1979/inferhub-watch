@@ -1,0 +1,30 @@
+name: AA fields probe
+
+# READ-ONLY, dispatch-only. Captures ONE live Artificial Analysis response and
+# reports whether the Free tier actually carries median TPS / TTFT on the wire
+# (the fields `probe/intelligence.py` currently discards).
+#
+# It writes nothing, commits nothing, and feeds nothing into Value: adopting
+# AA's TPS would change WHAT the North Star measures, which is owner-gated.
+#
+# workflow_dispatch ONLY — deliberately NOT on a schedule, so it can never
+# consume a Free-tier call (100/day) behind the sweep's back.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Capture one AA response and report its perf fields
+        env:
+          AA_API_KEY: ${{ secrets.AA_API_KEY }}
+        run: python3 -m scripts.aa_fields_probe
