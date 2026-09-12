@@ -25,6 +25,12 @@ MIN_VALID_TPS = 1.0
 MAX_VALID_TPS = 500.0
 DEFAULT_TARGET_TOKENS = 600
 
+# Issue #34 Tier-2 floor (owner ruling 2026-09-12): keep the individual runs,
+# not only the latest value, so the resolver can take a median over the
+# evidence instead of pricing a route on its noisiest single sample. Bounded
+# so the file cannot grow without limit.
+QUAL_RUNS_KEPT = 20
+
 SUSTAINED_PROMPT = (
     "Explain the Raft distributed consensus algorithm in technical detail. "
     "Cover leader election, log replication, safety invariants, and joint consensus "
@@ -144,8 +150,17 @@ def record_qualification_result(
     models = data.setdefault("models", {})
     existing = models.get(model, {})
 
+    # Issue #34 (owner ruling 2026-09-12): record the RUN, not just the last
+    # value - the resolver takes a median over `runs`, so one noisy probe
+    # cannot set a route's TPS. `n` keeps counting every valid run.
+    runs = list(existing.get("runs") or [])
+    if metrics.get("tps") is not None:
+        runs.append(round(float(metrics["tps"]), 1))
+        runs = runs[-QUAL_RUNS_KEPT:]
+
     entry = {
         "tps": metrics.get("tps"),
+        "runs": runs,
         "visible_tokens": metrics.get("visible_tokens"),
         "reasoning_tokens": metrics.get("reasoning_tokens"),
         "stream_dur_s": metrics.get("stream_dur_s"),

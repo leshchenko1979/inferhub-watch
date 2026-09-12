@@ -115,10 +115,13 @@ def test_record_qualification_result(tmp_path):
     res1 = record_qualification_result("test/m2", metrics, qual_file)
     assert res1["n"] == 1
     assert res1["tps"] == 88.2
+    # #34 (owner ruling 2026-09-12): the RUN is recorded, not just the last value
+    assert res1["runs"] == [88.2]
 
     # Second record increments n
     res2 = record_qualification_result("test/m2", metrics, qual_file)
     assert res2["n"] == 2
+    assert res2["runs"] == [88.2, 88.2]
 
 
 def test_run_candidate_tps_qual(tmp_path):

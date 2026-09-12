@@ -28,6 +28,7 @@ import logging
 import os
 import re
 import sqlite3
+import statistics
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -68,6 +69,12 @@ BASIS_MIN_SAMPLES = 5
 """Streaming samples a candidate needs in the rolling 24h window before the
 realized basis is admissible at all. Below this the whole evaluation drops
 to the projected floor basis."""
+QUAL_MIN_RUNS = 5
+"""Issue #34 Tier-2 floor (owner ruling 2026-09-12). Qualification probe runs a
+route needs before its measured TPS is admissible: the SAME n >= 5 evidence bar
+Tier 1 enforces. Below this the route falls through to the fleet prior rather
+than being priced on a single probe. Owner-confirmed in ONTOLOGY.md - this
+APPLIES the existing floor, it does not set a new one."""
 DWELL_SECONDS = 6 * 3600
 """Minimum dwell after a real switch before another flip is eligible."""
 DWELL_OVERRIDE_GAIN = 3.0
@@ -319,7 +326,8 @@ def resolve_route_tps(
        24h, widened to at most 7 days when the 24h slice holds fewer than 5
        valid samples. The n >= 5 floor is unchanged; a wider window looks
        further back for the SAME evidence bar.
-    2. Qualified sustained TPS probe from qual_runs (1.0 <= tps <= 500.0) -> ("qual")
+    2. Qualified sustained TPS probe from qual_runs, n >= QUAL_MIN_RUNS runs
+       (1.0 <= median <= 500.0) -> ("qual")
     3. Fleet empirical prior (or DEFAULT_TPS_REF fallback) -> ("fallback")
 
     Returns:
@@ -338,13 +346,24 @@ def resolve_route_tps(
         if tps_mean is not None and n_samples >= 5 and 1.0 <= float(tps_mean) <= 500.0:
             return float(tps_mean), "prod"
 
-    # Tier 2: Candidate qualification probe runs
+    # Tier 2: Candidate qualification probe runs.
+    # Issue #34 Tier-2 floor (owner ruling 2026-09-12): Tier 2 admitted n = 1
+    # where Tier 1 forbids below n >= 5, so a route could be priced on a single
+    # probe - and on the LAST run, the noisiest point of a small sample. Now the
+    # same n >= QUAL_MIN_RUNS bar applies and the value is the median over the
+    # recorded runs. A route that has not cleared the bar falls through to the
+    # fleet prior rather than being priced on one sample.
     if qual_runs is not None:
         qual_models = qual_runs.get("models") or {}
         qual_stat = qual_models.get(route) or {}
-        q_tps = qual_stat.get("tps")
-        if q_tps is not None and 1.0 <= float(q_tps) <= 500.0:
-            return float(q_tps), "qual"
+        raw_runs = qual_stat.get("runs")
+        runs = ([float(r) for r in raw_runs if isinstance(r, (int, float))]
+                if isinstance(raw_runs, list) else [])
+        n_runs = len(runs) if runs else int(qual_stat.get("n") or 0)
+        if n_runs >= QUAL_MIN_RUNS:
+            q_tps = statistics.median(runs) if runs else qual_stat.get("tps")
+            if q_tps is not None and 1.0 <= float(q_tps) <= 500.0:
+                return float(q_tps), "qual"
 
     # Tier 3: Fleet empirical prior default
     return default_tps, "fallback"

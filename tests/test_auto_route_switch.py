@@ -58,10 +58,13 @@ def test_resolve_route_tps_hierarchy():
             }
         }
     }
+    # #34 Tier-2 floor (owner ruling 2026-09-12): a qualification entry is
+    # admissible only at n >= QUAL_MIN_RUNS, and its value is the median of the
+    # recorded runs. These entries clear the bar.
     qual_runs = {
         "models": {
-            "qual_model": {"tps": 180.0},
-            "thin_prod": {"tps": 150.0},
+            "qual_model": {"tps": 180.0, "runs": [180.0] * 5, "n": 5},
+            "thin_prod": {"tps": 150.0, "runs": [150.0] * 5, "n": 5},
         }
     }
 
@@ -80,6 +83,57 @@ def test_resolve_route_tps_hierarchy():
     # Fleet prior over prod_model (240), m_fleet1 (100), m_fleet2 (200) -> median 200.0
     assert tps_f == 200.0
     assert src_f == "fallback"
+
+def test_tier2_requires_the_same_evidence_bar_as_tier1():
+    """#34 Tier-2 floor (owner ruling 2026-09-12).
+
+    Tier 2 admitted n = 1 where Tier 1 forbids below n >= 5. One sustained
+    probe is not evidence, so a route that has not cleared the bar falls
+    through to the fleet prior rather than being priced on a single sample.
+    """
+    pricing_payload = {
+        "perf": {"models": {"m_fleet1": {"tps_mean": 100.0, "tps_samples": 10}}}
+    }
+    qual_runs = {
+        "models": {"thin_prod": {"tps": 150.0, "runs": [150.0], "n": 1}}
+    }
+    tps, src = resolve_route_tps(
+        "thin_prod", pricing_payload=pricing_payload, qual_runs=qual_runs)
+    assert src == "fallback"
+    assert tps == 100.0
+
+def test_tier2_uses_the_median_of_runs_not_the_last():
+    """#34: the last run is the noisiest point of a small sample.
+
+    Four runs cluster at 100-130 and the fifth spikes to 400. The resolver
+    must price on the median (120.0), never on the last value.
+    """
+    pricing_payload = {
+        "perf": {"models": {"m_fleet1": {"tps_mean": 100.0, "tps_samples": 10}}}
+    }
+    qual_runs = {
+        "models": {"cand": {"tps": 400.0, "n": 5,
+                            "runs": [100.0, 110.0, 120.0, 130.0, 400.0]}}
+    }
+    tps, src = resolve_route_tps(
+        "cand", pricing_payload=pricing_payload, qual_runs=qual_runs)
+    assert src == "qual"
+    assert tps == 120.0
+
+def test_tier2_legacy_entry_without_runs_still_clears_the_bar():
+    """A pre-#34 entry carries `n` and `tps` but no `runs`.
+
+    It is still admissible at n >= QUAL_MIN_RUNS, priced on its recorded
+    `tps` - the floor is the evidence bar, not the storage shape.
+    """
+    pricing_payload = {
+        "perf": {"models": {"m_fleet1": {"tps_mean": 100.0, "tps_samples": 10}}}
+    }
+    qual_runs = {"models": {"legacy": {"tps": 175.0, "n": 6}}}
+    tps, src = resolve_route_tps(
+        "legacy", pricing_payload=pricing_payload, qual_runs=qual_runs)
+    assert src == "qual"
+    assert tps == 175.0
 
 
 
