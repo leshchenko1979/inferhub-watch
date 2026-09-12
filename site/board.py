@@ -337,16 +337,29 @@ def pricing_section(payload: dict | None, runs: list[dict]) -> str:
         ) or {}
         ttft, tps = pm.get("ttft_p50_ms"), pm.get("tps_mean")
         ttft_label, tps_label = rundata.ttft_tps_labels(ttft, tps)
+        # D5 (owner 2026-09-12): the perf window is chosen PER MODEL — a route
+        # whose 24h slice held too few valid tps samples is stated over a
+        # wider one (7 days max). The tooltip must therefore name the window
+        # THIS model's numbers came from, not the requested default, or the
+        # widened route publishes a 7-day median under a "newest 24h" label.
+        base_hours = int((payload.get("perf") or {}).get("window_hours") or 24)
+        pm_hours = int(pm.get("window_hours") or base_hours)
+        widened_note = (
+            f' &#8212; widened from {base_hours}h because that slice held too '
+            f'few valid tps samples'
+            if pm_hours != base_hours else ""
+        )
         plumb_cells.extend([
             ("ttft p50",
              (f'<span data-tip="Median time to first token across this model&#8217;s '
              f'billed requests in the newest '
-             f'{int((payload.get("perf") or {}).get("window_hours") or 24)}h '
-             f'window (p50) &#8212; production traffic included.">{ttft_label}</span>')),
+             f'{pm_hours}h '
+             f'window (p50){widened_note} &#8212; production traffic included.">{ttft_label}</span>')),
             ("tps mean",
              (f'<span data-tip="Mean tokens/sec of generation time only (duration '
              f'minus ttft); rows with a &lt;2s generation window or impossible '
-             f'tps are excluded.">{tps_label}</span>')),
+             f'tps are excluded. Computed over the newest {pm_hours}h'
+             f'{widened_note}.">{tps_label}</span>')),
         ])
         plumb_cells_row = _plumb_row(plumb_cells)
         chip = _plumb_chip()

@@ -527,7 +527,12 @@ def marginal_stats(rows: list[dict], cutoff: str | None) -> dict[str, dict]:
     return out
 
 
-def perf_stats(rows: list[dict], window_hours: int = 24) -> dict:
+TPS_FLOOR = 5           # owner-confirmed validity floor (unchanged by D5)
+TPS_WINDOW_CAP_H = 168  # owner-confirmed 7-day cap (D5, 2026-09-12)
+
+
+def perf_stats(rows: list[dict], window_hours: int = 24,
+               cap_hours: int = TPS_WINDOW_CAP_H) -> dict:
     """Main-traffic speed per model from usage-log rows: TTFT p50 + mean TPS.
 
     Usage-log rows carry ttft_ms and duration_ms for EVERY request — probe
@@ -535,48 +540,87 @@ def perf_stats(rows: list[dict], window_hours: int = 24) -> dict:
     not a probe spot-sample. Sliced to the newest `window_hours` of the
     fetched rows (the snapshot refetches 30d daily, so the slice rolls).
 
+    D5 (owner 2026-09-12): the window is SAMPLE-COUNT-DRIVEN, not fixed. A
+    route that cannot reach TPS_FLOOR valid samples inside `window_hours`
+    has its window widened to `cap_hours`, and each model reports the
+    `window_hours` it actually used. This is what rescues the genuinely
+    quiet routes: `zai/glm-5.3-flash` carried 1679 valid samples across 7
+    days yet published null, because the fixed 24h slice happened to hold 2
+    requests. TPS is 5-26x less volatile than price (hourly CV 0.033-0.184
+    vs 0.848-2.878), so looking further back does not bias the mean.
+
+    The floor is NOT part of the widening: a wider window is only ever a way
+    to look further back for the SAME evidence bar, never a way to admit
+    thinner evidence. Nine of the ten null-TPS routes stay null because they
+    have ZERO valid samples across the whole 7 days — they fail the ~2s
+    generation guard, which no window length can help.
+
     TPS per row = completion_tokens / ((duration_ms - ttft_ms) / 1000);
     rows without both timings or with zero completion tokens (failed,
     non-stream) are skipped for the medians but still counted in `reqs`.
+
+    `reqs` keeps its published meaning — billed requests in the REQUESTED
+    `window_hours`. The board's "in use" bar (`site/board.py::usage_color`)
+    and the results pill (`site/results.py::_in_use_pill`) both label that
+    number "newest 24h", so a widened window must not restate it as a 7-day
+    count. `ttft_p50_ms` / `tps_mean` / `tps_samples` describe the window
+    actually used; every model reports that window in its own
+    `window_hours`, and a widened model additionally reports `window_reqs`
+    (the request count over the wider slice) so the wider evidence is
+    visible rather than implied.
     """
     stamped = [r for r in rows if r.get("ts")]
     if not stamped:
         return {"window_hours": window_hours, "models": {}}
     newest = max(parse_ts(r["ts"]) for r in stamped)
-    cutoff = newest - timedelta(hours=window_hours)
-    models: dict[str, dict] = {}
+    # Bucket FIRST, cut per model afterwards: the window is chosen per route,
+    # so a single global cutoff cannot be applied up front.
+    buckets: dict[str, list[tuple]] = {}
     for row in stamped:
         ts = parse_ts(row.get("ts") or "")
-        if ts is None or ts < cutoff:
+        if ts is None:
             continue
         model = row.get("model") or ""
         if not model:
             continue
-        m = models.setdefault(model, {"reqs": 0, "ttfts": [], "tpss": []})
-        m["reqs"] += 1
         ttft = _float(row.get("ttft_ms"))
         duration = _float(row.get("duration_ms"))
         out = row.get("completion_tokens")
         out = out if isinstance(out, int) and out > 0 else None
-        if ttft is None or duration is None:
-            continue
-        m["ttfts"].append(ttft)
-        stream_s = (duration - ttft) / 1000.0
-        # A "generation window" shorter than ~2s with non-trivial output means
-        # the row's timing fields don't describe streaming generation (batch /
-        # non-stream requests report duration≈ttft, or upstream times only
-        # queue+prefill). Dividing there yields absurd tps (22701, 65245 seen
-        # live) — skip those rows rather than poison the mean.
-        if out is not None and stream_s >= 2.0 and out / stream_s < 500:
-            m["tpss"].append(out / stream_s)
+        tps = None
+        if ttft is not None and duration is not None and out is not None:
+            stream_s = (duration - ttft) / 1000.0
+            # A "generation window" shorter than ~2s with non-trivial output
+            # means the row's timing fields don't describe streaming
+            # generation (batch / non-stream requests report duration≈ttft,
+            # or upstream times only queue+prefill). Dividing there yields
+            # absurd tps (22701, 65245 seen live) — skip those rows rather
+            # than poison the mean.
+            if stream_s >= 2.0 and out / stream_s < 500:
+                tps = out / stream_s
+        buckets.setdefault(model, []).append((ts, ttft, tps))
+
     out_models: dict[str, dict] = {}
-    for model, m in models.items():
-        entry: dict = {"reqs": m["reqs"]}
-        if m["ttfts"]:
-            entry["ttft_p50_ms"] = round(float(median(m["ttfts"])), 1)
-        if m["tpss"]:
-            entry["tps_mean"] = round(float(mean(m["tpss"])), 1)
-            entry["tps_samples"] = len(m["tpss"])
+    for model, mrows in buckets.items():
+        # `reqs` counts the REQUESTED window only (see the docstring): the
+        # widened slice moves the speed stats, never the request count.
+        base = [r for r in mrows if r[0] >= newest - timedelta(hours=window_hours)]
+        window = window_hours
+        picked = base
+        if (sum(1 for r in base if r[2] is not None) < TPS_FLOOR
+                and cap_hours > window_hours):
+            window = cap_hours
+            picked = [r for r in mrows if r[0] >= newest - timedelta(hours=window)]
+        entry: dict = {"reqs": len(base), "window_hours": window}
+        if window != window_hours:
+            entry["window_reqs"] = len(picked)
+        ttfts = [r[1] for r in picked if r[1] is not None]
+        tpss = [r[2] for r in picked if r[2] is not None]
+        if ttfts:
+            entry["ttft_p50_ms"] = round(float(median(ttfts)), 1)
+        if tpss:
+            entry["tps_mean"] = round(float(mean(tpss)), 1)
+            entry["tps_samples"] = len(tpss)
         out_models[model] = entry
     return {"window_hours": window_hours, "models": dict(sorted(out_models.items(), key=lambda kv: -kv[1]["reqs"]))}
 

@@ -314,7 +314,11 @@ def resolve_route_tps(
     default_tps: float | None = None,
 ) -> tuple[float, str]:
     """Resolve route TPS hierarchically:
-    1. 24h rolling production perf_stats from pricing_payload (n >= 5) -> ("prod")
+    1. Production perf_stats from pricing_payload (n >= 5) -> ("prod").
+       D5 (owner 2026-09-12): that window is sample-count-driven - the newest
+       24h, widened to at most 7 days when the 24h slice holds fewer than 5
+       valid samples. The n >= 5 floor is unchanged; a wider window looks
+       further back for the SAME evidence bar.
     2. Qualified sustained TPS probe from qual_runs (1.0 <= tps <= 500.0) -> ("qual")
     3. Fleet empirical prior (or DEFAULT_TPS_REF fallback) -> ("fallback")
 
@@ -1036,9 +1040,14 @@ def run_auto_route_switch(
     pricing_path = root_dir / "data" / "pricing.json"
     pricing_payload = json.loads(pricing_path.read_text(encoding="utf-8")) if pricing_path.exists() else None
 
-    # Refresh rolling 24h perf from live database usage logs if possible
+    # Refresh rolling production perf from live database usage logs if possible
     try:
-        usage_rows = pgstore.window_rows(24)
+        # D5 (owner 2026-09-12): fetch the WIDEST window any route might need
+        # (the 7-day cap) and let perf_stats apply the per-route, sample-count-
+        # driven window on top. Fetching only 24h here would make the widening
+        # a NO-OP - perf_stats cannot look further back than the rows it was
+        # handed - which is the "half-widened window is worse than none" trap.
+        usage_rows = pgstore.window_rows(pricing.TPS_WINDOW_CAP_H)
         if usage_rows:
             fresh_perf = pricing.perf_stats(usage_rows)
             if pricing_payload is None:
