@@ -200,11 +200,27 @@ def ranked_values(basis_mode: str, challenger_samples: int) -> dict[str, Any]:
     }
 
 
+def _fingerprint(path: Path) -> bytes | None:
+    """Bytes of the live file, or None when it cannot be read HERE.
+
+    None means "nothing to fingerprint": the file is absent, or this box
+    cannot read it. Both are real — the harness runs on the ops box, which
+    owns the live config, and in CI, where /root is unreadable and ``stat``
+    raises PermissionError instead of returning False (#29). Treating
+    "unreadable" as "absent" is the honest reading; the no-mutation proof then
+    rests on the write counters, which is where it belongs.
+    """
+    try:
+        return path.read_bytes()
+    except OSError:
+        return None
+
+
 def run_harness(repo_root: Path | None = None) -> dict[str, Any]:
     """Drive the real pipeline over fixtures; return the full receipt."""
     repo_root = repo_root or Path(__file__).resolve().parents[1]
     live_config = ars.DEFAULT_CONFIG_PATH
-    config_before = live_config.read_bytes() if live_config.exists() else None
+    config_before = _fingerprint(live_config)
 
     runs: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="oc-basis-shift-") as tmp:
@@ -260,7 +276,7 @@ def run_harness(repo_root: Path | None = None) -> dict[str, Any]:
                 )
         state_in_tmp = (root / "data" / "switcher_state.json").exists()
 
-    config_after = live_config.read_bytes() if live_config.exists() else None
+    config_after = _fingerprint(live_config)
     repo_state = repo_root / "data" / "switcher_state.json"
     basis_sequence = [r["basis_mode"] for r in runs]
     shifts = sum(
@@ -281,6 +297,7 @@ def run_harness(repo_root: Path | None = None) -> dict[str, Any]:
         "mixed_pre_27_would_switch": mixed_hazard(),
         "production_mutation": {
             "live_config_bytes_unchanged": config_before == config_after,
+            "live_config_readable": config_before is not None,
             "live_config": str(live_config),
             "repo_switcher_state_present": repo_state.exists(),
             "fixture_state_written": state_in_tmp,
@@ -301,6 +318,7 @@ def main() -> int:
         and receipt["no_switch_on_any_run"]
         and receipt["challenger_non_vacuous"]
         and receipt["production_mutation"]["live_config_bytes_unchanged"]
+        and receipt["production_mutation"]["live_config_readable"]
         and not receipt["production_mutation"]["repo_switcher_state_present"]
     )
     print(f"\n[criterion-2] shifts={receipt['shift_count']} "

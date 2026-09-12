@@ -81,8 +81,13 @@ class TestTheGateIsLoadBearing:
 class TestZeroProductionMutation:
     def test_the_live_config_is_untouched(self, receipt) -> None:
         mut = receipt["production_mutation"]
-        assert mut["live_config_bytes_unchanged"] is True
         assert mut["live_config"] == str(ars.DEFAULT_CONFIG_PATH)
+        assert mut["live_config_bytes_unchanged"] is True
+        # On the ops box this compares real bytes. In CI /root is unreadable,
+        # so there is nothing to fingerprint and this comparison is vacuous
+        # there — the no-write proof is
+        # test_no_config_session_or_notification_write_was_attempted.
+        assert isinstance(mut["live_config_readable"], bool)
 
     def test_no_repo_state_file_appears(self, receipt) -> None:
         assert receipt["production_mutation"]["repo_switcher_state_present"] is False

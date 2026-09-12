@@ -360,7 +360,13 @@ def resolve_inferhub_key(
         cand = config_path.with_name("keys.toml")
         if cand.exists():
             kp = cand
-    if kp is None and config_path is not None and DEFAULT_CONFIG_PATH.exists() and config_path == DEFAULT_CONFIG_PATH:
+    # Equality first, existence second: `config_path` is a caller argument, so
+    # this is False for any caller with its own config and the live paths are
+    # never touched. Statting DEFAULT_CONFIG_PATH first made every call probe
+    # the live host — and on a box that cannot read /root, `exists()` RAISES
+    # PermissionError instead of returning False, which is what broke the
+    # contract gate in CI (#29).
+    if kp is None and config_path == DEFAULT_CONFIG_PATH and DEFAULT_CONFIG_PATH.exists():
         if DEFAULT_KEYS_PATH.exists():
             kp = DEFAULT_KEYS_PATH
 
