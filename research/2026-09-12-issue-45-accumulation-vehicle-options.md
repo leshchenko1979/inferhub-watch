@@ -4,6 +4,20 @@
 Gate constants (`GATE_TOL 0.15` / `GATE_SHARE 0.80` / `GATE_MIN_N 10`) untouched.
 The switch stays HELD. No code, no schema, no cost arithmetic.
 
+> **CORRECTION (2026-09-12, after HQ thread-2) — the vehicle recommendation in
+> §2 and §5 is superseded.** The gate is a **file reader**: it is handed
+> `pricing.dated_snapshots(root_dir)` (`scripts/auto_route_switch.py:1059` →
+> `:1064`), which globs `data/pricing/*.json` (`probe/pricing.py:390`). A PG
+> table is structurally invisible to it, so **Option A as designed changes the
+> gate's verdict by exactly zero** — it needs a second reader and a fork of the
+> single-owner contract at `:390`, not a table. Option A stays on the record as
+> prepared/unapplied durable evidence; it is **not** the unblock. The vehicle
+> that feeds the gate is the **snapshot writer** — see
+> `2026-09-12-issue-45-snapshot-vehicle-design.md`. The sequence in §5
+> ("basis policy first, then Option A, then ~11 days") would have landed a
+> schema change the backtest still cannot read. §1 (the fake-`n` measurement)
+> and §3 (Option B ruled out) are unaffected and stand.
+
 ---
 
 ## 0. The constraint both options must pass
@@ -184,10 +198,12 @@ schema.
 
 1. **Do not build Option B.** Measured: 3 distinct crown pairs from 48 hours.
 2. **Option A is mechanically free and worth having** — but as *durable evidence*
-   of the book, not as a gate input. It changes no verdict on its own.
-3. **The gate's real unblock is the daily vehicle reaching 10 distinct
-   comparisons with the book present**, which needs (b) decided first, then ~11
-   days of accumulation.
+   of the book, not as a gate input. It changes no verdict on its own, and (per
+   the correction above) a PG table cannot reach the gate at all.
+3. **The gate's real unblock is the SNAPSHOT vehicle** — book columns on
+   `data/pricing/*.json`, the files the gate already reads — reaching 10 distinct
+   comparisons with the book present. That needs (b) decided first, then ~11
+   days of accumulation. See `2026-09-12-issue-45-snapshot-vehicle-design.md`.
 4. The book's missing consumer (§4 of the #45 finding) and the missing
    projection input are the **same gap seen from two ends**.
 
