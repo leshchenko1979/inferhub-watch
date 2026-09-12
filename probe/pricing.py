@@ -20,6 +20,7 @@ emits a GitHub Actions annotation, exits 0, and leaves the previous file.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sys
@@ -115,6 +116,41 @@ def _float(raw: object) -> float | None:
     except (TypeError, ValueError):
         return None
     return value
+
+
+# Significant figures kept on the DECISION money values (`eff_per_mtok`,
+# `marginal_per_mtok`). The quantizer here used to be `round(x, 4)` — an
+# ABSOLUTE decimal snap, which fixes the step at 1e-4 whatever the
+# magnitude. Across the board's ask range (1e-4 .. 1e-1) that leaves one or
+# two significant figures and MANUFACTURES ties between genuinely different
+# routes (#27 Finding A): cb/deepseek-v4.1-flash 0.000353017 against
+# ag/gemini-3.8-flash-high 0.000384080 — a real 8.09% gap — both stored as
+# 0.0004, and the board's (eff_val, -iqps) sort then leads with the DEARER
+# route. Six figures is information-preserving, not decorative: measured
+# against each route's own 6-dp cost rendering, the material routes carry
+# 4.5-5.8 significant figures of real precision (cb/deepseek-v4.1-flash
+# 3.43e-5 relative, ag/gemini-3.8-flash-high 1.13e-5), so this quantum is
+# always finer than the source and can never re-create a tie the source
+# resolves. Rounding for a human stays in `rate_label` at the call sites.
+EFF_SIG_FIGS = 6
+
+
+def sig_round(value: float | None, sig: int = EFF_SIG_FIGS) -> float | None:
+    """Round to `sig` SIGNIFICANT figures — an ordering-preserving quantizer.
+
+    The quantum scales with magnitude, so a 3.5e-4 ask keeps ~3.5e-10
+    resolution where the old absolute 4-dp snap imposed 5e-5 (14.2% of that
+    ask). None and non-finite values pass through untouched.
+    """
+    if value is None:
+        return None
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return None
+    if value == 0.0 or not math.isfinite(value):
+        return value
+    return round(value, -int(math.floor(math.log10(abs(value)))) + sig - 1)
 
 
 def rate_label(raw: object, sig: int = 3, prefix: str = "$",
@@ -328,7 +364,7 @@ def route_entry(stats: dict | None, catalog: dict, alias: str, *, candidate: boo
         entry = {
             "ask_in": stats["ask_in"],
             "ask_out": stats["ask_out"],
-            "eff_per_mtok": round(eff, 4) if eff is not None else None,
+            "eff_per_mtok": sig_round(eff) if eff is not None else None,
             "cache_pct": round(cache_pct, 1) if cache_pct is not None else None,
             "reqs": stats["reqs"],
             "tok_in": stats["tok_in"],
@@ -624,7 +660,7 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
         m = marginal.get(alias) if cutoff else None
         if m and (m["tok_in"] + m["tok_out"]):
             toks = m["tok_in"] + m["tok_out"]
-            entry["marginal_per_mtok"] = round(m["cost"] / toks * 1e6, 4)
+            entry["marginal_per_mtok"] = sig_round(m["cost"] / toks * 1e6)
             entry["marginal_reqs"] = m["reqs"]
             entry["marginal_since"] = cutoff
             # W6 slimming: the raw ts list stays out of the snapshot —
