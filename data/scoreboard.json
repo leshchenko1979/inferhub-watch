@@ -1,0 +1,389 @@
+{
+  "cadences": {
+    "daily": 17,
+    "hourly": 301
+  },
+  "daily": {
+    "comparable_histogram": {
+      "1": 1,
+      "10": 1,
+      "12": 1,
+      "13": 2,
+      "4": 5,
+      "8": 4,
+      "9": 2
+    },
+    "level": {
+      "median_ratio": 1.227,
+      "n_pairs": 119,
+      "per_route": {
+        "ag/gemini-3.7-flash-high": {
+          "median_ratio": 0.624,
+          "n": 1
+        },
+        "ag/gemini-3.8-flash-high": {
+          "median_ratio": 0.859,
+          "n": 1
+        },
+        "ali/deepseek-v4-flash-0731": {
+          "median_ratio": 1.559,
+          "n": 13
+        },
+        "ali/deepseek-v4-pro-0813": {
+          "median_ratio": 2.056,
+          "n": 13
+        },
+        "ali/kimi-k3": {
+          "median_ratio": 1.214,
+          "n": 9
+        },
+        "ali/qwen3.8-max": {
+          "median_ratio": 1.119,
+          "n": 15
+        },
+        "cb/glm-5.3": {
+          "median_ratio": 4.275,
+          "n": 2
+        },
+        "cb/gpt-5.6-luna": {
+          "median_ratio": 5.116,
+          "n": 5
+        },
+        "cb/gpt-5.6-sol": {
+          "median_ratio": 1.68,
+          "n": 2
+        },
+        "cb/gpt-5.6-terra": {
+          "median_ratio": 1.683,
+          "n": 2
+        },
+        "cbcn/deepseek-v4-flash": {
+          "median_ratio": 4.289,
+          "n": 1
+        },
+        "cbcn/deepseek-v4-pro": {
+          "median_ratio": 1.888,
+          "n": 1
+        },
+        "cbcn/glm-5.3-flash": {
+          "median_ratio": 1.086,
+          "n": 6
+        },
+        "cmc/deepseek/deepseek-v4-pro": {
+          "median_ratio": 1.29,
+          "n": 1
+        },
+        "cmc/xai/grok-4.6": {
+          "median_ratio": 1.621,
+          "n": 1
+        },
+        "cp/cline-pass/deepseek-v4-pro": {
+          "median_ratio": 0.882,
+          "n": 1
+        },
+        "cp/zai/glm-5.3-flash": {
+          "median_ratio": 2.26,
+          "n": 3
+        },
+        "cx/gpt-5.6-luna": {
+          "median_ratio": 3.36,
+          "n": 9
+        },
+        "cx/gpt-5.6-sol": {
+          "median_ratio": 1.101,
+          "n": 9
+        },
+        "cx/gpt-5.6-terra": {
+          "median_ratio": 1.113,
+          "n": 9
+        },
+        "ocg/deepseek-v4-flash": {
+          "median_ratio": 1.034,
+          "n": 1
+        },
+        "zai/glm-5.3-flash": {
+          "median_ratio": 0.782,
+          "n": 14
+        }
+      },
+      "within_2x": 0.672,
+      "within_50pct": 0.496
+    },
+    "ordering": {
+      "cost_regret": {
+        "land": 13,
+        "median_regret": 0.0,
+        "min_n": 10,
+        "n": 15,
+        "pass": true,
+        "share": 0.867,
+        "share_bar": 0.8,
+        "tol": 0.15
+      },
+      "value_iq_source": "snapshot as-of iq (D3)",
+      "value_regret": {
+        "land": 9,
+        "median_regret": 0.0,
+        "min_n": 10,
+        "n": 10,
+        "pass": true,
+        "share": 0.9,
+        "share_bar": 0.8,
+        "tol": 0.15
+      }
+    },
+    "transitions": 16
+  },
+  "generated_at": "2026-09-12T12:59:23+00:00",
+  "hourly_cumulative": {
+    "comparable_histogram": {
+      "1": 3,
+      "13": 110,
+      "16": 3,
+      "18": 21,
+      "19": 26,
+      "2": 55,
+      "20": 3,
+      "6": 48,
+      "8": 31
+    },
+    "level": {
+      "median_ratio": 1.496,
+      "n_pairs": 3059,
+      "per_route": {
+        "ag/gemini-3.7-flash-high": {
+          "median_ratio": 0.971,
+          "n": 53
+        },
+        "ag/gemini-3.8-flash-high": {
+          "median_ratio": 0.951,
+          "n": 53
+        },
+        "ali/deepseek-v4-flash-0731": {
+          "median_ratio": 3.353,
+          "n": 242
+        },
+        "ali/deepseek-v4-pro-0813": {
+          "median_ratio": 2.268,
+          "n": 242
+        },
+        "ali/qwen3.8-max": {
+          "median_ratio": 1.057,
+          "n": 297
+        },
+        "cb/deepseek-v4.1-flash": {
+          "median_ratio": 4.028,
+          "n": 29
+        },
+        "cb/glm-5.3": {
+          "median_ratio": 2.206,
+          "n": 242
+        },
+        "cb/gpt-5.6-luna": {
+          "median_ratio": 3.386,
+          "n": 242
+        },
+        "cb/gpt-5.6-sol": {
+          "median_ratio": 1.373,
+          "n": 163
+        },
+        "cb/gpt-5.6-terra": {
+          "median_ratio": 1.405,
+          "n": 163
+        },
+        "cb/kimi-k3": {
+          "median_ratio": 1.339,
+          "n": 163
+        },
+        "cbcn/deepseek-v4-flash": {
+          "median_ratio": 3.134,
+          "n": 194
+        },
+        "cbcn/deepseek-v4-pro": {
+          "median_ratio": 2.443,
+          "n": 50
+        },
+        "cbcn/glm-5.3-flash": {
+          "median_ratio": 1.066,
+          "n": 163
+        },
+        "cmc/xai/grok-4.6": {
+          "median_ratio": 1.735,
+          "n": 50
+        },
+        "cmc/z-ai/glm-5.3-flash": {
+          "median_ratio": 2.178,
+          "n": 53
+        },
+        "cp/zai/glm-5.3-flash": {
+          "median_ratio": 1.391,
+          "n": 163
+        },
+        "cx/gpt-5.6-luna": {
+          "median_ratio": 3.522,
+          "n": 194
+        },
+        "zai/glm-5.3": {
+          "median_ratio": 2.007,
+          "n": 3
+        },
+        "zai/glm-5.3-flash": {
+          "median_ratio": 0.766,
+          "n": 300
+        }
+      },
+      "within_2x": 0.555,
+      "within_50pct": 0.501
+    },
+    "ordering": {
+      "cost_regret": {
+        "land": 153,
+        "median_regret": 0.0,
+        "min_n": 10,
+        "n": 242,
+        "pass": false,
+        "share": 0.632,
+        "share_bar": 0.8,
+        "tol": 0.15
+      },
+      "value_iq_source": "snapshot as-of iq (D3)",
+      "value_regret": {
+        "land": 0,
+        "median_regret": null,
+        "min_n": 10,
+        "n": 0,
+        "pass": false,
+        "share": null,
+        "share_bar": 0.8,
+        "tol": 0.15
+      }
+    },
+    "transitions": 300
+  },
+  "hourly_slice": {
+    "comparable_histogram": {
+      "0": 115,
+      "1": 100,
+      "2": 51,
+      "3": 22,
+      "4": 3,
+      "6": 5,
+      "7": 3,
+      "8": 1
+    },
+    "level": {
+      "median_ratio": 0.979,
+      "n_pairs": 339,
+      "per_route": {
+        "ag/gemini-3.7-flash-high": {
+          "median_ratio": 1.007,
+          "n": 40
+        },
+        "ag/gemini-3.8-flash-high": {
+          "median_ratio": 1.116,
+          "n": 20
+        },
+        "ali/deepseek-v4-flash-0731": {
+          "median_ratio": 17.179,
+          "n": 4
+        },
+        "ali/deepseek-v4-pro-0813": {
+          "median_ratio": 2.396,
+          "n": 5
+        },
+        "ali/qwen3.8-max": {
+          "median_ratio": 0.901,
+          "n": 50
+        },
+        "cb/deepseek-v4.1-flash": {
+          "median_ratio": 4.685,
+          "n": 18
+        },
+        "cb/glm-5.3": {
+          "median_ratio": 2.343,
+          "n": 7
+        },
+        "cb/gpt-5.6-luna": {
+          "median_ratio": 4.666,
+          "n": 13
+        },
+        "cb/gpt-5.6-sol": {
+          "median_ratio": 1.865,
+          "n": 2
+        },
+        "cb/gpt-5.6-terra": {
+          "median_ratio": 1.968,
+          "n": 2
+        },
+        "cbcn/deepseek-v4-flash": {
+          "median_ratio": 2.884,
+          "n": 5
+        },
+        "cbcn/deepseek-v4-pro": {
+          "median_ratio": 1.736,
+          "n": 2
+        },
+        "cbcn/glm-5.3-flash": {
+          "median_ratio": 0.908,
+          "n": 70
+        },
+        "cmc/xai/grok-4.6": {
+          "median_ratio": 1.445,
+          "n": 2
+        },
+        "cmc/z-ai/glm-5.3-flash": {
+          "median_ratio": 2.22,
+          "n": 3
+        },
+        "cp/zai/glm-5.3-flash": {
+          "median_ratio": 1.645,
+          "n": 3
+        },
+        "cx/gpt-5.6-luna": {
+          "median_ratio": 3.637,
+          "n": 2
+        },
+        "zai/glm-5.3-flash": {
+          "median_ratio": 0.742,
+          "n": 91
+        }
+      },
+      "within_2x": 0.566,
+      "within_50pct": 0.407
+    },
+    "ordering": {
+      "cost_regret": {
+        "land": 25,
+        "median_regret": 0.0,
+        "min_n": 10,
+        "n": 34,
+        "pass": false,
+        "share": 0.735,
+        "share_bar": 0.8,
+        "tol": 0.15
+      },
+      "value_iq_source": "snapshot as-of iq (D3)",
+      "value_regret": {
+        "land": 0,
+        "median_regret": null,
+        "min_n": 10,
+        "n": 0,
+        "pass": false,
+        "share": null,
+        "share_bar": 0.8,
+        "tol": 0.15
+      }
+    },
+    "transitions": 300
+  },
+  "rows": 87383,
+  "window": {
+    "coverage_pct": 41.71,
+    "declared_hours": 720.0,
+    "declared_range": "30d",
+    "first_ts": "2026-08-31T00:05:22.827000+00:00",
+    "hours": 300.31,
+    "last_ts": "2026-09-12T12:23:55.955000+00:00",
+    "rows": 87383
+  }
+}
