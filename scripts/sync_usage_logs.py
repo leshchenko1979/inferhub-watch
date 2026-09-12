@@ -220,6 +220,18 @@ def sync_route_metrics(conn, live_models: dict[str, dict] | None = None) -> int:
                 updated_at timestamptz not null default now()
             )
         """)
+        # Book columns (issue #41). `ask_in`/`ask_out` stay the FLOOR so no
+        # existing consumer silently changes meaning; the book price rides
+        # BESIDE it. `ladder_at` is the fetch instant the book was read at —
+        # the book churns in seconds, so a book price without it is stale by
+        # construction. Added separately because `create table if not exists`
+        # is a no-op on an existing table.
+        cur.execute("""
+            alter table route_metrics
+                add column if not exists book_in numeric(12,6),
+                add column if not exists book_out numeric(12,6),
+                add column if not exists ladder_at timestamptz
+        """)
         cur.execute("select route, ask_in from route_metrics")
         previous: dict[str, float | None] = {
             r: (float(a) if a is not None else None) for r, a in cur.fetchall()
@@ -231,8 +243,8 @@ def sync_route_metrics(conn, live_models: dict[str, dict] | None = None) -> int:
             cur.execute("""
                 insert into route_metrics
                     (route, ask_in, ask_out, official_in, official_out,
-                     supports_cache, iq, updated_at)
-                values (%s, %s, %s, %s, %s, %s, %s, now())
+                     supports_cache, iq, book_in, book_out, ladder_at, updated_at)
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
                 on conflict (route) do update set
                     ask_in = excluded.ask_in,
                     ask_out = excluded.ask_out,
@@ -240,10 +252,14 @@ def sync_route_metrics(conn, live_models: dict[str, dict] | None = None) -> int:
                     official_out = excluded.official_out,
                     supports_cache = excluded.supports_cache,
                     iq = excluded.iq,
+                    book_in = excluded.book_in,
+                    book_out = excluded.book_out,
+                    ladder_at = excluded.ladder_at,
                     updated_at = now()
             """, (route, m.get("ask_in"), m.get("ask_out"),
                   m.get("official_in"), m.get("official_out"),
-                  m.get("supports_cache"), iq))
+                  m.get("supports_cache"), iq,
+                  m.get("book_in"), m.get("book_out"), m.get("ladder_at")))
             # Floor-point receipt (#27 item 3): name the ladder point this
             # route's floor came from, so a floor that flips between pulls is
             # visible in the sync log instead of silently moving the ranking.

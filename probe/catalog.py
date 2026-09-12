@@ -22,7 +22,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from probe import floor
+from probe import floor, stack
 from probe.costs import MANAGEMENT, _get_json
 from probe.registry import atomic_write_text, repo_root
 
@@ -31,10 +31,37 @@ CACHE_RATE = 0.1  # cached input ask = 10% of input ask (row-verified, all eras)
 OUT_NAME = "catalog.json"
 
 
+def ladder_json(model: dict, key: str) -> list[list[float | int]] | None:
+    """A route's FULL price ladder as JSON-ready ``[[price, count], ...]``.
+
+    The catalog carries the whole order book as ``pricePointsIn`` /
+    ``pricePointsOut`` histograms, and this repo used to reduce each one to a
+    single floor point and drop the rest — the stack was fetched and thrown
+    away every sweep, which made the floor's own stability unmeasurable and
+    every stack estimator impossible to compute.
+
+    Ordering is ``probe.floor.ladder_points``'s (price-ascending, ties by
+    descending publisher count), so two pulls of the same book serialise
+    identically and a diff is a real change.
+
+    ``None`` means the payload carried no such ladder key at all — the legacy
+    ``asksIn``/``asksOut`` schema, where the publisher count is unknown.
+    ``[]`` means the key was present and no point parsed. The two are not the
+    same fact and callers must not collapse them.
+    """
+    if key not in model:
+        return None
+    return [[price, count] for price, count in floor.ladder_points(model.get(key))]
+
 def fetch_models(key: str) -> dict[str, dict]:
     """Map 'prefix/upstreamModelId' -> official rates, cheapest asks, cache flag."""
     body = _get_json(f"{MANAGEMENT}/catalog", key)
     entries = body if isinstance(body, list) else body.get("rows") or []
+    # The book moves in SECONDS (two pulls 26 s apart moved 35 of 115 ladders),
+    # so every ladder and every book price carries the instant it was fetched.
+    # A book point without its fetch time is no better than the stale floor it
+    # replaces — never reuse one across a cycle.
+    fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     models: dict[str, dict] = {}
     for entry in entries:
         prefix = entry.get("prefix") or ""
@@ -65,6 +92,18 @@ def fetch_models(key: str) -> dict[str, dict]:
                 # Price and publisher count come off the SAME selection.
                 "ask_in_publishers": in_pubs if asks else None,
                 "ask_out_publishers": out_pubs if asks else None,
+                # The FULL book, not just the floor. Same data we already
+                # fetched; keeping it is what makes the stack measurable at
+                # all (see probe/stack.py and scripts/stack_estimator_backtest.py).
+                "ladder_in": ladder_json(model, "pricePointsIn"),
+                "ladder_out": ladder_json(model, "pricePointsOut"),
+                # The book price, stamped BESIDE the floor and never replacing
+                # it: `ask_in` keeps meaning the floor so no existing consumer
+                # silently changes meaning. `ladder_at` is the fetch instant —
+                # the book churns in seconds, so this travels with the price.
+                "book_in": stack.book_point(model.get("pricePointsIn")),
+                "book_out": stack.book_point(model.get("pricePointsOut")),
+                "ladder_at": fetched_at,
             }
     return models
 

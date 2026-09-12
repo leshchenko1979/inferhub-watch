@@ -313,8 +313,9 @@ class LoadRouteMetricsTests(unittest.TestCase):
         cur = conn.cursor.return_value.__enter__.return_value
         dt = datetime(2026, 9, 12, 3, 0, 0, tzinfo=timezone.utc)
         cur.fetchall.return_value = [
-            ("cb/model-a", "0.00015", "0.00060", "0.15", "0.60", True, "39.5", dt),
-            ("ag/model-b", None, None, "0.50", "1.50", False, None, dt),
+            ("cb/model-a", "0.00015", "0.00060", "0.15", "0.60", True, "39.5", dt,
+             "0.00585", "0.02340", dt),
+            ("ag/model-b", None, None, "0.50", "1.50", False, None, dt, None, None, None),
         ]
         models, max_updated = pgstore.load_route_metrics(conn=conn)
         self.assertEqual(len(models), 2)
@@ -322,7 +323,15 @@ class LoadRouteMetricsTests(unittest.TestCase):
         self.assertEqual(models["cb/model-a"]["ask_out"], 0.0006)
         self.assertTrue(models["cb/model-a"]["supports_cache"])
         self.assertEqual(models["cb/model-a"]["iq"], 39.5)
+        # The book rides BESIDE the floor: ask_in keeps its floor meaning and
+        # book_in carries the book price + the fetch instant it was read at.
+        self.assertEqual(models["cb/model-a"]["book_in"], 0.00585)
+        self.assertEqual(models["cb/model-a"]["book_out"], 0.0234)
+        self.assertEqual(models["cb/model-a"]["ladder_at"], dt.isoformat())
         self.assertIsNone(models["ag/model-b"]["ask_in"])
+        # A row predating the book columns reads as "no book known", not free.
+        self.assertIsNone(models["ag/model-b"]["book_in"])
+        self.assertIsNone(models["ag/model-b"]["ladder_at"])
         self.assertEqual(max_updated, dt)
         cur.executemany.assert_not_called()
 

@@ -505,7 +505,15 @@ def load_route_metrics(conn=None) -> tuple[dict[str, dict], datetime | None]:
             "official_out": float | None,
             "supports_cache": bool,
             "iq": float | None,
+            "book_in": float | None,
+            "book_out": float | None,
+            "ladder_at": str | None,
         }
+
+    ``ask_in``/``ask_out`` are the FLOOR (unchanged meaning); ``book_in``/
+    ``book_out`` are the book price stamped beside it (issue #41). The book
+    fields are ``None`` on any row written before the book columns existed,
+    which callers must read as "no book known", never as free.
     """
     own = conn is None
     if own:
@@ -520,7 +528,8 @@ def load_route_metrics(conn=None) -> tuple[dict[str, dict], datetime | None]:
         with conn.cursor() as cur:
             cur.execute("""
                 select route, ask_in, ask_out, official_in, official_out,
-                       supports_cache, iq, updated_at
+                       supports_cache, iq, updated_at, book_in, book_out,
+                       ladder_at
                 from route_metrics
             """)
             rows = cur.fetchall()
@@ -528,7 +537,7 @@ def load_route_metrics(conn=None) -> tuple[dict[str, dict], datetime | None]:
                 return {}, None
             models: dict[str, dict] = {}
             max_updated: datetime | None = None
-            for r, ai, ao, oi, oo, sc, iq, up in rows:
+            for r, ai, ao, oi, oo, sc, iq, up, bi, bo, la in rows:
                 models[r] = {
                     "ask_in": float(ai) if ai is not None else None,
                     "ask_out": float(ao) if ao is not None else None,
@@ -536,6 +545,9 @@ def load_route_metrics(conn=None) -> tuple[dict[str, dict], datetime | None]:
                     "official_out": float(oo) if oo is not None else None,
                     "supports_cache": bool(sc),
                     "iq": float(iq) if iq is not None else None,
+                    "book_in": float(bi) if bi is not None else None,
+                    "book_out": float(bo) if bo is not None else None,
+                    "ladder_at": la.isoformat() if la is not None else None,
                 }
                 if up is not None:
                     if max_updated is None or up > max_updated:
