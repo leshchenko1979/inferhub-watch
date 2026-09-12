@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-12T11:25:54+00:00",
+  "generated_at": "2026-09-12T12:12:23+00:00",
   "cache_rate": 0.1,
   "models": {
     "ag/claude-opus-4-6-thinking": {
@@ -8,8 +8,8 @@
       "supports_cache": true,
       "ask_in": 0.005,
       "ask_out": 0.025,
-      "ask_in_publishers": 31,
-      "ask_out_publishers": 31
+      "ask_in_publishers": 4,
+      "ask_out_publishers": 4
     },
     "ag/claude-sonnet-4-6": {
       "official_in": 3.0,
@@ -17,8 +17,8 @@
       "supports_cache": true,
       "ask_in": 0.003,
       "ask_out": 0.015,
-      "ask_in_publishers": 30,
-      "ask_out_publishers": 30
+      "ask_in_publishers": 59,
+      "ask_out_publishers": 59
     },
     "ag/gemini-3.6-flash-high": {
       "official_in": 0.75,
@@ -26,17 +26,17 @@
       "supports_cache": true,
       "ask_in": 0.00075,
       "ask_out": 0.00375,
-      "ask_in_publishers": 137,
-      "ask_out_publishers": 137
+      "ask_in_publishers": 130,
+      "ask_out_publishers": 130
     },
     "ag/gemini-3.7-flash-high": {
       "official_in": 0.75,
       "official_out": 3.75,
       "supports_cache": true,
-      "ask_in": 0.0225,
-      "ask_out": 0.1125,
-      "ask_in_publishers": 7,
-      "ask_out_publishers": 7
+      "ask_in": 0.00075,
+      "ask_out": 0.00375,
+      "ask_in_publishers": 18,
+      "ask_out_publishers": 18
     },
     "ag/gemini-3.8-flash-high": {
       "official_in": 0.75,
@@ -44,8 +44,8 @@
       "supports_cache": true,
       "ask_in": 0.00075,
       "ask_out": 0.00375,
-      "ask_in_publishers": 217,
-      "ask_out_publishers": 217
+      "ask_in_publishers": 230,
+      "ask_out_publishers": 230
     },
     "ag/gemini-pro-agent": {
       "official_in": 2.0,
@@ -53,8 +53,8 @@
       "supports_cache": true,
       "ask_in": 0.002,
       "ask_out": 0.012,
-      "ask_in_publishers": 319,
-      "ask_out_publishers": 319
+      "ask_in_publishers": 284,
+      "ask_out_publishers": 284
     },
     "cc/claude-fable-5": {
       "official_in": 10.0,
@@ -62,8 +62,8 @@
       "supports_cache": true,
       "ask_in": 1.0,
       "ask_out": 5.0,
-      "ask_in_publishers": 2,
-      "ask_out_publishers": 2
+      "ask_in_publishers": 1,
+      "ask_out_publishers": 1
     },
     "cc/claude-fable-5-1": {
       "official_in": 10.0,
@@ -71,8 +71,8 @@
       "supports_cache": true,
       "ask_in": 1.0,
       "ask_out": 5.0,
-      "ask_in_publishers": 2,
-      "ask_out_publishers": 2
+      "ask_in_publishers": 1,
+      "ask_out_publishers": 1
     },
     "cc/claude-haiku-4-5": {
       "official_in": 1.0,
@@ -80,8 +80,8 @@
       "supports_cache": true,
       "ask_in": 0.1,
       "ask_out": 0.5,
-      "ask_in_publishers": 2,
-      "ask_out_publishers": 2
+      "ask_in_publishers": 1,
+      "ask_out_publishers": 1
     },
     "cc/claude-opus-4-6": {
       "official_in": 5.0,
@@ -89,8 +89,8 @@
       "supports_cache": true,
       "ask_in": 0.5,
       "ask_out": 2.5,
-      "ask_in_publishers": 3,
-      "ask_out_publishers": 3
+      "ask_in_publishers": 2,
+      "ask_out_publishers": 2
     },
     "cc/claude-opus-4-7": {
       "official_in": 5.0,
@@ -98,8 +98,8 @@
       "supports_cache": true,
       "ask_in": 0.5,
       "ask_out": 2.5,
-      "ask_in_publishers": 3,
-      "ask_out_publishers": 3
+      "ask_in_publishers": 2,
+      "ask_out_publishers": 2
     },
     "cc/claude-opus-4-8": {
       "official_in": 5.0,
@@ -107,8 +107,8 @@
       "supports_cache": true,
       "ask_in": 0.5,
       "ask_out": 2.5,
-      "ask_in_publishers": 3,
-      "ask_out_publishers": 3
+      "ask_in_publishers": 2,
+      "ask_out_publishers": 2
     },
     "cc/claude-opus-5": {
       "official_in": 5.0,
@@ -116,8 +116,8 @@
       "supports_cache": true,
       "ask_in": 0.5,
       "ask_out": 2.5,
-      "ask_in_publishers": 3,
-      "ask_out_publishers": 3
+      "ask_in_publishers": 2,
+      "ask_out_publishers": 2
     },
     "cc/claude-sonnet-4-5": {
       "official_in": 3.0,
@@ -125,8 +125,8 @@
       "supports_cache": true,
       "ask_in": 0.3,
       "ask_out": 1.5,
-      "ask_in_publishers": 2,
-      "ask_out_publishers": 2
+      "ask_in_publishers": 1,
+      "ask_out_publishers": 1
     },
     "cc/claude-sonnet-4-6": {
       "official_in": 3.0,
@@ -134,8 +134,8 @@
       "supports_cache": true,
       "ask_in": 0.3,
       "ask_out": 1.5,
-      "ask_in_publishers": 2,
-      "ask_out_publishers": 2
+      "ask_in_publishers": 1,
+      "ask_out_publishers": 1
     },
     "cc/claude-sonnet-5": {
       "official_in": 3.0,
@@ -143,8 +143,8 @@
       "supports_cache": true,
       "ask_in": 0.3,
       "ask_out": 1.5,
-      "ask_in_publishers": 2,
-      "ask_out_publishers": 2
+      "ask_in_publishers": 1,
+      "ask_out_publishers": 1
     },
     "cp/cline-pass/deepseek-v4-flash": {
       "official_in": 0.22,
@@ -152,8 +152,8 @@
       "supports_cache": true,
       "ask_in": 0.0528,
       "ask_out": 0.1584,
-      "ask_in_publishers": 6,
-      "ask_out_publishers": 6
+      "ask_in_publishers": 4,
+      "ask_out_publishers": 4
     },
     "cp/cline-pass/deepseek-v4-pro": {
       "official_in": 0.66,
@@ -278,8 +278,8 @@
       "supports_cache": true,
       "ask_in": 0.5,
       "ask_out": 1.5,
-      "ask_in_publishers": 2,
-      "ask_out_publishers": 2
+      "ask_in_publishers": 5,
+      "ask_out_publishers": 5
     },
     "cp/zai/glm-5.3-flash": {
       "official_in": 0.15,
@@ -350,8 +350,8 @@
       "supports_cache": true,
       "ask_in": 0.0154,
       "ask_out": 0.0484,
-      "ask_in_publishers": 266,
-      "ask_out_publishers": 266
+      "ask_in_publishers": 231,
+      "ask_out_publishers": 231
     },
     "cb/gpt-5.3-codex": {
       "official_in": 1.75,
@@ -440,8 +440,8 @@
       "supports_cache": true,
       "ask_in": 0.0033,
       "ask_out": 0.0099,
-      "ask_in_publishers": 2533,
-      "ask_out_publishers": 2533
+      "ask_in_publishers": 7085,
+      "ask_out_publishers": 7085
     },
     "cbcn/deepseek-v4-pro": {
       "official_in": 0.66,
@@ -449,17 +449,17 @@
       "supports_cache": true,
       "ask_in": 0.0099,
       "ask_out": 0.0297,
-      "ask_in_publishers": 2533,
-      "ask_out_publishers": 2533
+      "ask_in_publishers": 7085,
+      "ask_out_publishers": 7085
     },
     "cbcn/deepseek-v4.1-flash": {
       "official_in": 0.15,
       "official_out": 0.6,
       "supports_cache": true,
-      "ask_in": 0.00225,
-      "ask_out": 0.009,
-      "ask_in_publishers": 2525,
-      "ask_out_publishers": 2525
+      "ask_in": 0.00255,
+      "ask_out": 0.0102,
+      "ask_in_publishers": 5116,
+      "ask_out_publishers": 5116
     },
     "cbcn/glm-5.2": {
       "official_in": 1.4,
@@ -467,8 +467,8 @@
       "supports_cache": true,
       "ask_in": 0.0238,
       "ask_out": 0.0748,
-      "ask_in_publishers": 101,
-      "ask_out_publishers": 101
+      "ask_in_publishers": 100,
+      "ask_out_publishers": 100
     },
     "cbcn/glm-5.3": {
       "official_in": 1.4,
@@ -476,17 +476,17 @@
       "supports_cache": true,
       "ask_in": 0.021,
       "ask_out": 0.066,
-      "ask_in_publishers": 2532,
-      "ask_out_publishers": 2532
+      "ask_in_publishers": 7084,
+      "ask_out_publishers": 7084
     },
     "cbcn/glm-5.3-flash": {
       "official_in": 0.15,
       "official_out": 0.5,
       "supports_cache": true,
-      "ask_in": 0.00255,
-      "ask_out": 0.0085,
-      "ask_in_publishers": 2626,
-      "ask_out_publishers": 2626
+      "ask_in": 0.0024,
+      "ask_out": 0.008,
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "cbcn/kimi-k2.6": {
       "official_in": 0.95,
@@ -494,17 +494,17 @@
       "supports_cache": true,
       "ask_in": 0.01425,
       "ask_out": 0.06,
-      "ask_in_publishers": 2533,
-      "ask_out_publishers": 2533
+      "ask_in_publishers": 7085,
+      "ask_out_publishers": 7085
     },
     "cbcn/kimi-k2.7": {
       "official_in": 0.95,
       "official_out": 4.0,
       "supports_cache": true,
-      "ask_in": 0.0152,
-      "ask_out": 0.064,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in": 0.01615,
+      "ask_out": 0.068,
+      "ask_in_publishers": 2150,
+      "ask_out_publishers": 2150
     },
     "cbcn/kimi-k3": {
       "official_in": 3.0,
@@ -512,8 +512,8 @@
       "supports_cache": true,
       "ask_in": 0.045,
       "ask_out": 0.225,
-      "ask_in_publishers": 2533,
-      "ask_out_publishers": 2533
+      "ask_in_publishers": 7085,
+      "ask_out_publishers": 7085
     },
     "cbcn/minimax-m2.7": {
       "official_in": 0.3,
@@ -530,8 +530,8 @@
       "supports_cache": true,
       "ask_in": 0.0051,
       "ask_out": 0.0204,
-      "ask_in_publishers": 94,
-      "ask_out_publishers": 94
+      "ask_in_publishers": 93,
+      "ask_out_publishers": 93
     },
     "cmc/MiniMaxAI/MiniMax-M2.5": {
       "official_in": 0.3,
@@ -692,8 +692,8 @@
       "supports_cache": true,
       "ask_in": 0.05,
       "ask_out": 0.3,
-      "ask_in_publishers": 2,
-      "ask_out_publishers": 2
+      "ask_in_publishers": 1,
+      "ask_out_publishers": 1
     },
     "cx/gpt-5.6-luna": {
       "official_in": 0.2,
@@ -701,8 +701,8 @@
       "supports_cache": true,
       "ask_in": 0.003,
       "ask_out": 0.018,
-      "ask_in_publishers": 2,
-      "ask_out_publishers": 2
+      "ask_in_publishers": 1,
+      "ask_out_publishers": 1
     },
     "cx/gpt-5.6-sol": {
       "official_in": 5.0,
@@ -710,8 +710,8 @@
       "supports_cache": true,
       "ask_in": 0.075,
       "ask_out": 0.45,
-      "ask_in_publishers": 2,
-      "ask_out_publishers": 2
+      "ask_in_publishers": 1,
+      "ask_out_publishers": 1
     },
     "cx/gpt-5.6-terra": {
       "official_in": 2.0,
@@ -719,8 +719,8 @@
       "supports_cache": true,
       "ask_in": 0.03,
       "ask_out": 0.18,
-      "ask_in_publishers": 2,
-      "ask_out_publishers": 2
+      "ask_in_publishers": 1,
+      "ask_out_publishers": 1
     },
     "cx/gpt-6-astra": {
       "official_in": 10.0,
@@ -737,8 +737,8 @@
       "supports_cache": true,
       "ask_in": 0.033,
       "ask_out": 0.099,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "ocg/deepseek-v4-pro": {
       "official_in": 0.66,
@@ -746,8 +746,8 @@
       "supports_cache": true,
       "ask_in": 0.099,
       "ask_out": 0.297,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "ocg/glm-5.1": {
       "official_in": 1.4,
@@ -755,8 +755,8 @@
       "supports_cache": true,
       "ask_in": 0.21,
       "ask_out": 0.66,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "ocg/glm-5.2": {
       "official_in": 1.4,
@@ -764,8 +764,8 @@
       "supports_cache": true,
       "ask_in": 0.21,
       "ask_out": 0.66,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "ocg/glm-5.3": {
       "official_in": 1.4,
@@ -773,8 +773,8 @@
       "supports_cache": true,
       "ask_in": 0.21,
       "ask_out": 0.66,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "ocg/glm-5.3-flash": {
       "official_in": 0.15,
@@ -782,8 +782,8 @@
       "supports_cache": true,
       "ask_in": 0.0225,
       "ask_out": 0.075,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "ocg/gpt-5.6-luna": {
       "official_in": 0.2,
@@ -791,8 +791,8 @@
       "supports_cache": true,
       "ask_in": 0.03,
       "ask_out": 0.18,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "ocg/grok-4.5": {
       "official_in": 2.0,
@@ -800,8 +800,8 @@
       "supports_cache": true,
       "ask_in": 0.3,
       "ask_out": 0.9,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "ocg/kimi-k2.6": {
       "official_in": 0.95,
@@ -809,8 +809,8 @@
       "supports_cache": true,
       "ask_in": 0.1425,
       "ask_out": 0.6,
-      "ask_in_publishers": 9,
-      "ask_out_publishers": 9
+      "ask_in_publishers": 8,
+      "ask_out_publishers": 8
     },
     "ocg/kimi-k2.7-code": {
       "official_in": 0.95,
@@ -818,8 +818,8 @@
       "supports_cache": true,
       "ask_in": 0.1425,
       "ask_out": 0.6,
-      "ask_in_publishers": 9,
-      "ask_out_publishers": 9
+      "ask_in_publishers": 8,
+      "ask_out_publishers": 8
     },
     "ocg/kimi-k3": {
       "official_in": 3.0,
@@ -827,8 +827,8 @@
       "supports_cache": true,
       "ask_in": 0.45,
       "ask_out": 2.25,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "ocg/mimo-v2.5": {
       "official_in": 0.14,
@@ -845,8 +845,8 @@
       "supports_cache": true,
       "ask_in": 0.06525,
       "ask_out": 0.1305,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "ocg/minimax-m2.5": {
       "official_in": 0.3,
@@ -881,8 +881,8 @@
       "supports_cache": true,
       "ask_in": 0.18,
       "ask_out": 0.72,
-      "ask_in_publishers": 9,
-      "ask_out_publishers": 9
+      "ask_in_publishers": 8,
+      "ask_out_publishers": 8
     },
     "ocg/qwen3.8-max": {
       "official_in": 2.0,
@@ -890,15 +890,15 @@
       "supports_cache": true,
       "ask_in": 0.3,
       "ask_out": 0.9,
-      "ask_in_publishers": 8,
-      "ask_out_publishers": 8
+      "ask_in_publishers": 7,
+      "ask_out_publishers": 7
     },
     "ali/deepseek-v4-flash-0731": {
       "official_in": 0.22,
       "official_out": 0.66,
       "supports_cache": true,
-      "ask_in": 0.00814,
-      "ask_out": 0.02442,
+      "ask_in": 0.00792,
+      "ask_out": 0.02376,
       "ask_in_publishers": 1,
       "ask_out_publishers": 1
     },
@@ -908,8 +908,8 @@
       "supports_cache": true,
       "ask_in": 0.01188,
       "ask_out": 0.03564,
-      "ask_in_publishers": 9217,
-      "ask_out_publishers": 9217
+      "ask_in_publishers": 9198,
+      "ask_out_publishers": 9198
     },
     "ali/glm-5.2": {
       "official_in": 1.4,
@@ -917,8 +917,8 @@
       "supports_cache": true,
       "ask_in": 0.0252,
       "ask_out": 0.0792,
-      "ask_in_publishers": 9394,
-      "ask_out_publishers": 9394
+      "ask_in_publishers": 9371,
+      "ask_out_publishers": 9371
     },
     "ali/kimi-k2.7-code": {
       "official_in": 0.95,
@@ -926,8 +926,8 @@
       "supports_cache": true,
       "ask_in": 0.00095,
       "ask_out": 0.004,
-      "ask_in_publishers": 11638,
-      "ask_out_publishers": 11638
+      "ask_in_publishers": 11620,
+      "ask_out_publishers": 11620
     },
     "ali/kimi-k3": {
       "official_in": 3.0,
@@ -935,8 +935,8 @@
       "supports_cache": true,
       "ask_in": 0.024,
       "ask_out": 0.12,
-      "ask_in_publishers": 7057,
-      "ask_out_publishers": 7057
+      "ask_in_publishers": 6986,
+      "ask_out_publishers": 6986
     },
     "ali/qwen3.8-max": {
       "official_in": 2.0,
@@ -944,8 +944,8 @@
       "supports_cache": true,
       "ask_in": 0.016,
       "ask_out": 0.048,
-      "ask_in_publishers": 9745,
-      "ask_out_publishers": 9745
+      "ask_in_publishers": 9726,
+      "ask_out_publishers": 9726
     },
     "mimo/mimo-v2.5": {
       "official_in": 0.14,
