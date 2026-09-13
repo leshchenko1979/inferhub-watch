@@ -2094,7 +2094,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "The projection gate, BOTH legs (issue #35, item 2 of the 2026-09-12 owner decision set). The gate's question is unchanged: of the transitions where the board would have crowned a route (lowest projected $/M), what share realized within GATE_TOL (15%) of the cheapest realized route. What item 2 moved is the METRIC the regret ratio is taken on. COST takes it on realized $/M; VALUE takes it on the North Star metric (probe/value.py), on both sides of the ratio, never mixed. The same GATE_TOL / GATE_SHARE / GATE_MIN_N apply to both - a pass/fail constant is owner property and is never re-tuned to make a leg pass. IMPORTANT: the 'Cost verdict' column is what the panels' projected-basis switch reads (projection_gate.pass). The Value leg is PUBLISHED alongside it, not substituted for it; which leg the gate ships on is an owner decision, and until it is taken the disagreement is shown here rather than resolved silently. A 'n/a - unresolved' Value verdict is a RESOLUTION limit of the input (no as-of IQ stamp on the snapshot), never evidence that Value failed.",
+      "description": "The projection gate, BOTH legs (issue #35, item 2 of the 2026-09-12 owner decision set). The gate's question is unchanged: of the transitions where the board would have crowned a route (lowest projected $/M), what share realized within GATE_TOL (15%) of the cheapest realized route. What item 2 moved is the METRIC the regret ratio is taken on. COST takes it on realized $/M; VALUE takes it on the North Star metric (probe/value.py), on both sides of the ratio, never mixed. The same GATE_TOL / GATE_SHARE / GATE_MIN_N apply to both - a pass/fail constant is owner property and is never re-tuned to make a leg pass. IMPORTANT: the GATE's verdict is the VALUE leg (owner ruling 2026-09-12: \"4. Value.\") - the 'Gate verdict' column reads projection_gate.pass and the 'Value verdict' column reads value_pass, which by that ruling are the same verdict shown twice. The cost leg's own verdict is RETAINED as cost_pass and is what the 'Cost verdict' column now reads; it no longer drives the panels' projected-basis switch. A 'n/a - unresolved' Value verdict is a RESOLUTION limit of the input (no as-of IQ stamp on the snapshot), never evidence that Value failed - but it does leave the gate's verdict false, because nothing was measured and nothing is certified.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -2168,11 +2168,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  CASE WHEN pass THEN 'PASS' ELSE 'FAIL' END AS \"Cost verdict\",\n  n AS \"Cost n\",\n  land AS \"Cost land\",\n  share AS \"Cost share\",\n  CASE WHEN value_status = 'measured'\n       THEN CASE WHEN value_pass THEN 'PASS' ELSE 'FAIL' END\n       ELSE 'n/a - ' || COALESCE(value_status, 'unresolved')\n  END AS \"Value verdict\",\n  value_n AS \"Value n\",\n  value_land AS \"Value land\",\n  value_share AS \"Value share\",\n  value_status AS \"Value status\",\n  computed_at AS \"Computed\"\nFROM projection_gate\nWHERE id = 'projection_gate'",
+          "rawSql": "SELECT\n  CASE WHEN pass THEN 'PASS' ELSE 'FAIL' END AS \"Gate verdict\",\n  CASE WHEN cost_pass THEN 'PASS' ELSE 'FAIL' END AS \"Cost verdict\",\n  n AS \"Cost n\",\n  land AS \"Cost land\",\n  share AS \"Cost share\",\n  CASE WHEN value_status = 'measured'\n       THEN CASE WHEN value_pass THEN 'PASS' ELSE 'FAIL' END\n       ELSE 'n/a - ' || COALESCE(value_status, 'unresolved')\n  END AS \"Value verdict\",\n  value_n AS \"Value n\",\n  value_land AS \"Value land\",\n  value_share AS \"Value share\",\n  value_status AS \"Value status\",\n  computed_at AS \"Computed\"\nFROM projection_gate\nWHERE id = 'projection_gate'",
           "refId": "A"
         }
       ],
-      "title": "Projection gate \u2014 both legs (cost verdict + Value measurement)",
+      "title": "Projection gate \u2014 gate verdict (Value) + retained cost verdict",
       "type": "table"
     }
   ],

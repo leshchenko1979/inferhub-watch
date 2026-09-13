@@ -157,5 +157,68 @@ class SyncPublishesTheBoardBasisTests(unittest.TestCase):
         self.assertEqual(calls, ["gate", "basis"])
 
 
+class GateVerdictPanelTests(unittest.TestCase):
+    """Panel 72 discloses BOTH legs, and names each by its own column.
+
+    The owner's ruling of 2026-09-12 moved the gate's verdict onto the Value
+    leg (`pass` = `value_pass`); the cost leg's verdict is retained as
+    `cost_pass`. Panel 72's "Cost verdict" column used to read bare `pass`, so
+    after the ruling it would have labelled the VALUE verdict as the cost one -
+    a mislabel that no number would have revealed, because both legs pass. The
+    columns below are pinned so a dashboard regeneration cannot reintroduce it.
+    """
+
+    GATE_PANEL = 72
+
+    def _gate_panel(self) -> dict:
+        panels = _panels()
+        self.assertIn(self.GATE_PANEL, panels, "panel 72 missing")
+        return panels[self.GATE_PANEL]
+
+    def test_the_gate_verdict_column_reads_the_gate_verdict(self) -> None:
+        sql = _sql(self._gate_panel())
+        self.assertIn(
+            "CASE WHEN pass THEN 'PASS' ELSE 'FAIL' END AS \"Gate verdict\"", sql
+        )
+
+    def test_the_cost_verdict_column_reads_cost_pass_not_pass(self) -> None:
+        sql = _sql(self._gate_panel())
+        self.assertIn(
+            "CASE WHEN cost_pass THEN 'PASS' ELSE 'FAIL' END AS \"Cost verdict\"",
+            sql,
+        )
+        self.assertNotIn(
+            "CASE WHEN pass THEN 'PASS' ELSE 'FAIL' END AS \"Cost verdict\"",
+            sql,
+            "the Cost verdict column must not read bare `pass` - that is the "
+            "VALUE verdict since the 2026-09-12 ruling",
+        )
+
+    def test_the_value_verdict_column_reads_value_pass(self) -> None:
+        sql = _sql(self._gate_panel())
+        self.assertIn("value_pass", sql)
+
+    def test_every_column_the_panel_names_exists_on_the_gate_row(self) -> None:
+        # A column the sync does not publish renders empty in Grafana with no
+        # error - the panel would simply lose a verdict.
+        from probe import pgstore
+
+        ddl = pgstore.GATE_DDL.lower()
+        for column in ("pass", "cost_pass", "n", "land", "share",
+                       "value_pass", "value_n", "value_land", "value_share",
+                       "value_status", "computed_at"):
+            self.assertIn(column, ddl, f"projection_gate.{column} not published")
+
+    def test_the_description_names_the_ruling_and_retains_the_cost_leg(self) -> None:
+        desc = self._gate_panel().get("description") or ""
+        self.assertIn("Value", desc)
+        self.assertIn("cost_pass", desc)
+        # the pre-ruling text asserted the Cost column drove the switch
+        self.assertNotIn(
+            "the 'Cost verdict' column is what the panels' projected-basis "
+            "switch reads",
+            desc,
+        )
+
 if __name__ == "__main__":
     unittest.main()
