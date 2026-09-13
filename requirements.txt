@@ -1,4 +1,4 @@
-jinja2>=3.1
+jinja2>=3.1.6
 
 # Contract-gate dependencies (#29). The gate runs `python3 -m pytest tests/ -q`
 # so the 5 pytest-style files (100 tests) are collected — `unittest discover`
