@@ -45,20 +45,31 @@ create index if not exists idx_ul_model on usage_logs (model, created_at);
 # -> official_compare.projection_gate). One row, rewritten per sync; the
 # panels fall back to the realized basis when `pass` is false, and to
 # realized again when the row is absent (COALESCE ... false).
+#
+# `pass` is the VALUE leg's verdict (owner ruling 2026-09-12: "4. Value.").
+# `cost_pass` retains the cost leg's verdict, which the gate no longer ships
+# on but still reports. Both pass on the committed history as this lands, so
+# the panels' switch behaves identically today - what changed is which leg a
+# FUTURE failure belongs to, and an unresolved Value leg (no as-of IQ on the
+# snapshot) is `pass = false` with `value_status = 'unresolved'`, never a
+# silent certification.
 GATE_DDL = """
 create table if not exists projection_gate (
     id text primary key,
     pass boolean not null,
+    cost_pass boolean,
     n integer,
     land integer,
     share numeric,
     tol numeric,
     min_n integer,
     -- Item 2 (D4): the Value leg, MEASURED alongside the cost verdict.
-    -- `pass` stays the COST verdict and the panels' `use_proj` switch still
-    -- reads it - these columns report what the same crown walk says when the
-    -- regret ratio is taken on Value on both sides instead of on cost. See
-    -- `official_compare._crown_value_regrets`; the constants are shared.
+    -- Since the owner's ruling of 2026-09-12 (`pass` IS the Value verdict),
+    -- `value_pass` is the gate's verdict and `cost_pass` above is the
+    -- retained cost one. These columns report what the same crown walk says
+    -- when the regret ratio is taken on Value on both sides instead of on
+    -- cost. See `official_compare._crown_value_regrets`; the constants are
+    -- shared and are owner property.
     value_n integer,
     value_land integer,
     value_share numeric,
@@ -86,6 +97,11 @@ alter table projection_gate add column if not exists value_tol numeric;
 alter table projection_gate add column if not exists value_min_n integer;
 alter table projection_gate add column if not exists value_pass boolean;
 alter table projection_gate add column if not exists value_status text;
+-- The owner's ruling of 2026-09-12 moved the gate's verdict from the cost leg
+-- to the Value leg (`pass` = `value_pass`). `cost_pass` keeps the cost leg's
+-- own verdict on the row, so a reader can still see both. Guarded so a fresh
+-- database (which has it from the create above) is a no-op.
+alter table projection_gate add column if not exists cost_pass boolean;
 """
 
 # Per-route money bases, published from the committed snapshot so the
@@ -234,27 +250,30 @@ GATE_ID = "projection_gate"
 def publish_projection_gate(conn, gate: dict) -> None:
     """Upsert the projection gate verdict the dashboard reads.
 
-    `gate` is official_compare.projection_gate output: n / land / share /
-    tol / min_n / pass for the COST leg, plus the parallel Value leg
+    `gate` is official_compare.projection_gate output: the VALUE leg
     (value_n / value_land / value_share / value_tol / value_min_n /
-    value_pass / value_status). The single row is rewritten in place — the
-    dashboard needs the current verdict, not a history (the history is the
-    committed snapshots the verdict is recomputed from).
+    value_pass / value_status), the COST leg (n / land / share / tol /
+    min_n / cost_pass), and `pass` — which IS the Value verdict since the
+    owner's ruling of 2026-09-12 ("4. Value."). The single row is rewritten
+    in place — the dashboard needs the current verdict, not a history (the
+    history is the committed snapshots the verdict is recomputed from).
 
-    The Value leg is PUBLISHED, never substituted: `pass` stays the cost
-    verdict and the panels' `use_proj` switch keeps reading it. Item 2 (D4)
-    moved what the gate MEASURES; which leg it ships on is a separate,
-    owner-level decision, so this row carries both and lets a reader see the
-    disagreement rather than having it resolved silently in code.
+    `pass` and `value_pass` are therefore the same verdict written twice:
+    `pass` is what the panels' `use_proj` switch and the board read, and
+    `value_pass` is the leg-shaped name beside its own numbers. The cost
+    leg is PUBLISHED, never dropped: it no longer decides the gate, but a
+    reader must still be able to see it, so the row carries both and the
+    panels show the disagreement rather than having it resolved silently
+    in code.
     """
     with conn.cursor() as cur:
         cur.execute(
             """
             insert into projection_gate
-                (id, pass, n, land, share, tol, min_n, computed_at,
+                (id, pass, n, land, share, tol, min_n, cost_pass, computed_at,
                  value_n, value_land, value_share, value_tol, value_min_n,
                  value_pass, value_status)
-            values (%s, %s, %s, %s, %s, %s, %s, now(),
+            values (%s, %s, %s, %s, %s, %s, %s, %s, now(),
                     %s, %s, %s, %s, %s, %s, %s)
             on conflict (id) do update set
                 pass = excluded.pass,
@@ -263,6 +282,7 @@ def publish_projection_gate(conn, gate: dict) -> None:
                 share = excluded.share,
                 tol = excluded.tol,
                 min_n = excluded.min_n,
+                cost_pass = excluded.cost_pass,
                 value_n = excluded.value_n,
                 value_land = excluded.value_land,
                 value_share = excluded.value_share,
@@ -274,6 +294,7 @@ def publish_projection_gate(conn, gate: dict) -> None:
             """,
             (GATE_ID, bool(gate.get("pass")), gate.get("n"), gate.get("land"),
              gate.get("share"), gate.get("tol"), gate.get("min_n"),
+             gate.get("cost_pass"),
              gate.get("value_n"), gate.get("value_land"),
              gate.get("value_share"), gate.get("value_tol"),
              gate.get("value_min_n"), gate.get("value_pass"),
