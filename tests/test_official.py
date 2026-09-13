@@ -729,16 +729,14 @@ class BoardIqSortTest(unittest.TestCase):
             mock.patch.object(rd, "load_catalog", return_value={"models": {}}):
             return mod.pricing_section(payload, [])
 
-    def test_sorted_asc_by_realized_cost(self):
-        # input order deliberately scrambled. eff: glm 0.0113 < unmapped
-        # 0.015 < kimi 0.28 -> that is the row order now; IQ/$ only breaks
-        # ties at equal cost.
+    def test_sorted_desc_by_iq_per_dollar(self):
+        # Value-first law: IQ per $ descending.
+        # glm (iq 41.9 / eff 0.0113 = 3707) > kimi (iq 59.7 / eff 0.28 = 213) > unmapped (no iq = -inf)
         out = self._section(["ali/kimi-k3", "ocg/unmapped", "zai/glm-5.3-flash"])
         g, k, u = (out.index(f"<code>{r}</code>")
                    for r in ("zai/glm-5.3-flash", "ali/kimi-k3", "ocg/unmapped"))
-        self.assertLess(g, u, "glm ($0.0113) must precede unmapped ($0.015)")
-        self.assertLess(u, k, "unmapped ($0.015) must precede kimi ($0.28)")
-
+        self.assertLess(g, k, "glm (IQ/$ ~3707) must precede kimi (IQ/$ ~213)")
+        self.assertLess(k, u, "kimi (IQ/$ ~213) must precede unmapped (unpriced/unmapped)")
     def test_equal_cost_ties_break_by_iq_per_dollar(self):
         rows = {
             "ali/tie-low-iq": {"ask_in": 0.01, "ask_out": 0.02, "eff_per_mtok": 0.012,

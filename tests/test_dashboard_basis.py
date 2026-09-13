@@ -72,12 +72,11 @@ class PanelSqlShapeTests(unittest.TestCase):
             self.assertIn("|| ' · ' || ranked.basis", sql, f"panel {pid} unlabelled")
 
     def test_ranking_mirrors_the_board_sort_law(self) -> None:
-        # basis ascending, IQ per $ descending on ties, unpriced last
+        # Value-first law: IQ per $ descending, unpriced last
         for pid in PANELS:
             sql = _sql(_panels()[pid])
             self.assertIn(
-                "ORDER BY ranked.basis_per_m ASC, "
-                "ranked.iq/NULLIF(ranked.basis_per_m,0) DESC NULLS LAST",
+                "ORDER BY ranked.iq/NULLIF(ranked.basis_per_m,0) DESC NULLS LAST",
                 sql, f"panel {pid} sort law drifted from the board",
             )
 

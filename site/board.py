@@ -132,10 +132,9 @@ def _board_basis(row: dict, dated: list | None, payload: dict,
 
 def _iq_sort_key(intel: dict, dated: list | None, payload: dict,
                  use_proj: bool):
-    """Board order: realized $/M ascending (IA law: the board answers
-    "what is this costing me" — cheapest realized cost first). Ties and
-    routes without an eff figure sink last; IQ per $ remains the
-    secondary discriminator within an equal cost band."""
+    """Board order: Value / IQ per $ descending (Value-first law: the board answers
+    'what gives the highest intelligence per dollar' — highest value first).
+    Ties broken by basis cost ascending, unpriced routes sink last."""
     def key(row: dict) -> tuple:
         eff = _board_basis(row, dated, payload, use_proj)
         try:
@@ -151,7 +150,7 @@ def _iq_sort_key(intel: dict, dated: list | None, payload: dict,
                 iqps = iq / eff
             except ZeroDivisionError:
                 iqps = None
-        return (eff_val, -(iqps if iqps is not None else float("-inf")))
+        return (-(iqps if iqps is not None else float("-inf")), eff_val)
     return key
 
 def _pair_cell(eff_label: str, proj_label: str | None,
