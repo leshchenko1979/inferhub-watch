@@ -210,13 +210,73 @@ class FetchCatalogTests(unittest.TestCase):
         self.assertIn("0 routes with live asks", err.getvalue())
 
 
+class FetchCatalogBookTests(unittest.TestCase):
+    """Issue #45 §4.1 — the BOOK point, pulled beside the floor."""
+
+    BODY = [
+        {
+            "prefix": "cp",
+            "enabled": True,
+            "models": [
+                {
+                    "upstreamModelId": "xai/grok-4.6",
+                    "enabled": True,
+                    "pricePointsIn": [[0.5, 3], [0.9, 12]],
+                    "pricePointsOut": [[1.5, 2], [2.7, 13]],
+                },
+                {
+                    "upstreamModelId": "nobook",
+                    "enabled": True,
+                    "pricePointsIn": [],
+                    "pricePointsOut": [],
+                },
+            ],
+        }
+    ]
+
+    def test_carries_the_book_point_and_its_fetch_instant(self) -> None:
+        with mock.patch.object(pricing, "_get", return_value=self.BODY):
+            books = pricing.fetch_catalog_book("k")
+        book_in, book_out, ladder_at = books["cp/xai/grok-4.6"]
+        # the estimator is probe.stack's own (never a re-derived min) — the
+        # mass point here is 0.9@12 against the floor's 0.5@3
+        self.assertAlmostEqual(book_in, 0.9)
+        self.assertAlmostEqual(book_out, 2.7)
+        self.assertTrue(ladder_at.endswith("+00:00"), ladder_at)
+
+    def test_no_filled_point_is_none_never_zero(self) -> None:
+        """A route with no book has NO book price — 0.0 would read as free."""
+        with mock.patch.object(pricing, "_get", return_value=self.BODY):
+            books = pricing.fetch_catalog_book("k")
+        self.assertEqual(books["cp/nobook"], (None, None, books["cp/nobook"][2]))
+        self.assertIsNone(books["cp/nobook"][0])
+        self.assertIsNone(books["cp/nobook"][1])
+
+    def test_fetch_catalog_keeps_its_tuple_contract(self) -> None:
+        """The sibling must not have widened the floor pull's return type —
+        probe/market.py:433,461 and the existing mocks depend on it."""
+        with mock.patch.object(pricing, "_get", return_value=self.BODY):
+            asks = pricing.fetch_catalog("k")
+        self.assertEqual(asks["cp/xai/grok-4.6"], (0.5, 1.5))
+        self.assertIsInstance(asks["cp/xai/grok-4.6"], tuple)
+        self.assertEqual(len(asks["cp/xai/grok-4.6"]), 2)
+
+    def test_a_failed_book_pull_is_best_effort_not_fatal(self) -> None:
+        err = io.StringIO()
+        with mock.patch.object(pricing, "_get", side_effect=RuntimeError("429")), \
+                contextlib.redirect_stderr(err):
+            books = pricing.catalog_books("k")
+        self.assertEqual(books, {})
+        self.assertIn("book pull failed", err.getvalue())
+
 class SnapshotTests(unittest.TestCase):
     def test_snapshot_merges_logs_and_catalog(self) -> None:
         rows = [_row(model="cp/xai/grok-4.6", prompt_tokens=100, completion_tokens=0,
                      cached_tokens=0, cost_consumer_usdc="0.0001")]
         with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
                 mock.patch.object(pricing, "fetch_catalog",
-                                  return_value={"zai/glm-5.3": (0.045, 0.15)}):
+                                  return_value={"zai/glm-5.3": (0.045, 0.15)}), \
+                mock.patch.object(pricing, "catalog_books", return_value={}):
             payload = pricing.snapshot("k", ["cp/xai/grok-4.6", "zai/glm-5.3"])
         self.assertEqual(payload["row_source"], "test")
         self.assertEqual(payload["routes"]["cp/xai/grok-4.6"]["source"], "usage-logs")
@@ -226,7 +286,8 @@ class SnapshotTests(unittest.TestCase):
     def test_snapshot_includes_days_series(self) -> None:
         rows = [_row(ts="2026-08-26T10:00:00Z"), _row(ts="2026-08-27T10:00:00Z")]
         with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
-                mock.patch.object(pricing, "fetch_catalog", return_value={}):
+                mock.patch.object(pricing, "fetch_catalog", return_value={}), \
+                mock.patch.object(pricing, "catalog_books", return_value={}):
             payload = pricing.snapshot("k", ["cp/xai/grok-4.6"])
         self.assertEqual(
             [d["date"] for d in payload["days"]], ["2026-08-26", "2026-08-27"]
@@ -244,7 +305,8 @@ class SnapshotTests(unittest.TestCase):
             _row(model="rotated/m", cost_consumer_usdc="0.004"),
         ]
         with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
-                mock.patch.object(pricing, "fetch_catalog", return_value={}):
+                mock.patch.object(pricing, "fetch_catalog", return_value={}), \
+                mock.patch.object(pricing, "catalog_books", return_value={}):
             payload = pricing.snapshot(
                 "k", ["board/m"], candidates=["cand/m"]
             )
@@ -281,6 +343,67 @@ class SnapshotTests(unittest.TestCase):
         with mock.patch.dict("os.environ", {}, clear=True):
             self.assertEqual(pricing.main(), 0)
 
+
+class SnapshotBookTests(unittest.TestCase):
+    """Issue #45 §4.1 — the snapshot carries the book POINT.
+
+    Additive and inert: nothing reads these keys until the basis preference
+    lands, and that is an owner call. They are stamped anyway because
+    data/catalog.json is overwritten each sweep, so build time is the only
+    moment a past day's book can be captured — this is the accumulation clock.
+    """
+
+    def _snapshot(self, books):
+        rows = [_row(model="cp/xai/grok-4.6")]
+        with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
+                mock.patch.object(pricing, "fetch_catalog", return_value={}), \
+                mock.patch.object(pricing, "catalog_books", return_value=books):
+            return pricing.snapshot("k", ["cp/xai/grok-4.6"])
+
+    def test_a_route_with_a_book_carries_the_point_and_its_instant(self) -> None:
+        payload = self._snapshot(
+            {"cp/xai/grok-4.6": (0.9, 2.7, "2026-09-13T07:50:00+00:00")}
+        )
+        entry = payload["routes"]["cp/xai/grok-4.6"]
+        self.assertAlmostEqual(entry["book_in"], 0.9)
+        self.assertAlmostEqual(entry["book_out"], 2.7)
+        self.assertEqual(entry["ladder_at"], "2026-09-13T07:50:00+00:00")
+
+    def test_a_route_absent_from_the_pull_reads_none_never_zero(self) -> None:
+        """`None` means no book KNOWN; 0.0 would mean a free route."""
+        payload = self._snapshot({})
+        entry = payload["routes"]["cp/xai/grok-4.6"]
+        self.assertIsNone(entry["book_in"])
+        self.assertIsNone(entry["book_out"])
+        self.assertIsNone(entry["ladder_at"])
+
+    def test_route_entry_itself_still_carries_no_book_keys(self) -> None:
+        """The join lives in `_entry()`, not in `route_entry` — whose catalog
+        contract is a floor pair per route (predictor_scoreboard.py:313 and
+        ask_precision_receipt.py:95 both pass `{}`)."""
+        entry = pricing.route_entry(None, {}, "cp/xai/grok-4.6")
+        for key in ("book_in", "book_out", "ladder_at"):
+            self.assertNotIn(key, entry)
+
+    def test_a_failed_book_pull_leaves_the_keys_off_not_the_build_broken(self) -> None:
+        payload = self._snapshot({})  # catalog_books already swallowed the error
+        self.assertIsNone(payload["routes"]["cp/xai/grok-4.6"]["book_in"])
+        # and the floor the existing consumers read is untouched
+        self.assertIn("source", payload["routes"]["cp/xai/grok-4.6"])
+
+    def test_the_book_does_not_move_the_floor(self) -> None:
+        """The book is stamped BESIDE the floor; `ask_in` keeps its meaning,
+        so no existing consumer changes value because of this change."""
+        rows = [_row(model="cp/xai/grok-4.6")]
+        with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
+                mock.patch.object(pricing, "fetch_catalog",
+                                  return_value={"cp/xai/grok-4.6": (0.045, 0.15)}), \
+                mock.patch.object(pricing, "catalog_books",
+                                  return_value={"cp/xai/grok-4.6": (9.9, 9.9, "t")}):
+            payload = pricing.snapshot("k", ["cp/xai/grok-4.6"])
+        entry = payload["routes"]["cp/xai/grok-4.6"]
+        self.assertEqual(entry["book_in"], 9.9)
+        self.assertNotEqual(entry.get("ask_in"), 9.9)
 
 class RetryTests(unittest.TestCase):
     def test_transient_429_is_retried_and_succeeds(self) -> None:
@@ -424,6 +547,7 @@ class MarginalStatsTests(unittest.TestCase):
         # cutoff is pinned so the test never depends on repo snapshot state
         with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
                 mock.patch.object(pricing, "fetch_catalog", return_value={}), \
+                mock.patch.object(pricing, "catalog_books", return_value={}), \
                 mock.patch.object(pricing, "prior_snapshot_cutoff",
                                   return_value="2026-08-31T06:00:00+00:00"):
             payload = pricing.snapshot("k", ["cp/xai/grok-4.6"])
@@ -453,6 +577,7 @@ class MarginalStatsTests(unittest.TestCase):
         rows = [_row(ts="2026-09-01T12:00:00Z")]
         with mock.patch.object(pricing, "_log_rows", return_value=(rows, "test")), \
                 mock.patch.object(pricing, "fetch_catalog", return_value={}), \
+                mock.patch.object(pricing, "catalog_books", return_value={}), \
                 mock.patch.object(pricing, "prior_snapshot_cutoff", return_value=None):
             payload = pricing.snapshot("k", ["cp/xai/grok-4.6"])
         self.assertNotIn("marginal_per_mtok", payload["routes"]["cp/xai/grok-4.6"])

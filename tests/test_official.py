@@ -404,6 +404,26 @@ class ProjectionGateTest(unittest.TestCase):
             self.assertFalse(gate["cost_pass"])
             self.assertFalse(gate["pass"])
 
+    def test_a_book_point_in_the_payload_changes_nothing_yet(self):
+        """Issue #45 §4.1 — the snapshot now carries `book_in`/`book_out`/
+        `ladder_at`; the gate does NOT read them, and that is deliberate.
+
+        The book columns start the accumulation clock the owner asked for
+        ("accumulate more data, and decide later"). Preferring the book over
+        the floor is a change to what the gate MEASURES, which is the owner's
+        call and unapplied — so a payload carrying a wildly different book
+        must produce a byte-identical verdict, or the additive change would
+        have moved a gate nobody approved moving.
+        """
+        payload = self._dated(12)
+        baseline = projection_gate(payload)
+        for _day, snap in payload:
+            for entry in snap["routes"].values():
+                entry["book_in"] = 99.0
+                entry["book_out"] = 99.0
+                entry["ladder_at"] = "2026-09-13T07:50:00+00:00"
+        self.assertEqual(projection_gate(payload), baseline)
+
 class GateValueLegTest(unittest.TestCase):
     """Item 2 (D4): the gate scores BOTH the cost regret and the Value regret.
 

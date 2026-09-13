@@ -30,7 +30,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from statistics import mean, median
 
-from probe import floor
+from probe import floor, stack
 from probe.costs import MANAGEMENT, PAGE_SIZE, USER_AGENT, fetch_log_rows
 from probe.registry import (
     aa_slug,
@@ -115,6 +115,56 @@ def fetch_catalog(key: str) -> dict[str, tuple[float, float]]:
             file=sys.stderr,
         )
     return asks
+
+def fetch_catalog_book(key: str) -> dict[str, tuple[float | None, float | None, str]]:
+    """Map 'prefix/upstreamModelId' -> (bookIn, bookOut, fetched_at).
+
+    The BOOK price — `probe.stack.book_point` over each route's ladder — as a
+    SIBLING of `fetch_catalog`, not a change to it: `fetch_catalog`'s return
+    type has a second live consumer (`probe/market.py:433,461`) and existing
+    mocks, so widening it would break both.
+
+    `None` (never `0.0`) means the ladder carried no filled point: a route with
+    no book has no book price, and a consumer must fall back explicitly rather
+    than treat it as free (`probe/stack.py:139`).
+
+    `fetched_at` travels WITH the price because the book churns in seconds (two
+    pulls 26 s apart moved 35 of 115 ladders) — a book point without its fetch
+    instant is no better than the stale floor it would replace.
+
+    Issue #45 §4.1. Additive: nothing reads these keys yet.
+    """
+    body = _get(f"{MANAGEMENT}/catalog", key)
+    entries = body if isinstance(body, list) else body.get("rows") or []
+    fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    books: dict[str, tuple[float | None, float | None, str]] = {}
+    for entry in entries:
+        prefix = entry.get("prefix") or ""
+        if not prefix or not entry.get("enabled"):
+            continue
+        for model in entry.get("models") or []:
+            if not model.get("enabled") or model.get("modelDisabled"):
+                continue
+            name = model.get("upstreamModelId") or ""
+            if not name:
+                continue
+            books[f"{prefix}/{name}"] = (
+                stack.book_point(model.get("pricePointsIn")),
+                stack.book_point(model.get("pricePointsOut")),
+                fetched_at,
+            )
+    return books
+
+def catalog_books(key: str) -> dict[str, tuple[float | None, float | None, str]]:
+    """`fetch_catalog_book`, best-effort — the snapshot's book keys are
+    ADDITIVE, so a failed pull must leave them OFF rather than fail the build.
+    """
+    try:
+        return fetch_catalog_book(key)
+    except Exception as exc:  # noqa: BLE001 — best-effort book only
+        print(f"warning: book pull failed ({exc}) — snapshot carries no book "
+              f"keys this cycle", file=sys.stderr)
+        return {}
 
 
 def _float(raw: object) -> float | None:
@@ -767,6 +817,11 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
                   file=sys.stderr)
     stats = aggregate_rows(rows)
     catalog = fetch_catalog(key)
+    # Issue #45 §4.1: the book, pulled BESIDE the floor (its own pull, so
+    # `fetch_catalog`'s contract and its consumers stay untouched). Best-effort
+    # — the keys are additive, so a failed pull omits them instead of failing
+    # the build.
+    books = catalog_books(key)
     cutoff = prior_snapshot_cutoff()
     marginal = marginal_stats(rows, cutoff)
     cand = set(candidates or [])
@@ -790,6 +845,24 @@ def snapshot(key: str, aliases: list[str], range_: str = RANGE,
             entry_stats = dict(st)
             entry_stats["hit_ask_ratio"] = cache_rule_stats(rows, alias)
         entry = route_entry(entry_stats, catalog, alias, candidate=alias in cand)
+        # Issue #45 §4.1: the BOOK point, joined in HERE rather than in
+        # `route_entry` — that function's catalog contract is a floor pair per
+        # route (`tests/test_pricing.py:140` passes literal pairs;
+        # `predictor_scoreboard.py:313` and `ask_precision_receipt.py:95` pass
+        # `{}`), so stamping after the call leaves all three untouched.
+        #
+        # ADDITIVE and INERT: nothing reads these keys until the basis
+        # preference lands, and that is an owner call. They are stamped anyway
+        # because data/catalog.json is OVERWRITTEN each sweep — build time is
+        # the only moment a past day's book can be captured, and the owner's
+        # decision was to accumulate first and decide later.
+        #
+        # `None`, never 0.0: a route with no filled ladder point has no book
+        # price, and a consumer must fall back explicitly rather than read it
+        # as free (probe/stack.py:139).
+        entry["book_in"], entry["book_out"], entry["ladder_at"] = books.get(
+            alias, (None, None, None)
+        )
         # no prior snapshot -> no cutoff -> the whole window would count as
         # "marginal", which is just realized again: leave the keys off
         m = marginal.get(alias) if cutoff else None
