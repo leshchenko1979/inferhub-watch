@@ -245,6 +245,171 @@ models = ["ali/qwen3.8-max", "ag/gemini-3.7-flash-high"]
     assert "ali/qwen3.8-max" in updated_data["providers"]["custom"]["inferhub"]["models"]
 
 
+LIVE_LIKE_CONFIG = '''# InferHub Watch — ops profile config (trimmed fixture)
+[providers.fallback]
+enabled = true      # the fallback chain
+providers = ["openrouter", "opencode", "minimax", "custom.nvidia"]
+vision = ["opencode", "minimax"]
+
+[agent]
+default_provider = "custom.inferhub"
+# the fleet default
+default_model = "cb/deepseek-v4.1-flash"
+subagent_model = "cb/deepseek-v4.1-flash"
+
+[providers.custom.inferhub]
+enabled = true      # primary endpoint
+base_url = "https://api.inferhub.dev/v1"
+default_model = "cb/deepseek-v4.1-flash"
+models = ["ali/qwen3.8-max", "cb/deepseek-v4.1-flash"]
+'''
+
+
+def test_update_opencrabs_config_creates_alt_entry_and_pins_it_first(tmp_path):
+    """Issue #49: a switch also writes the fallback chain (create path)."""
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text(LIVE_LIKE_CONFIG, encoding="utf-8")
+
+    success = update_opencrabs_config(
+        cfg_file, "cb/gpt-5.6-luna", alt_model="cbcn/glm-5.3", alt_api_key="sk-test"
+    )
+    assert success is True
+
+    text = cfg_file.read_text(encoding="utf-8")
+    assert "# the fallback chain" in text  # unrelated lines keep their comments
+    assert "# primary endpoint" in text
+    assert "# the fleet default" in text
+    data = tomllib.loads(text)
+
+    # the original four writes are unchanged
+    assert data["agent"]["default_model"] == "cb/gpt-5.6-luna"
+    assert data["agent"]["subagent_model"] == "cb/gpt-5.6-luna"
+    assert data["providers"]["custom"]["inferhub"]["default_model"] == "cb/gpt-5.6-luna"
+    assert "cb/gpt-5.6-luna" in data["providers"]["custom"]["inferhub"]["models"]
+    assert "ali/qwen3.8-max" in data["providers"]["custom"]["inferhub"]["models"]
+
+    # the alternative candidate, pinned first in the fallback chain
+    chain = data["providers"]["fallback"]["providers"]
+    assert chain[0] == "inferhub-alt"
+    assert chain == ["inferhub-alt", "openrouter", "opencode", "minimax", "custom.nvidia"]
+    assert data["providers"]["fallback"]["vision"] == ["opencode", "minimax"]
+
+    alt = data["providers"]["custom"]["inferhub-alt"]
+    assert alt["enabled"] is True
+    assert alt["base_url"] == "https://api.inferhub.dev/v1"  # mirrors the primary
+    assert alt["default_model"] == "cbcn/glm-5.3"
+    assert alt["api_key"] == "sk-test"
+
+
+def test_update_opencrabs_config_updates_alt_in_place_and_reorders_chain(tmp_path):
+    """An existing alt entry is updated in place; the chain is deduped + reordered."""
+    cfg = LIVE_LIKE_CONFIG.replace(
+        'providers = ["openrouter", "opencode", "minimax", "custom.nvidia"]',
+        'providers = ["openrouter", "inferhub-alt", "minimax"]',
+    ) + '''
+[providers.custom.inferhub-alt]
+enabled = true
+base_url = "https://api.inferhub.dev/v1"
+default_model = "stale/model"
+'''
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text(cfg, encoding="utf-8")
+
+    assert update_opencrabs_config(
+        cfg_file, "cb/gpt-5.6-luna", alt_model="cbcn/kimi-k3", alt_api_key="sk-test"
+    ) is True
+
+    data = tomllib.loads(cfg_file.read_text(encoding="utf-8"))
+    assert data["providers"]["fallback"]["providers"] == [
+        "inferhub-alt", "openrouter", "minimax",
+    ]
+    assert data["providers"]["custom"]["inferhub-alt"]["default_model"] == "cbcn/kimi-k3"
+    assert data["providers"]["custom"]["inferhub"]["default_model"] == "cb/gpt-5.6-luna"
+
+
+def test_update_opencrabs_config_without_alt_model_leaves_fallback_untouched(tmp_path):
+    """Backwards compatibility: no alt_model, no fallback write at all."""
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text(LIVE_LIKE_CONFIG, encoding="utf-8")
+
+    assert update_opencrabs_config(cfg_file, "cb/gpt-5.6-luna") is True
+
+    text = cfg_file.read_text(encoding="utf-8")
+    assert "inferhub-alt" not in text
+    data = tomllib.loads(text)
+    assert data["providers"]["fallback"]["providers"] == [
+        "openrouter", "opencode", "minimax", "custom.nvidia",
+    ]
+    assert data["agent"]["default_model"] == "cb/gpt-5.6-luna"
+
+
+def test_find_best_route_reports_the_runner_up(tmp_path):
+    """`out["runner_up"]` is the 2nd-best qualified candidate on the same basis."""
+    catalog_models = {
+        "m_current": {"ask_in": 0.00375, "ask_out": 0.01875, "supports_tools": True},
+        "m_better_10pct": {"ask_in": 0.0034, "ask_out": 0.017, "supports_tools": True},
+        "m_better_30pct": {"ask_in": 0.0025, "ask_out": 0.0125, "supports_tools": True},
+    }
+    intel_slugs = {
+        "m-current": {"iq": 39.4},
+        "m-better-10pct": {"iq": 39.4},
+        "m-better-30pct": {"iq": 39.4},
+    }
+    diag: dict = {}
+    should_switch, best, _current, _reason = find_best_route(
+        catalog_models, intel_slugs, {}, current_model="m_current",
+        floor_iq=35.0, threshold=0.15, out=diag,
+    )
+    assert should_switch is True
+    assert best.route == "m_better_30pct"
+    assert diag["runner_up"] == "m_better_10pct"
+
+
+def test_run_auto_route_switch_writes_the_runner_up_into_the_fallback(tmp_path):
+    """End to end: the switch writes the runner-up as the first fallback model."""
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "catalog.json").write_text(json.dumps({
+        "models": {
+            "current/m1": {"ask_in": 0.004, "ask_out": 0.02, "supports_tools": True},
+            "better/m2": {"ask_in": 0.002, "ask_out": 0.01, "supports_tools": True},
+        }
+    }))
+    (data_dir / "intelligence.json").write_text(json.dumps({
+        "models": {"m1": {"iq": 38.0}, "m2": {"iq": 40.0}},
+    }))
+
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text(LIVE_LIKE_CONFIG.replace(
+        "cb/deepseek-v4.1-flash", "current/m1"
+    ), encoding="utf-8")
+
+    db_file = tmp_path / "opencrabs.db"
+    conn = sqlite3.connect(str(db_file))
+    with conn:
+        conn.execute(
+            "CREATE TABLE sessions (id TEXT PRIMARY KEY, model TEXT, "
+            "provider_name TEXT, archived_at INTEGER)"
+        )
+        conn.execute("INSERT INTO sessions VALUES ('s1', 'current/m1', 'custom:inferhub', NULL)")
+    conn.close()
+
+    res = run_auto_route_switch(
+        root_dir=tmp_path, config_path=cfg_file, db_paths=[db_file],
+        dry_run=False, notify=False,
+    )
+    assert res["should_switch"] is True
+    assert res["best_model"] == "better/m2"
+    # both qualified candidates rank on the same basis; the runner-up is the
+    # one the switch is leaving behind.
+    assert res["alt_model"] == "current/m1"
+
+    data = tomllib.loads(cfg_file.read_text(encoding="utf-8"))
+    assert data["providers"]["fallback"]["providers"][0] == "inferhub-alt"
+    assert data["providers"]["custom"]["inferhub-alt"]["default_model"] == "current/m1"
+    assert data["providers"]["custom"]["inferhub"]["default_model"] == "better/m2"
+
+
 def test_update_active_sessions(tmp_path):
     db_file = tmp_path / "test_opencrabs.db"
     conn = sqlite3.connect(str(db_file))

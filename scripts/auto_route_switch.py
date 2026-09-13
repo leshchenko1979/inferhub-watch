@@ -13,7 +13,9 @@ Criteria:
 - DeepSeek-v4 guard: must have a date tag (e.g., -0731, -0813), while DeepSeek-v4.1+ is allowed
 - Switch threshold: Candidate Value > Current Value * 1.15
 - OpenCrabs updates: config.toml ([agent].default_model, [agent].subagent_model,
-  [providers.custom.inferhub].default_model, and append to [providers.custom.inferhub].models)
+  [providers.custom.inferhub].default_model, append to [providers.custom.inferhub].models,
+  and the FALLBACK chain — [providers.custom.inferhub-alt].default_model = the runner-up,
+  pinned first in [providers.fallback].providers; issue #49)
   and active unarchived sessions in opencrabs.db
 - Switch alert via `opencrabs session notify` (Issue #14): the notified session owns the
   Telegram card; this script never touches Telegram or the Bot API directly.
@@ -52,6 +54,20 @@ DEFAULT_CONFIG_PATH = Path("/root/.opencrabs/profiles/ops/config.toml")
 DEFAULT_KEYS_PATH = Path("/root/.opencrabs/profiles/ops/keys.toml")
 DEFAULT_DB_PATH = Path("/root/.opencrabs/profiles/ops/opencrabs.db")
 DEFAULT_ROOT_DB_PATH = Path("/root/.opencrabs/opencrabs.db")
+
+# --- Issue #49: the fallback chain carries the runner-up -------------------
+# OpenCrabs' `[providers.fallback]` is a chain of PROVIDER names; a model can
+# enter it only as a provider's own `default_model` (src/config/types.rs:2303,
+# src/brain/provider/fallback.rs:41). So the alternative candidate gets a
+# second InferHub entry on the same endpoint, pinned first in the chain.
+# Name rules: `normalize_toml_key` maps `_` -> `-` for providers.custom.*
+# (src/config/types/io.rs:303), and `normalize()` strips a `custom.` prefix
+# while logging a correction warning (src/brain/provider_spec.rs:74) — so the
+# section is `inferhub-alt` and the chain entry is the BARE name.
+ALT_PROVIDER_NAME = "inferhub-alt"
+ALT_PROVIDER_SECTION = f"providers.custom.{ALT_PROVIDER_NAME}"
+INFERHUB_SECTION = "providers.custom.inferhub"
+FALLBACK_SECTION = "providers.fallback"
 IQ_FLOOR = 35.0
 SWITCH_THRESHOLD = 0.15  # >15% higher value
 DEFAULT_TPS_REF = 50.0  # Fallback reference baseline TPS when fleet prior is unavailable
@@ -621,6 +637,15 @@ def find_best_route(
 
     best = qualified_candidates[0]
 
+    # Issue #49: the runner-up (2nd-best on the SAME basis, after the TPS
+    # qualification loop) is the alternative candidate the fallback chain
+    # carries. Surfaced through the diagnostics dict so the return signature
+    # every caller and test already relies on stays unchanged.
+    if out is not None:
+        out["runner_up"] = (
+            qualified_candidates[1].route if len(qualified_candidates) > 1 else None
+        )
+
     if current_cand is None or current_cand.value <= 0:
         return True, best, current_cand, f"Current model {current_model} not evaluated or has 0 value; selecting top candidate {best.route} (basis={basis_mode})."
 
@@ -641,12 +666,53 @@ def find_best_route(
     )
 
 
-def update_opencrabs_config(config_path: Path, new_model: str) -> bool:
+def _toml_list(values: list[str]) -> str:
+    return "[" + ", ".join(f'"{v}"' for v in values) + "]"
+
+
+def _fallback_chain_with_first(existing: list[str], first: str) -> list[str]:
+    """`first` pinned at the head; the configured order kept, deduped."""
+    chain = [first]
+    for item in existing:
+        if item != first and item not in chain:
+            chain.append(item)
+    return chain
+
+
+def _primary_base_url(lines: list[str]) -> str:
+    """`base_url` of the primary InferHub section, so the alt entry mirrors it."""
+    section = ""
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            section = stripped[1:-1].strip()
+            continue
+        if section == INFERHUB_SECTION and re.match(r"^base_url\s*=", stripped):
+            m = re.search(r'"([^"]*)"', stripped)
+            if m:
+                return m.group(1)
+    return ""
+
+
+def update_opencrabs_config(
+    config_path: Path,
+    new_model: str,
+    alt_model: str | None = None,
+    alt_api_key: str | None = None,
+) -> bool:
     """Update OpenCrabs config.toml:
     - [agent].default_model = new_model
     - [agent].subagent_model = new_model
     - [providers.custom.inferhub].default_model = new_model
     - append new_model to [providers.custom.inferhub].models if not present
+
+    When `alt_model` is given (the runner-up, on a real switch) it also sets the
+    FALLBACK (issue #49, owner request 2026-09-13 — "the alternative candidate
+    to be the first model in the fallback chain"):
+    - [providers.custom.inferhub-alt].default_model = alt_model, a second entry
+      on the same endpoint (OpenCrabs' chain holds providers, not models, so a
+      model enters it only as a provider's own default_model)
+    - [providers.fallback].providers has "inferhub-alt" pinned FIRST
     """
     if not config_path.exists():
         logger.warning(f"Config path {config_path} does not exist")
@@ -656,12 +722,20 @@ def update_opencrabs_config(config_path: Path, new_model: str) -> bool:
     lines = content.splitlines()
     new_lines = []
     current_section = ""
+    alt_header_idx: int | None = None
+    alt_default_seen = False
+    fb_header_idx: int | None = None
+    fb_chain_seen = False
 
     # Parse and modify line by line to preserve comments and formatting
     for line in lines:
         stripped = line.strip()
         if stripped.startswith("[") and stripped.endswith("]"):
             current_section = stripped[1:-1].strip()
+            if alt_model and current_section == ALT_PROVIDER_SECTION:
+                alt_header_idx = len(new_lines)
+            if alt_model and current_section == FALLBACK_SECTION:
+                fb_header_idx = len(new_lines)
             new_lines.append(line)
             continue
 
@@ -689,7 +763,54 @@ def update_opencrabs_config(config_path: Path, new_model: str) -> bool:
                     new_lines.append(f"models = [{formatted_items}]")
                     continue
 
+        if alt_model and current_section == ALT_PROVIDER_SECTION:
+            if re.match(r"^default_model\s*=", stripped):
+                alt_default_seen = True
+                new_lines.append(f'default_model = "{alt_model}"')
+                continue
+
+        if alt_model and current_section == FALLBACK_SECTION:
+            if re.match(r"^providers\s*=\s*\[", stripped):
+                m = re.search(r"\[(.*)\]", stripped)
+                if m:
+                    fb_chain_seen = True
+                    raw_items = m.group(1).split(",")
+                    items = [it.strip().strip('"').strip("'") for it in raw_items if it.strip()]
+                    chain = _fallback_chain_with_first(items, ALT_PROVIDER_NAME)
+                    new_lines.append(f"providers = {_toml_list(chain)}")
+                    continue
+
         new_lines.append(line)
+
+    if alt_model:
+        # A section that already exists but carries no `default_model` (or no
+        # `providers` line) still has to be completed — insert under its header.
+        if alt_header_idx is not None and not alt_default_seen:
+            new_lines.insert(alt_header_idx + 1, f'default_model = "{alt_model}"')
+            if fb_header_idx is not None and fb_header_idx > alt_header_idx:
+                fb_header_idx += 1
+        if fb_header_idx is not None and not fb_chain_seen:
+            new_lines.insert(
+                fb_header_idx + 1, f"providers = {_toml_list([ALT_PROVIDER_NAME])}"
+            )
+        if alt_header_idx is None:
+            # No alt entry yet — create it at EOF, mirroring the primary's endpoint.
+            if new_lines and new_lines[-1].strip():
+                new_lines.append("")
+            new_lines.append(f"[{ALT_PROVIDER_SECTION}]")
+            new_lines.append("enabled = true")
+            base_url = _primary_base_url(lines)
+            if base_url:
+                new_lines.append(f'base_url = "{base_url}"')
+            new_lines.append(f'default_model = "{alt_model}"')
+            if alt_api_key:
+                new_lines.append(f'api_key = "{alt_api_key}"')
+        if fb_header_idx is None:
+            if new_lines and new_lines[-1].strip():
+                new_lines.append("")
+            new_lines.append(f"[{FALLBACK_SECTION}]")
+            new_lines.append("enabled = true")
+            new_lines.append(f"providers = {_toml_list([ALT_PROVIDER_NAME])}")
 
     updated_content = "\n".join(new_lines) + "\n"
     config_path.write_text(updated_content, encoding="utf-8")
@@ -1133,6 +1254,7 @@ def run_auto_route_switch(
         "config_updated": False,
         "sessions_updated": 0,
         "notification_sent": False,
+        "alt_model": None,
         "catalog_source": catalog_source,
         "basis_mode": basis_mode,
         "basis_samples": diag.get("basis_samples", 0),
@@ -1149,9 +1271,19 @@ def run_auto_route_switch(
         logger.info(f"[DRY-RUN] Would switch from {current_model} to {best.route}: {reason}")
         return result
 
-    # 1. Update config.toml
-    cfg_ok = update_opencrabs_config(config_path, best.route)
+    # 1. Update config.toml — the default routes AND the fallback chain (#49).
+    # The runner-up (2nd-best on the same basis) becomes the first model in the
+    # chain through a second InferHub entry; the key is the one this switcher
+    # already authenticates with.
+    alt_model = diag.get("runner_up")
+    cfg_ok = update_opencrabs_config(
+        config_path,
+        best.route,
+        alt_model=alt_model,
+        alt_api_key=resolve_inferhub_key(config_path=config_path),
+    )
     result["config_updated"] = cfg_ok
+    result["alt_model"] = alt_model
 
     # 2. Update active sessions in databases
     total_sessions = 0
