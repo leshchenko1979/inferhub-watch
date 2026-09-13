@@ -242,11 +242,32 @@ class TestTheCommittedSnapshotIsClean:
         assert receipt["lattice"] == 0, receipt["lattice"]
 
     def test_the_board_leads_with_the_cheaper_route(self, receipt):
-        """The receipted defect: the dearer route used to lead the board."""
+        """The receipted defect: the dearer route used to lead the board.
+
+        WHICH route is cheaper is a market fact, not a property of the fix, so
+        it is DERIVED here rather than assumed. The test used to hard-code the
+        incumbent as the cheaper one - true when #27 Finding A was receipted -
+        and the committed snapshot has since inverted that: the challenger now
+        stores 0.00044153 against the incumbent's 0.000455129, so the old
+        assertion demanded the DEARER route lead, i.e. it had come to assert
+        the very defect it was written to catch. Deriving the leader from the
+        stored asks keeps the guard pointed at the law (ascending order) rather
+        than at a frozen price, and the distinctness check below keeps its
+        teeth: the pair must still be two prices, never one collapsed value.
+        """
         from scripts import ask_precision_receipt as apr
         snapshot = json.loads((REPO / "data" / "pricing.json").read_text())
         payload = json.loads(json.dumps(snapshot))
         for row in receipt["rows"]:
             payload["routes"][row["route"]]["eff_per_mtok"] = row["stored"]
+        stored = {r["route"]: r["stored"] for r in receipt["rows"]}
+        # The receipted pair must still be two distinct stored asks - a
+        # collapse is what made the order arbitrary in the first place.
+        assert stored[INCUMBENT] != stored[CHALLENGER]
+        cheaper, dearer = (
+            (INCUMBENT, CHALLENGER)
+            if stored[INCUMBENT] < stored[CHALLENGER]
+            else (CHALLENGER, INCUMBENT)
+        )
         order = [route for route, _eff in apr.board_order(payload, False)]
-        assert order.index(INCUMBENT) < order.index(CHALLENGER)
+        assert order.index(cheaper) < order.index(dearer)
