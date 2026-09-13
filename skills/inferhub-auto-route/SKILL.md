@@ -1,9 +1,9 @@
 ---
 name: inferhub-auto-route
-description: Evaluate InferHub Watch routes by Artificial Analysis IQ and empirical ask-weighted value, then optionally switch OpenCrabs defaults and active sessions on a safe hourly cadence. Use when configuring automatic model-route selection, comparing IQ per $, or installing a scheduled route-switch workflow.
+description: Evaluate InferHub Watch routes by Artificial Analysis IQ and empirical ask-weighted value, consume the public Grafana board analysis, then optionally switch OpenCrabs defaults and configure runner-up fallback chains on a safe hourly cadence. Use when configuring automatic model-route selection, comparing IQ per $, or installing a scheduled route-switch workflow.
 compatibility: Requires OpenCrabs with writable profile config/session storage, a machine-readable InferHub Watch snapshot/API, and Python 3.12+ for the reference helper.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   source: "https://github.com/leshchenko1979/inferhub-watch"
 ---
 
@@ -11,9 +11,11 @@ metadata:
 
 Use this skill to select a better route, not merely to check service health. The policy is user-configured: an inclusive IQ floor plus tool support qualifies candidates; empirical ask weighting and hysteresis decide whether a switch is worthwhile.
 
+External users (including OpenCrabs operators like Adi) can leverage the empirical route analysis published live on our public Grafana board (`https://grafana.l1979.ru/public-dashboards/79b4145fd2f44396908e96e4368906ac`) without running their own scraping infrastructure.
+
 ## Hard preflight
 
-1. Read [configuration](references/configuration.md) and create a profile-specific `[inferhub_auto_route]` configuration. Keep credentials in environment variables or the user's secret store.
+1. Read [configuration](references/configuration.md) and create a profile-specific `[inferhub_auto_route]` configuration. Point `dashboard_url` to the public Grafana board or snapshot API. Keep credentials in environment variables or the user's secret store.
 2. Complete the OpenCrabs streaming prerequisite in [OpenCrabs integration](references/opencrabs-integration.md). Do not enable live switching until the required `finish_reason` fix is merged, verified, rebuilt, and smoke-tested.
 3. Run the workflow in dry-run mode first. Confirm the report contains source freshness, every exclusion reason, current and best route metrics, gain, and the proposed mutation set.
 
@@ -23,8 +25,11 @@ Use this skill to select a better route, not merely to check service health. The
 2. Read the machine-readable dashboard/API snapshot. Reject unavailable, malformed, or stale telemetry; never scrape rendered Grafana HTML.
 3. Resolve each route's IQ, input/output ask, and tool capability. Exclude missing IQ, non-positive asks, and routes with `supports_tools = false`. Do not apply a separate DeepSeek date rule: DeepSeek routes qualify or fail on the configured IQ floor and tool-support check like every other route.
 4. Calculate value using the configured weights, rank qualified routes, and compare the best route with the current route. Switch only when `best_value > current_value * (1 + switch_threshold)`; emit a no-op verdict otherwise.
-5. In live mode, update the provider model list without duplicates, then atomically update the configured OpenCrabs defaults and transactionally migrate only active, unarchived sessions in the configured provider scope. Verify each post-write value before reporting a switch.
-6. Emit a notification containing the decision evidence, data timestamp, old/new route, IQ, asks, values, gain, session count, and whether the run was dry-run. A notification failure never changes the decision.
+5. In live mode:
+   - Update the primary provider's `default_model` and `agent.default_model` to the best route.
+   - Configure the runner-up (2nd-best) candidate as `default_model` on `[providers.custom.inferhub-alt]` and pin it first in `[providers.fallback].providers` per [OpenCrabs integration](references/opencrabs-integration.md).
+   - Atomically update defaults and transactionally migrate only active, unarchived sessions in the configured provider scope. Verify each post-write value before reporting a switch.
+6. Emit a notification containing the decision evidence, data timestamp, old/new route, runner-up fallback route, IQ, asks, values, gain, session count, and whether the run was dry-run. A notification failure never changes the decision.
 
 ## Deployment modes
 
@@ -39,4 +44,4 @@ This package follows the [Agent Skills specification](https://agentskills.io/spe
 
 Invoke the user's configured helper in dry-run mode, for example: `python3 /path/to/route-helper.py --dry-run --config /path/to/profile/config.toml --floor-iq 35 --threshold 0.15`. The bundled `scripts/validate_skill.py --dry-run` validates the package and demonstrates the no-write decision shape; it is not a production mutator.
 
-Expected output is an auditable JSON verdict with `dry_run: true`, `should_switch`, current/best route, source timestamp, gain, and no config/session writes.
+Expected output is an auditable JSON verdict with `dry_run: true`, `should_switch`, current/best route, runner-up route, source timestamp, gain, and no config/session writes.

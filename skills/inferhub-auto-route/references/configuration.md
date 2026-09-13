@@ -2,6 +2,8 @@
 
 The portable skill is named `inferhub-auto-route`. It assumes an OpenCrabs installation whose configuration and session database are writable by the scheduled helper, a machine-readable InferHub Watch route snapshot or Grafana/API endpoint, and Python 3.12+ for the reference helper. The endpoint must return route/catalog records; the workflow never scrapes rendered dashboard HTML.
 
+External users can consume our public Grafana dashboard (`https://grafana.l1979.ru/public-dashboards/79b4145fd2f44396908e96e4368906ac`) or machine-readable JSON snapshots.
+
 ## Keys
 
 Configuration is a TOML table named `[inferhub_auto_route]` (or an equivalent JSON/YAML object when a host helper uses another format):
@@ -12,10 +14,12 @@ Configuration is a TOML table named `[inferhub_auto_route]` (or an equivalent JS
 | `input_weight` | finite number, `> 0` | `0.99` | Weight for projected input ask in value denominator. |
 | `output_weight` | finite number, `> 0` | `0.01` | Weight for projected output ask. The two weights must sum to `1.0 +/- 1e-9`. |
 | `switch_threshold` | finite number, `>= 0` | `0.15` | Required relative value gain. A candidate must exceed current value by `>` this fraction. |
-| `dashboard_url` | HTTPS URL (HTTP allowed only for loopback/private explicitly configured endpoints) | none | Machine-readable route snapshot/API URL. Required unless `snapshot_path` is set. |
+| `dashboard_url` | HTTPS URL (HTTP allowed only for loopback/private explicitly configured endpoints) | public dashboard URL | Machine-readable route snapshot/API URL. Required unless `snapshot_path` is set. |
 | `dashboard_token_env` | non-empty environment-variable name | none | Optional name of the environment variable containing the bearer token; never store the token in the skill or repo. |
 | `snapshot_path` | existing readable JSON path | none | Optional local snapshot alternative to `dashboard_url`. Exactly one source must be configured. |
-| `provider_name` | non-empty OpenCrabs provider identifier | none | Provider scope for config and session updates, e.g. `custom:inferhub`. Required for live mode. |
+| `provider_name` | non-empty OpenCrabs provider identifier | `custom:inferhub` | Provider scope for config and session updates, e.g. `custom:inferhub`. Required for live mode. |
+| `pin_runner_up_fallback` | boolean | `true` | When true, pins the runner-up model into `[providers.custom.inferhub-alt]` and adds it as the first fallback provider. |
+| `fallback_provider_name` | non-empty OpenCrabs provider identifier | `inferhub-alt` | Section name in `[providers.custom]` used for the runner-up fallback model. |
 | `config_path` | existing writable TOML path | OpenCrabs profile config | OpenCrabs `config.toml` to update. |
 | `database_paths` | non-empty list of existing writable SQLite paths | OpenCrabs profile DB | Session databases to migrate. |
 | `notification_target` | provider-specific destination, or `none` | `none` | Where the run verdict is delivered. Credentials are resolved outside the skill. |
