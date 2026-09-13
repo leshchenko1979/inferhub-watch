@@ -195,7 +195,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "All catalog routes ranked by projected $/M (blended cost of the route's 7-day token mix at current asks; cached input billed at 10%; no-traffic routes use a 0.75/0.25 in/out mix). Tier: green = in use (>=100 billed reqs/7d), yellow = light, gray = catalog/probe-only. Cache green = high, TTFT green = fast.",
+      "description": "All catalog routes ranked by proven tier and Value (IQ per $ scaled by relative TPS; in-use >=100 billed reqs/7d, light/probed >0, catalog unprobed). Value measures throughput-adjusted intelligence efficiency. Projected $/M uses 7-day token mix (cached input at 10%, unprobed 0.75/0.25).",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -607,6 +607,63 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "dark-red",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 5000
+                    },
+                    {
+                      "color": "orange",
+                      "value": 15000
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 30000
+                    },
+                    {
+                      "color": "light-green",
+                      "value": 60000
+                    },
+                    {
+                      "color": "green",
+                      "value": 100000
+                    }
+                  ]
+                }
+              }
+            ]
           }
         ]
       },
@@ -637,11 +694,11 @@
             "uid": "inferhub-pg"
           },
           "format": "table",
-          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.route AS \"Route\",\n  round(px.projected::numeric,4) AS \"Projected $/M\",\n  round(px.iq / NULLIF(px.projected,0)) AS \"IQ per $\",\n  round(px.ask_in::numeric,4) AS \"Ask in $/M\",\n  round(px.ask_out::numeric,4) AS \"Ask out $/M\",\n  round(px.iq) AS \"AA IQ\",\n  CASE px.tier WHEN 'in use' THEN 2 WHEN 'probed' THEN 1 ELSE 0 END AS \"Tier\",\n  u.reqs AS \"Reqs (7d)\",\n  u.tok AS \"Tokens (7d)\",\n  u.cache_pct AS \"Cache %\",\n  u.ttft AS \"TTFT ms\",\n  u.tps AS \"TPS\",\n  u.cost AS \"Cost $\",\n  u.realized AS \"Realized $/M\"\nFROM px\nLEFT JOIN (\n  SELECT model,\n    count(*) FILTER (WHERE NOT is_probe) AS reqs,\n    sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe) AS tok,\n    round(100.0*sum(cached_tokens) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens) FILTER (WHERE NOT is_probe),0),1) AS cache_pct,\n    round(avg(ttft_ms) FILTER (WHERE NOT is_probe)) AS ttft,\n    round(percentile_cont(0.5) WITHIN GROUP (ORDER BY (completion_tokens / ((duration_ms - ttft_ms)/1000.0))) FILTER (WHERE NOT is_probe AND duration_ms > ttft_ms + 50 AND ttft_ms > 0 AND completion_tokens > 0 AND (completion_tokens / ((duration_ms - ttft_ms)/1000.0)) <= 500)::numeric, 1) AS tps,\n    round(sum(cost_usdc) FILTER (WHERE NOT is_probe)::numeric,4) AS cost,\n    round((sum(cost_usdc) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe),0)*1e6)::numeric,4) AS realized\n  FROM usage_logs WHERE created_at > now() - interval '7 days' GROUP BY 1\n) u ON u.model = px.route\nORDER BY px.projected ASC NULLS LAST",
+          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.route AS \"Route\",\n  CASE px.tier WHEN 'in use' THEN 2 WHEN 'probed' THEN 1 ELSE 0 END AS \"Tier\",\n  round((px.iq / NULLIF(px.projected,0)) * sqrt(COALESCE(NULLIF(u.tps, 0), 50.0) / 50.0)) AS \"Value\",\n  round(px.iq / NULLIF(px.projected,0)) AS \"IQ per $\",\n  round(px.projected::numeric,4) AS \"Projected $/M\",\n  round(px.ask_in::numeric,4) AS \"Ask in $/M\",\n  round(px.ask_out::numeric,4) AS \"Ask out $/M\",\n  round(px.iq) AS \"AA IQ\",\n  u.reqs AS \"Reqs (7d)\",\n  u.tok AS \"Tokens (7d)\",\n  u.cache_pct AS \"Cache %\",\n  u.ttft AS \"TTFT ms\",\n  u.tps AS \"TPS\",\n  u.cost AS \"Cost $\",\n  u.realized AS \"Realized $/M\"\nFROM px\nLEFT JOIN (\n  SELECT model,\n    count(*) FILTER (WHERE NOT is_probe) AS reqs,\n    sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe) AS tok,\n    round(100.0*sum(cached_tokens) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens) FILTER (WHERE NOT is_probe),0),1) AS cache_pct,\n    round(avg(ttft_ms) FILTER (WHERE NOT is_probe)) AS ttft,\n    round(percentile_cont(0.5) WITHIN GROUP (ORDER BY (completion_tokens / ((duration_ms - ttft_ms)/1000.0))) FILTER (WHERE NOT is_probe AND duration_ms > ttft_ms + 50 AND ttft_ms > 0 AND completion_tokens > 0 AND (completion_tokens / ((duration_ms - ttft_ms)/1000.0)) <= 500)::numeric, 1) AS tps,\n    round(sum(cost_usdc) FILTER (WHERE NOT is_probe)::numeric,4) AS cost,\n    round((sum(cost_usdc) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe),0)*1e6)::numeric,4) AS realized\n  FROM usage_logs WHERE created_at > now() - interval '7 days' GROUP BY 1\n) u ON u.model = px.route\nORDER BY \"Tier\" DESC, \"Value\" DESC NULLS LAST, \"IQ per $\" DESC NULLS LAST",
           "refId": "A"
         }
       ],
-      "title": "Model leaderboard \u2014 catalog routes by projected price",
+      "title": "Model leaderboard \u2014 catalog routes by Value (Tier and IQ per $)",
       "type": "table"
     },
     {

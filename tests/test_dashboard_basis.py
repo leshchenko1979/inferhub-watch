@@ -220,5 +220,27 @@ class GateVerdictPanelTests(unittest.TestCase):
             desc,
         )
 
+
+class LeaderboardPanelTests(unittest.TestCase):
+    """Panel 5 ranks catalog routes by proven tier and Value.
+
+    Issue #61 flipped the default sorting from cost-first (ORDER BY projected ASC)
+    to value-first: ORDER BY "Tier" DESC, "Value" DESC NULLS LAST, "IQ per $" DESC NULLS LAST.
+    Proven in-use routes float to the top ordered by efficiency.
+    """
+
+    def test_leaderboard_panel_orders_by_tier_and_value(self) -> None:
+        panel = _panels()[5]
+        sql = _sql(panel)
+        self.assertIn('ORDER BY "Tier" DESC, "Value" DESC NULLS LAST, "IQ per $" DESC NULLS LAST', sql)
+        self.assertIn('"Value"', sql)
+        self.assertIn('"IQ per $"', sql)
+        self.assertIn('"Tier"', sql)
+
+    def test_leaderboard_panel_title_and_description_reflect_value(self) -> None:
+        panel = _panels()[5]
+        self.assertIn("Value", panel.get("title", ""))
+        self.assertIn("Value", panel.get("description", ""))
+
 if __name__ == "__main__":
     unittest.main()
