@@ -9,4 +9,4 @@ jinja2>=3.1
 # reads as an infrastructure break rather than the test failure it is.
 pytest>=8,<10
 typing_extensions>=4
-psycopg2-binary>=2.9,<3
+psycopg2-binary>=2.9.13,<3
