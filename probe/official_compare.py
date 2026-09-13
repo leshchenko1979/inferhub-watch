@@ -393,19 +393,25 @@ def projection_gate(dated: list) -> dict:
     the forward view has not yet earned the crown.
 
     Recomputed every render from committed history; nothing about the basis
-    is hardcoded. Returns {"n", "land", "share", "tol", "min_n", "pass"} for
-    the COST leg plus the parallel VALUE leg (see `_crown_value_regrets`).
+    is hardcoded. Returns {"n", "land", "share", "tol", "min_n", "cost_pass"}
+    for the COST leg, the parallel VALUE leg (see `_crown_value_regrets`),
+    and `pass` - which is the VALUE leg's verdict (owner ruling 2026-09-12).
 
     THE TWO LEGS, AND WHICH ONE DRIVES `pass`. Item 2 (D4, 2026-09-12) moved
-    what the gate MEASURES onto Value without moving what it CROWNS. The
-    Value leg is therefore reported ALONGSIDE the cost leg, and `pass` stays
-    the cost verdict until the ship-or-hold decision is taken on the measured
-    Value number - the constants (GATE_TOL / GATE_SHARE / GATE_MIN_N) are the
-    same for both legs and are owner property, never re-tuned to make a leg
-    pass. A reader must never treat `value_pass: false` with a short
+    what the gate MEASURES onto Value without moving what it CROWNS; the
+    owner's ruling of the same day ("4. Value.") then moved the VERDICT:
+    `pass` IS the Value leg's verdict and `cost_pass` retains the cost
+    leg's. Both legs pass on the committed history as this lands, so the
+    flip is behaviourally inert today - what it changes is what a FUTURE
+    failure means. The constants (GATE_TOL / GATE_SHARE / GATE_MIN_N) are
+    the same for both legs and are owner property, never re-tuned to make a
+    leg pass. A reader must never treat `value_pass: false` with a short
     `value_n` as a verdict about Value: `value_n` measures how many
     transitions could be Value-scored at all (as-of IQ present, realized eff
-    positive), so `value_status` says which case applies.
+    positive), so `value_status` says which case applies. An UNRESOLVED
+    Value leg is not a pass either - nothing was measured, so nothing is
+    certified, and `value_status` is how a reader tells that apart from a
+    measured failure.
     """
     regrets = _crown_regrets(dated)
     n = len(regrets)
@@ -424,8 +430,17 @@ def projection_gate(dated: list) -> dict:
         "share": round(share, 3) if share is not None else None,
         "tol": GATE_TOL,
         "min_n": GATE_MIN_N,
-        "pass": n >= GATE_MIN_N and share is not None and share >= GATE_SHARE,
-        # The Value leg - measured, reported, not yet the gate's verdict.
+        # The gate's VERDICT is the Value leg (owner ruling 2026-09-12:
+        # "4. Value."). Cost and Value both pass on the committed history as
+        # this lands, so the flip is behaviourally inert TODAY; what it
+        # changes is what a FUTURE failure means. An unresolved Value leg is
+        # not a pass either - nothing was measured, so nothing is certified,
+        # and `value_status` is what tells that apart from a measured failure.
+        "pass": value_pass,
+        # The cost leg's own verdict, retained and published. The gate no
+        # longer ships on it, but a reader must still be able to see it.
+        "cost_pass": n >= GATE_MIN_N and share is not None and share >= GATE_SHARE,
+        # The Value leg - measured, and now the gate's verdict.
         "value_n": value_n,
         "value_land": value_land,
         "value_share": round(value_share, 3) if value_share is not None else None,

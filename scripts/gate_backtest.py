@@ -6,19 +6,24 @@ gate must be scored on BOTH the cost regret and the Value regret, and the
 backtest must name `n`, `land` and `share` for each IN ONE RUN. This script is
 that run.
 
-WHAT IT DOES NOT DO. It does not crown anything and it does not decide which
-leg the gate should pass on. Crown selection is the board's own ordering
-(lowest projected $/M) for both legs — only the METRIC the regret ratio is
-taken on differs (`probe/official_compare.py::_crown_regrets` vs
-`_crown_value_regrets`). The ship-or-hold call is plan task 5; this artifact is
-its evidence.
+WHICH LEG IS THE VERDICT. The owner ruled on 2026-09-12 ("4. Value."): the
+gate's `pass` IS the Value leg's verdict, and the cost leg's own verdict is
+retained as `cost_pass`. Both are printed here, and both are computed from the
+same owner-owned constants. This script still does not crown anything and does
+not re-tune a bar — crown selection is the board's own ordering (lowest
+projected $/M) for both legs, and only the METRIC the regret ratio is taken on
+differs (`probe/official_compare.py::_crown_regrets` vs
+`_crown_value_regrets`).
 
 READING THE OUTPUT. `value_n` can be far below `n` and that is a RESOLUTION
 fact, not a failure: the Value leg needs each snapshot's own D3 as-of `iq`
 stamp, and a transition where either Value is unresolvable is dropped rather
 than counted as a miss. A short `value_n` therefore says the input could not be
 scored, never that Value scored badly — the same distinction the scoreboard's
-`value_resolution` and the gate's `value_status` exist to preserve.
+`value_resolution` and the gate's `value_status` exist to preserve. Because
+`pass` follows Value, a short `value_n` DOES leave `pass` false; read
+`value_status` to tell "nothing was measured" apart from "Value was measured
+and failed".
 
 Usage:
     python3 scripts/gate_backtest.py            # human-readable
@@ -62,10 +67,15 @@ def main(argv: list[str] | None = None) -> int:
             "snapshots": len(dated),
             "first": dated[0][0] if dated else None,
             "last": dated[-1][0] if dated else None,
+            # The gate's verdict, and the leg it follows (owner ruling
+            # 2026-09-12). Named separately so a reader never has to infer
+            # which leg `pass` came from.
+            "pass": gate["pass"],
+            "verdict_leg": "value",
             "cost_regret": {
                 "n": gate["n"], "land": gate["land"], "share": gate["share"],
                 "tol": gate["tol"], "min_n": gate["min_n"],
-                "pass": gate["pass"],
+                "pass": gate["cost_pass"],
             },
             "value_regret": {
                 "n": gate["value_n"], "land": gate["value_land"],
@@ -82,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
           f"both legs — only the regret metric differs")
     print()
     print(_leg("cost", gate["n"], gate["land"], gate["share"],
-               gate["tol"], gate["min_n"], gate["pass"]))
+               gate["tol"], gate["min_n"], gate["cost_pass"]))
     print(_leg("value", gate["value_n"], gate["value_land"],
                gate["value_share"], gate["value_tol"], gate["value_min_n"],
                gate["value_pass"]))
@@ -91,9 +101,12 @@ def main(argv: list[str] | None = None) -> int:
           + ("" if gate["value_status"] == "measured" else
              "  <- resolution limit of the input, NOT a verdict about Value"))
     print()
-    print("  The gate's `pass` is the COST verdict. The Value leg is measured "
-          "and reported\n  alongside it; which leg the gate ships on is the "
-          "ship-or-hold decision, not this script's.")
+    print(f"  GATE VERDICT (pass): {gate['pass']}  <- this is the VALUE leg's "
+          f"verdict\n  (owner ruling 2026-09-12). The cost leg's own verdict is "
+          f"`cost_pass`; it is\n  retained and printed, not dropped. A value "
+          f"status other than `measured` means\n  the Value leg could not clear "
+          f"its evidence bar, which is a resolution limit of\n  the input and "
+          f"leaves `pass` false without that being a Value failure.")
     return 0
 
 

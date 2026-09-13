@@ -243,6 +243,14 @@ class ProjectionGateTest(unittest.TestCase):
     lowest projected $/M route and asks whether that crown's realized cost
     landed within GATE_TOL of the true cheapest realized route. These
     fixtures carry distinct projections so every transition has a crown.
+
+    THEY CARRY NO IQ, so their Value leg is UNRESOLVED (`value_n == 0`) and
+    the gate's verdict - `pass`, which is the VALUE leg's since the owner's
+    ruling of 2026-09-12 - is False for every one of them. That is why the
+    assertions here are on `cost_pass`: these tests pin the COST leg's teeth
+    (landing, the tolerance boundary, the min-n bar), and the verdict itself
+    is pinned in `GateValueLegTest` and `CrownLadderTest`, whose fixtures
+    stamp IQ.
     """
 
     ROUTES: ClassVar[tuple] = ("r/a", "r/b", "r/c", "r/d")
@@ -304,13 +312,13 @@ class ProjectionGateTest(unittest.TestCase):
         self.assertEqual(gate["share"], 1.0)
         self.assertEqual(gate["tol"], 0.15)
         self.assertEqual(gate["min_n"], 10)
-        self.assertTrue(gate["pass"])
+        self.assertTrue(gate["cost_pass"])
 
     def test_a_uniform_bias_leaves_the_crown_and_its_regret_intact(self):
         """The gate scores the crown's RELATIVE cost: a constant factor cancels."""
         gate = projection_gate(self._dated(12, realized_scale=2.0))
         self.assertEqual(gate["land"], 11)
-        self.assertTrue(gate["pass"])
+        self.assertTrue(gate["cost_pass"])
 
     def test_a_reversed_order_never_lands(self):
         """The crowned route realizes the priciest cost - the gate keeps teeth."""
@@ -319,7 +327,7 @@ class ProjectionGateTest(unittest.TestCase):
         self.assertEqual(gate["n"], 11)
         self.assertEqual(gate["land"], 0)
         self.assertEqual(gate["share"], 0.0)
-        self.assertFalse(gate["pass"])
+        self.assertFalse(gate["cost_pass"])
 
     def test_fails_when_share_falls_below_the_bar(self):
         gate = projection_gate(
@@ -327,24 +335,24 @@ class ProjectionGateTest(unittest.TestCase):
         self.assertEqual(gate["n"], 11)
         self.assertEqual(gate["land"], 8)
         self.assertAlmostEqual(gate["share"], 0.727, places=3)
-        self.assertFalse(gate["pass"])
+        self.assertFalse(gate["cost_pass"])
 
     def test_one_bad_crown_still_clears_the_bar(self):
         gate = projection_gate(self._dated(12, reversed_days=frozenset({1})))
         self.assertEqual(gate["land"], 10)
         self.assertAlmostEqual(gate["share"], 0.909, places=3)
-        self.assertTrue(gate["pass"])
+        self.assertTrue(gate["cost_pass"])
 
     def test_thin_history_never_passes(self):
         gate = projection_gate(self._dated(4))
         self.assertLess(gate["n"], 10)
-        self.assertFalse(gate["pass"])
+        self.assertFalse(gate["cost_pass"])
 
     def test_fewer_than_three_comparable_routes_never_counts(self):
         """Degenerate transitions are skipped, not scored: n stays 0."""
         gate = projection_gate(self._dated(12, routes=("r/a",)))
         self.assertEqual(gate["n"], 0)
-        self.assertFalse(gate["pass"])
+        self.assertFalse(gate["cost_pass"])
 
     def test_crown_just_over_tolerance_does_not_land(self):
         """Teeth: a crown 16% over the cheapest realized route MUST fail."""
@@ -352,22 +360,22 @@ class ProjectionGateTest(unittest.TestCase):
             self._pair({"r/a": 1.16, "r/b": 1.0, "r/c": 1.2}))
         self.assertEqual(gate["n"], 1)
         self.assertEqual(gate["land"], 0)
-        self.assertFalse(gate["pass"])
+        self.assertFalse(gate["cost_pass"])
 
     def test_a_crown_at_twice_the_cheapest_never_lands(self):
         """Teeth, far tail: a crown at 2x the true cheapest MUST not land.
 
-        `land` is the load-bearing assertion - `pass` is false here for two
-        independent reasons (the missed landing and n=1 < GATE_MIN_N), so a
-        loud teeth test needs the aggregate too:
+        `land` is the load-bearing assertion - `cost_pass` is false here for
+        two independent reasons (the missed landing and n=1 < GATE_MIN_N), so
+        a loud teeth test needs the aggregate too:
         `test_a_reversed_order_never_lands` drives 11 transitions with the
-        crown priciest and gets land=0, share=0.0, pass=False.
+        crown priciest and gets land=0, share=0.0, cost_pass=False.
         """
         gate = projection_gate(
             self._pair({"r/a": 2.0, "r/b": 1.0, "r/c": 1.2}))
         self.assertEqual(gate["n"], 1)
         self.assertEqual(gate["land"], 0)
-        self.assertFalse(gate["pass"])
+        self.assertFalse(gate["cost_pass"])
 
     def test_crown_just_under_tolerance_lands(self):
         """The 15% tolerance is inclusive at the boundary: 14% lands."""
@@ -376,10 +384,25 @@ class ProjectionGateTest(unittest.TestCase):
         self.assertEqual(gate["n"], 1)
         self.assertEqual(gate["land"], 1)
 
+    def test_a_cost_pass_does_not_carry_the_gate(self):
+        """The cost leg passing is no longer the gate's verdict.
+
+        These fixtures carry no IQ, so the Value leg is unresolved and the
+        gate does NOT pass however well the cost leg lands. Before the owner's
+        ruling `pass` WAS this leg's verdict and this exact fixture passed;
+        the assertion below is the flip, pinned.
+        """
+        gate = projection_gate(self._dated(12))
+        self.assertTrue(gate["cost_pass"])
+        self.assertEqual(gate["value_n"], 0)
+        self.assertEqual(gate["value_status"], "unresolved")
+        self.assertFalse(gate["pass"])
+
     def test_empty_or_malformed_history_is_an_honest_fail(self):
-        self.assertFalse(projection_gate([])["pass"])
-        self.assertFalse(projection_gate({})["pass"])
-        self.assertFalse(projection_gate([("d", "not-a-payload")])["pass"])
+        for payload in ([], {}, [("d", "not-a-payload")]):
+            gate = projection_gate(payload)
+            self.assertFalse(gate["cost_pass"])
+            self.assertFalse(gate["pass"])
 
 class GateValueLegTest(unittest.TestCase):
     """Item 2 (D4): the gate scores BOTH the cost regret and the Value regret.
@@ -437,13 +460,16 @@ class GateValueLegTest(unittest.TestCase):
         gate = projection_gate(self._series(12, realized=self.REALIZED))
         self.assertEqual(gate["n"], 12)
         self.assertEqual(gate["land"], 12)
-        self.assertTrue(gate["pass"])
+        self.assertTrue(gate["cost_pass"])
         # Not one transition is Value-scorable. That is a RESOLUTION limit of
         # the input, never evidence that Value scored badly.
         self.assertEqual(gate["value_n"], 0)
         self.assertIsNone(gate["value_share"])
         self.assertFalse(gate["value_pass"])
         self.assertEqual(gate["value_status"], "unresolved")
+        # ...and because `pass` IS the Value verdict, an unresolved leg does
+        # NOT certify the projection. Nothing was measured, so nothing passes.
+        self.assertFalse(gate["pass"])
 
     def test_value_leg_scores_on_as_of_iq_and_lands(self):
         iq = {"r/a": 90.0, "r/b": 40.0, "r/c": 20.0}
@@ -454,6 +480,9 @@ class GateValueLegTest(unittest.TestCase):
         self.assertEqual(gate["value_land"], 12)
         self.assertEqual(gate["value_share"], 1.0)
         self.assertTrue(gate["value_pass"])
+        # `pass` follows the Value leg, so this is the case where it is true.
+        self.assertTrue(gate["pass"])
+        self.assertTrue(gate["cost_pass"])
 
     def test_value_leg_can_fail_while_the_cost_leg_passes(self):
         """The legs measure different things and must be able to disagree.
@@ -461,7 +490,9 @@ class GateValueLegTest(unittest.TestCase):
         r/a is the crown and realizes 10% above cheapest, so the COST leg
         lands (0.10 <= GATE_TOL). But r/a carries a far lower IQ than the
         cheapest-realized route, so its Value is far worse and the VALUE leg
-        fails. A gate that reported one number for both could not show this.
+        fails. A gate that reported one number for both could not show this -
+        and since `pass` is the Value verdict, the gate does NOT pass here
+        even though the cost leg does.
         """
         realized = {"r/a": 1.10, "r/b": 1.00, "r/c": 2.00}
         iq = {"r/a": 1.0, "r/b": 100.0, "r/c": 1.0}
@@ -469,11 +500,12 @@ class GateValueLegTest(unittest.TestCase):
             self._series(12, iq=iq, realized=realized))
         self.assertEqual(gate["n"], 12)
         self.assertEqual(gate["land"], 12)
-        self.assertTrue(gate["pass"])
+        self.assertTrue(gate["cost_pass"])
         self.assertEqual(gate["value_n"], 12)
         self.assertEqual(gate["value_land"], 0)
         self.assertEqual(gate["value_share"], 0.0)
         self.assertFalse(gate["value_pass"])
+        self.assertFalse(gate["pass"])
 
     def test_value_regret_is_oriented_like_the_cost_leg(self):
         """0 is perfect, positive is shortfall - for BOTH ratios.
@@ -517,6 +549,11 @@ class CrownLadderTest(unittest.TestCase):
     the tail would need 60%/120% to certify a projection that crowns a
     113%-over route. Asserting the frozen prefix keeps the test stable as the
     sweep appends new snapshots.
+
+    Under the owner's ruling of 2026-09-12 this prefix is COST-certified and
+    NOT YET Value-certified: only 9 of the 14 transitions carry an as-of IQ
+    stamp, so the Value leg is short of GATE_MIN_N. The tests below assert
+    both facts rather than only the flattering one.
     """
 
     @staticmethod
@@ -532,12 +569,51 @@ class CrownLadderTest(unittest.TestCase):
         }
         self.assertEqual(ladder, {0.0: 11, 0.15: 12, 0.60: 13, 1.20: 14})
 
-    def test_gate_passes_at_the_fifteen_percent_ruling(self):
+    def test_the_cost_leg_passes_at_the_fifteen_percent_ruling(self):
         gate = projection_gate(self._through("2026-09-10"))
         self.assertEqual(gate["n"], 14)
         self.assertEqual(gate["land"], 12)
         self.assertAlmostEqual(gate["share"], 0.857, places=3)
         self.assertEqual(gate["tol"], 0.15)
+        self.assertTrue(gate["cost_pass"])
+
+    def test_the_frozen_prefix_is_not_yet_certified_on_value(self):
+        """The gate does NOT pass on the owner's own 14-transition evidence.
+
+        `pass` is the Value verdict (owner ruling 2026-09-12), and only 9 of
+        those 14 transitions carry the as-of IQ stamp the Value leg needs - so
+        `value_n` is BELOW GATE_MIN_N and the leg cannot clear its evidence
+        bar. This is a resolution/evidence limit, not a Value failure: the 9
+        that DO resolve land at 0.889, above GATE_SHARE. The distinction is
+        what `value_status` exists for, and it is why the frozen prefix reads
+        `pass=False` while the full history (which has the transitions) does
+        not. Asserting it here keeps the flip honest: nobody can read this
+        suite and believe the gate now certifies a prefix it never did.
+        """
+        gate = projection_gate(self._through("2026-09-10"))
+        self.assertTrue(gate["cost_pass"])
+        self.assertEqual(gate["value_status"], "measured")
+        self.assertLess(gate["value_n"], 10)
+        self.assertAlmostEqual(gate["value_share"], 0.889, places=3)
+        self.assertFalse(gate["value_pass"])
+        self.assertFalse(gate["pass"])
+
+    def test_both_legs_pass_on_the_history_the_flip_landed_on(self):
+        """Frozen to 2026-09-12: the flip is behaviourally INERT as it lands.
+
+        Both legs clear their bar on this history, so `pass` is True before
+        and after the flip - the change moves which leg a FUTURE failure
+        belongs to, and nothing about today's verdict. Frozen to a date so a
+        later sweep appending a snapshot cannot silently move it.
+        """
+        gate = projection_gate(self._through("2026-09-12"))
+        self.assertEqual(gate["n"], 15)
+        self.assertAlmostEqual(gate["share"], 0.867, places=3)
+        self.assertTrue(gate["cost_pass"])
+        self.assertEqual(gate["value_n"], 10)
+        self.assertAlmostEqual(gate["value_share"], 0.9, places=3)
+        self.assertEqual(gate["value_status"], "measured")
+        self.assertTrue(gate["value_pass"])
         self.assertTrue(gate["pass"])
 
 
