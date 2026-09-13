@@ -265,6 +265,23 @@ def sync_route_metrics(conn, live_models: dict[str, dict] | None = None) -> int:
             # visible in the sync log instead of silently moving the ranking.
             _log_floor_point(route, m, previous.get(route))
             n += 1
+
+        # Prune departed routes (issue #47).
+        # Safety guards against partial or truncated pulls:
+        # 1. models must be non-empty and meet absolute floor (MIN_MODELS = 50).
+        # 2. models count must not drop by more than 30% against previous DB rows.
+        # If either guard trips, log a warning and skip deletion.
+        prev_count = len(previous)
+        if len(models) >= 50 and (prev_count == 0 or len(models) >= prev_count * 0.7):
+            cur.execute("""
+                delete from route_metrics
+                where route != all(%s)
+            """, (list(models.keys()),))
+            pruned = cur.rowcount
+            if pruned > 0:
+                print(f"route_metrics: pruned {pruned} departed routes")
+        else:
+            print(f"route_metrics: prune guard tripped (live={len(models)}, prev={prev_count}); skipped deletion")
     return n
 
 def sync_projection_gate(conn) -> dict:

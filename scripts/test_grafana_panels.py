@@ -300,6 +300,34 @@ def main():
         print(f"{pid:<4} | {ptype:<11} | {status_str:<8} | {rows:<6} | {detail}")
 
     print("-" * 88)
+
+    # Leg (c) Freshness check on route_metrics: ensure no departed/stale routes (> 2h)
+    stale_check_query = {
+        "id": 9999,
+        "title": "route_metrics staleness check",
+        "type": "check",
+        "targets": [{
+            "refId": "A",
+            "datasource": {"uid": "inferhub-pg", "type": "grafana-postgresql-datasource"},
+            "rawSql": "SELECT count(*) as stale_count FROM route_metrics WHERE updated_at < now() - interval '2 hours';",
+            "format": "table"
+        }]
+    }
+    stale_res = execute_panel_query(args.base_url, api_key, stale_check_query, time_from=args.time_from, time_to=args.time_to)
+    if stale_res["status"] == "OK":
+        try:
+            stale_count = int(stale_res["sample"].split(",")[0].strip())
+            if stale_count > 0:
+                print(f"FAILED: route_metrics contains {stale_count} stale rows (updated_at > 2h old). Run sync_route_metrics to prune departed routes.")
+                failures += 1
+            else:
+                print("✓ route_metrics freshness: 0 stale rows (> 2h old)")
+        except Exception as e:
+            print(f"WARNING: Could not parse stale_count ({e})")
+    elif stale_res["status"] not in ("SKIP",):
+        print(f"WARNING: route_metrics staleness check failed: {stale_res['message']}")
+
+    print("-" * 88)
     if failures > 0:
         print(f"FAILED: {failures} panel(s) returned NO DATA, NULL, or query errors.")
         sys.exit(1)

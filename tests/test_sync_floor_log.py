@@ -22,6 +22,7 @@ class _FakeCursor:
     def __init__(self, previous: list[tuple[str, object]]) -> None:
         self.previous = previous
         self.writes: list[tuple[str, tuple]] = []
+        self.rowcount: int = 0
 
     def __enter__(self) -> "_FakeCursor":
         return self
@@ -123,6 +124,37 @@ class FloorPointReceiptTests(unittest.TestCase):
         self.assertEqual(len(lines), 2, "one receipt per upserted route")
         # the route whose floor moved against the stored row is the flagged one
         self.assertTrue(any("FLOOR FLIP" in l for l in lines))
+
+    def test_prune_departed_routes_executed_when_live_count_is_healthy(self) -> None:
+        models = {
+            f"model-{i}": {
+                "ask_in": 0.001, "ask_out": 0.002,
+                "ask_in_publishers": 1, "ask_out_publishers": 1,
+            }
+            for i in range(60)
+        }
+        previous = [(f"model-{i}", 0.001) for i in range(65)]
+        conn = _FakeConn(previous)
+        sync_usage_logs.sync_route_metrics(conn, live_models=models)
+        delete_queries = [sql for sql, params in conn.cur.writes if "delete from route_metrics" in sql]
+        self.assertEqual(len(delete_queries), 1, "delete query should be executed when guards pass")
+
+    def test_prune_departed_routes_skipped_when_guard_trips(self) -> None:
+        # Fewer than 50 models trips guard
+        models = {
+            f"model-{i}": {
+                "ask_in": 0.001, "ask_out": 0.002,
+                "ask_in_publishers": 1, "ask_out_publishers": 1,
+            }
+            for i in range(30)
+        }
+        previous = [(f"model-{i}", 0.001) for i in range(60)]
+        conn = _FakeConn(previous)
+        with mock.patch.object(sync_usage_logs, "print") as out:
+            sync_usage_logs.sync_route_metrics(conn, live_models=models)
+        delete_queries = [sql for sql, params in conn.cur.writes if "delete from route_metrics" in sql]
+        self.assertEqual(len(delete_queries), 0, "delete query must be skipped when guard trips")
+        self.assertTrue(any("prune guard tripped" in str(c.args[0]) for c in out.call_args_list if c.args))
 
 
 if __name__ == "__main__":
