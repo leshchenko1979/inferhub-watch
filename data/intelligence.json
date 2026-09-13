@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-12T12:12:24Z",
+ "generated_at": "2026-09-13T07:31:40Z",
  "source": "artificialanalysis.ai",
  "endpoint": "https://artificialanalysis.ai/api/v2/data/llms/models",
  "models": {
@@ -80,6 +80,13 @@
    "aa_in": 0.3,
    "aa_out": 1.2
   },
+  "k2-horizon-375b-a23b": {
+   "name": "K2 Horizon 375B A23B",
+   "iq": 30.8,
+   "coding": 61.5,
+   "aa_in": 0,
+   "aa_out": 0
+  },
   "quasar-438b": {
    "name": "Quasar 438B (max, based on GLM-5.2)",
    "iq": 27.1,
@@ -107,13 +114,6 @@
    "coding": null,
    "aa_in": 0.05,
    "aa_out": 0.15
-  },
-  "k2-horizon-375b-a23b": {
-   "name": "K2 Horizon 375B A23B",
-   "iq": 30.7,
-   "coding": 61.5,
-   "aa_in": 0,
-   "aa_out": 0
   },
   "gpt-oss-20b": {
    "name": "gpt-oss-20b (high)",

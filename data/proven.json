@@ -70,7 +70,7 @@
     }
   },
   "cmc/z-ai/glm-5.3-flash": {
-    "last_probe": "2026-09-12T12:10:46.281587+00:00",
+    "last_probe": "2026-09-13T07:30:10.304332+00:00",
     "statuses": {
       "cache": "fail",
       "core": "pass"
