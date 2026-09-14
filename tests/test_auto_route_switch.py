@@ -422,11 +422,25 @@ def test_update_active_sessions(tmp_path):
                 archived_at INTEGER
             )
         """)
-        # 2 active inferhub sessions, 1 archived inferhub session, 1 active other provider session
+        conn.execute("""
+            CREATE TABLE session_bindings (
+                session_id TEXT PRIMARY KEY,
+                channel TEXT NOT NULL,
+                chat_id TEXT NOT NULL,
+                thread_id INTEGER
+            )
+        """)
+        # s1 and s2 have active surfaces in session_bindings; s5 is active but has NO surface (should not flip)
         conn.execute("INSERT INTO sessions VALUES ('s1', 'old_model', 'custom:inferhub', NULL)")
         conn.execute("INSERT INTO sessions VALUES ('s2', 'old_model', 'inferhub', NULL)")
         conn.execute("INSERT INTO sessions VALUES ('s3', 'old_model', 'custom:inferhub', 12345678)")
         conn.execute("INSERT INTO sessions VALUES ('s4', 'openrouter_model', 'openrouter', NULL)")
+        conn.execute("INSERT INTO sessions VALUES ('s5', 'old_model', 'custom:inferhub', NULL)")
+
+        conn.execute("INSERT INTO session_bindings VALUES ('s1', 'telegram', '-100123', 2)")
+        conn.execute("INSERT INTO session_bindings VALUES ('s2', 'telegram', '-100123', 3)")
+        conn.execute("INSERT INTO session_bindings VALUES ('s3', 'telegram', '-100123', 4)")
+        conn.execute("INSERT INTO session_bindings VALUES ('s4', 'telegram', '-100123', 5)")
     conn.close()
 
     updated = update_active_sessions(db_file, "cb/gpt-5.6-luna")
@@ -440,6 +454,7 @@ def test_update_active_sessions(tmp_path):
     assert rows[1] == ("s2", "cb/gpt-5.6-luna", None)
     assert rows[2] == ("s3", "old_model", 12345678)
     assert rows[3] == ("s4", "openrouter_model", None)
+    assert rows[4] == ("s5", "old_model", None)  # s5 without active surface remains old_model
 
 
 def _make_bindings_db(db_file, rows, thread_id=INFERHUB_WATCH_HQ_THREAD_ID):
@@ -765,6 +780,10 @@ default_model = "current/m1"
                 updated_at INTEGER NOT NULL
             )
         """)
+        conn.execute(
+            "INSERT INTO session_bindings VALUES ('s1', 'telegram', ?, 3, 5)",
+            (INFERHUB_WATCH_CHAT_ID,),
+        )
         conn.execute(
             "INSERT INTO session_bindings VALUES ('watch-session', 'telegram', ?, 2, 10)",
             (INFERHUB_WATCH_CHAT_ID,),

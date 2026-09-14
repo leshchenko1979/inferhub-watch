@@ -953,12 +953,13 @@ def update_remote_target(
         res["error"] = f"Remote config update exception: {exc}"
         logger.warning(res["error"])
 
-    # 3. Update remote DB sessions
+    # 3. Update remote DB sessions with active surfaces only
     try:
         sql = (
             "UPDATE sessions "
             f"SET model = '{new_model}' "
             "WHERE archived_at IS NULL "
+            "AND id IN (SELECT session_id FROM session_bindings) "
             "AND (provider_name = 'custom:inferhub' OR provider_name = 'custom.inferhub' "
             "OR provider_name = 'inferhub' OR provider_name IS NULL OR provider_name = '');"
         )
@@ -977,7 +978,7 @@ def update_remote_target(
 
 
 def update_active_sessions(db_path: Path, new_model: str, target_provider: str = "custom:inferhub") -> int:
-    """Update active unarchived sessions in opencrabs.db to point to new_model."""
+    """Update active unarchived sessions WITH ACTIVE SURFACES (session_bindings) in opencrabs.db to point to new_model."""
     if not db_path.exists():
         logger.warning(f"Database path {db_path} does not exist")
         return 0
@@ -986,16 +987,34 @@ def update_active_sessions(db_path: Path, new_model: str, target_provider: str =
     try:
         with conn:
             cur = conn.cursor()
-            # Update sessions where archived_at is null
-            cur.execute(
-                """
-                UPDATE sessions
-                SET model = ?
-                WHERE archived_at IS NULL
-                  AND (provider_name = ? OR provider_name = 'inferhub' OR provider_name IS NULL OR provider_name = '')
-                """,
-                (new_model, target_provider),
-            )
+            # Check if session_bindings table exists in DB
+            has_bindings = cur.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='session_bindings'"
+            ).fetchone() is not None
+
+            if has_bindings:
+                # Update sessions where archived_at is null and session has an active bound surface
+                cur.execute(
+                    """
+                    UPDATE sessions
+                    SET model = ?
+                    WHERE archived_at IS NULL
+                      AND id IN (SELECT session_id FROM session_bindings)
+                      AND (provider_name = ? OR provider_name = 'inferhub' OR provider_name IS NULL OR provider_name = '')
+                    """,
+                    (new_model, target_provider),
+                )
+            else:
+                # Fallback for minimal/legacy schemas without session_bindings
+                cur.execute(
+                    """
+                    UPDATE sessions
+                    SET model = ?
+                    WHERE archived_at IS NULL
+                      AND (provider_name = ? OR provider_name = 'inferhub' OR provider_name IS NULL OR provider_name = '')
+                    """,
+                    (new_model, target_provider),
+                )
             return cur.rowcount
     finally:
         conn.close()
