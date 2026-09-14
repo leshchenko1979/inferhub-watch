@@ -1,9 +1,9 @@
 ---
 name: inferhub-auto-route
-description: Evaluate InferHub Watch routes by Artificial Analysis IQ and empirical ask-weighted value, consume the public Grafana board analysis, then optionally switch OpenCrabs defaults and configure runner-up fallback chains on a safe hourly cadence. Use when configuring automatic model-route selection, comparing IQ per $, or installing a scheduled route-switch workflow.
+description: Evaluate InferHub Watch routes by Artificial Analysis IQ, True TPS (corrected for timeouts and failures), and empirical ask-weighted North Star Value, consume the public Grafana board analysis, then optionally switch OpenCrabs defaults and configure runner-up fallback chains on a safe hourly cadence. Use when configuring automatic model-route selection, comparing Value, or installing a scheduled route-switch workflow.
 compatibility: Requires OpenCrabs with writable profile config/session storage, a machine-readable InferHub Watch snapshot/API, and Python 3.12+ for the reference helper.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   source: "https://github.com/leshchenko1979/inferhub-watch"
 ---
 
@@ -24,11 +24,11 @@ External users (including OpenCrabs operators like Adi) can leverage the empiric
 1. Load configuration and validate every key. Refuse live mode for missing credentials, invalid weights, missing provider paths, or a missing data source.
 2. Read the machine-readable dashboard/API snapshot. Reject unavailable, malformed, or stale telemetry; never scrape rendered Grafana HTML.
 3. Resolve each route's IQ, input/output ask, and tool capability. Exclude missing IQ, non-positive asks, and routes with `supports_tools = false`. Do not apply a separate DeepSeek date rule: DeepSeek routes qualify or fail on the configured IQ floor and tool-support check like every other route.
-4. Calculate value using the configured weights, rank qualified routes, and compare the best route with the current route. Switch only when `best_value > current_value * (1 + switch_threshold)`; emit a no-op verdict otherwise.
+4. Calculate North Star Value using the configured weights and True TPS (scaling by realized throughput and reliability penalties), rank qualified routes, and compare the best route with the current route. Switch only when `best_value > current_value * (1 + switch_threshold)`; emit a no-op verdict otherwise.
 5. In live mode:
    - Update the primary provider's `default_model` and `agent.default_model` to the best route.
    - Configure the runner-up (2nd-best) candidate as `default_model` on `[providers.custom.inferhub-alt]` and pin it first in `[providers.fallback].providers` per [OpenCrabs integration](references/opencrabs-integration.md).
-   - Atomically update defaults and transactionally migrate only active, unarchived sessions in the configured provider scope. Verify each post-write value before reporting a switch.
+   - Atomically update defaults and transactionally migrate only active surface sessions (`session_bindings`) in the configured provider scope, keeping headless background sessions untouched. Verify each post-write value before reporting a switch.
 6. Emit a notification containing the decision evidence, data timestamp, old/new route, runner-up fallback route, IQ, asks, values, gain, session count, and whether the run was dry-run. A notification failure never changes the decision.
 
 ## Deployment modes

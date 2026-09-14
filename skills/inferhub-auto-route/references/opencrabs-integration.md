@@ -21,7 +21,7 @@ Use the configured provider name and profile paths; never assume a global or ano
 3. Add the selected route to the provider model list only if absent.
 4. Atomically replace config values for `agent.default_model`, `agent.subagent_model`, and the selected provider's `default_model` as supported by the installed schema.
 5. If fallback chain pinning is enabled, configure the runner-up (2nd-best) candidate as `default_model` on `[providers.custom.inferhub-alt]` and pin `inferhub-alt` first in `[providers.fallback].providers`.
-6. In one SQLite transaction, update only `archived_at IS NULL` sessions in the configured provider scope.
+6. In one SQLite transaction, update only active surface sessions (`archived_at IS NULL AND id IN (SELECT session_id FROM session_bindings)`) in the configured provider scope, preserving headless/background sessions untouched. If `session_bindings` is absent, update only active unarchived sessions.
 7. Re-read and verify config and session rows.
 8. Emit the switch notification with the verified counts and route.
 

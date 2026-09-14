@@ -11,13 +11,23 @@ A route is eligible only when all conditions hold:
 
 DeepSeek has no special date filter. A DeepSeek route with IQ at or above the configured floor and tool support is treated exactly like any other route.
 
-## Value
+## North Star Value & True TPS
 
-For asks expressed in the same units as the snapshot:
+Value is computed using the canonical North Star formulation, scaling IQ per effective price by True TPS (corrected for timeout delays, retries, and failures) and penalizing operational unreliability:
 
-`value = iq / (input_weight * ask_in + output_weight * ask_out)`
+$$\text{Value} = \left(\frac{\text{IQ}}{\text{eff\_price}}\right) \times \left(\frac{\text{True TPS}}{\text{TPS}_{\text{ref}}}\right)^{0.50} \times \text{Reliability Penalty}$$
 
-The default empirical weights are `0.99` and `0.01`, reflecting observed traffic. Users may change them, but they must be positive and sum to one. Record the exact weights in every verdict so a later run is reproducible.
+Where:
+- **$\text{eff\_price}$**: Effective blended price per token based on traffic profile:
+  $$\text{eff\_price} = w_{\text{in}} \cdot \text{ask}_{\text{in}} + w_{\text{out}} \cdot \text{ask}_{\text{out}}$$
+  The default empirical weights are $w_{\text{in}} = 0.99$ and $w_{\text{out}} = 0.01$, reflecting observed prompt/generation traffic.
+- **$\text{True TPS}$**: Realized throughput accounting for provider timeouts, retry waits, and failed requests over a 24-hour rolling window:
+  $$\text{True TPS} = \frac{\text{Total Tokens Produced}}{\text{Total Generation Time} + \text{Total Timeout Wait} + \text{Retry Overhead}}$$
+  If a provider experiences recurring timeouts or failures, its effective generation speed is penalized accordingly. Routes without observed failures use baseline measured TPS.
+- **$\text{TPS}_{\text{ref}}$**: Reference speed constant ($50.0\text{ TPS}$).
+- **$\text{Reliability Penalty}$**: Penalty multiplier ($\le 1.0$) applied for error rates exceeding operational thresholds.
+
+Record the exact weights, True TPS metrics, and penalties in every verdict so runs remain reproducible and auditable.
 
 ## Hysteresis and no-op
 
