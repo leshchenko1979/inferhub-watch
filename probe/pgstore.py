@@ -216,15 +216,41 @@ def load_env(path: Path | None = None) -> dict[str, str]:
 
 def _connect(env: dict[str, str]):
     import psycopg2
+    import subprocess
 
-    return psycopg2.connect(
-        host=env.get("PGHOST", "127.0.0.1"),
-        port=int(env.get("PGPORT", "15432")),
-        dbname=env.get("PGDATABASE", "inferhub_logs"),
-        user=env.get("PGUSER", "postgres"),
-        password=env.get("PGPASSWORD", ""),
-        connect_timeout=5,
-    )
+    host = env.get("PGHOST", "127.0.0.1")
+    port = int(env.get("PGPORT", "15432"))
+    dbname = env.get("PGDATABASE", "inferhub_logs")
+    user = env.get("PGUSER", "postgres")
+    password = env.get("PGPASSWORD", "")
+
+    try:
+        return psycopg2.connect(
+            host=host,
+            port=port,
+            dbname=dbname,
+            user=user,
+            password=password,
+            connect_timeout=5,
+        )
+    except psycopg2.OperationalError:
+        # If connecting to local tunnel port 15432 and connection refused, try launching the SSH tunnel
+        if host in ("127.0.0.1", "localhost") and port == 15432:
+            subprocess.run(
+                ["ssh", "-N", "-L", "15432:127.0.0.1:5432", "apps", "-f", "-o", "ExitOnForwardFailure=yes"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return psycopg2.connect(
+                host=host,
+                port=port,
+                dbname=dbname,
+                user=user,
+                password=password,
+                connect_timeout=5,
+            )
+        raise
 
 
 def ensure_schema(conn) -> None:
