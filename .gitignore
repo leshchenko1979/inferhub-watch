@@ -13,3 +13,5 @@ site/dist/
 data/switcher_state.json
 data/qual_runs.json
 data/scoreboard.json
+.ledger.lock
+

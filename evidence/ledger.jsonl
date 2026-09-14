@@ -1,0 +1,11 @@
+{"n": 1, "ts": "2026-09-12T10:00:00Z", "event": "genesis", "actor": "hq", "subject": "evidence/ledger.jsonl", "detail": "state surface created; tools/ledger.py is the sole writer"}
+{"n": 2, "ts": "2026-09-12T20:32:51Z", "event": "intake", "actor": "triage", "subject": "#47", "detail": "ops: departed routes keep rows in route_metrics forever"}
+{"n": 3, "ts": "2026-09-13T10:30:00Z", "event": "claim", "actor": "worker", "subject": "#47", "detail": "lane 1122b15e claimed route pruning with safety guards"}
+{"n": 4, "ts": "2026-09-13T11:55:23Z", "event": "close", "actor": "worker", "subject": "#47", "detail": "closed by 6401976; 9 departed routes pruned, 0 stale rows verified"}
+{"n": 5, "ts": "2026-09-12T21:10:41Z", "event": "intake", "actor": "triage", "subject": "#48", "detail": "ci: no dependency vulnerability monitoring"}
+{"n": 6, "ts": "2026-09-13T12:00:00Z", "event": "claim", "actor": "worker", "subject": "#48", "detail": "lane 1122b15e claimed dependabot configuration"}
+{"n": 7, "ts": "2026-09-13T12:11:12Z", "event": "close", "actor": "worker", "subject": "#48", "detail": "closed by 8e3511f; pip and github-actions weekly cadence configured"}
+{"n": 8, "ts": "2026-09-13T16:25:03Z", "event": "intake", "actor": "triage", "subject": "#61", "detail": "site: default sort model leaderboard table by value (tier and IQ per $ desc)"}
+{"n": 9, "ts": "2026-09-13T16:30:00Z", "event": "claim", "actor": "worker", "subject": "#61", "detail": "lane 1122b15e claimed leaderboard query update and Grafana deployment"}
+{"n": 10, "ts": "2026-09-13T17:23:02Z", "event": "close", "actor": "worker", "subject": "#61", "detail": "closed by a585910; panel 5 sorted by Tier and Value desc, Grafana deployed and verified"}
+{"n": 11, "ts": "2026-09-14T06:20:00Z", "event": "run", "actor": "hq", "subject": "internal-self-audit", "detail": "duration=2s turns=1 outcome=accepted gate=all-pass yield=100%"}
