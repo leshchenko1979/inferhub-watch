@@ -157,7 +157,9 @@ class PerfStatsTest(unittest.TestCase):
         # window yielding fewer than 5 samples still falls back to the fleet
         # reference rather than being accepted as production speed.
         import importlib.util
-        spec = importlib.util.spec_from_file_location("psb", "scripts/predictor_scoreboard.py")
+        from pathlib import Path
+        script_path = Path(__file__).resolve().parents[1] / "scripts" / "predictor_scoreboard.py"
+        spec = importlib.util.spec_from_file_location("psb", str(script_path))
         psb = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(psb)
         thin = {"perf": {"models": {"r": {"tps_mean": 40.0, "tps_samples": 4}}}}

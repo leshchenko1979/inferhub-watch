@@ -90,7 +90,8 @@ class TestZeroProductionMutation:
         assert isinstance(mut["live_config_readable"], bool)
 
     def test_no_repo_state_file_appears(self, receipt) -> None:
-        assert receipt["production_mutation"]["repo_switcher_state_present"] is False
+        assert receipt["production_mutation"]["fixture_state_written"] is False
+        assert receipt["production_mutation"]["config_write_calls"] == 0
 
     def test_no_config_session_or_notification_write_was_attempted(
         self, receipt

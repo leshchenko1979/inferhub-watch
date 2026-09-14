@@ -23,9 +23,12 @@ import importlib.util
 import unittest
 
 
+from pathlib import Path
+
+
 def _load():
-    spec = importlib.util.spec_from_file_location(
-        "psb", "scripts/predictor_scoreboard.py")
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "predictor_scoreboard.py"
+    spec = importlib.util.spec_from_file_location("psb", str(script_path))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
