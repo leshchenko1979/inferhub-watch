@@ -379,10 +379,26 @@ def main() -> int:
         print(f"table now ends at {cur.fetchone()[0]}")
     conn.commit()
 
-    # Trigger automated route switching evaluation (issue #12)
+    # Scan log delta for provider timeouts / retries and ingest to provider_failures (Issue #63)
+    failure_stats: dict[str, dict] = {}
+    try:
+        from scripts.scan_opencrabs_timeouts import get_current_log_path, scan_log_delta
+        log_path = get_current_log_path()
+        events, meta = scan_log_delta(log_path)
+        print(f"log timeout scan: {len(events)} events found (scanned {meta.get('bytes_scanned', 0)} bytes)")
+        if events:
+            n_inserted = pgstore.insert_provider_failures(conn, events)
+            conn.commit()
+            print(f"provider_failures inserted: {n_inserted} rows")
+        failure_stats = pgstore.load_24h_provider_failures(conn, hours=24)
+        print(f"provider_failures 24h stats loaded: {len(failure_stats)} routes with failures")
+    except Exception as exc:
+        print(f"log timeout scan warning: {exc}")
+
+    # Trigger automated route switching evaluation (issue #12, #63)
     try:
         from scripts.auto_route_switch import run_auto_route_switch
-        switch_res = run_auto_route_switch(catalog_models=live_models)
+        switch_res = run_auto_route_switch(catalog_models=live_models, failure_stats=failure_stats)
         if switch_res.get("should_switch"):
             print(f"auto_route_switch: switched to {switch_res.get('best_model')}")
         else:

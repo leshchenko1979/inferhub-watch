@@ -12,3 +12,6 @@
 {"n": 12, "ts": "2026-09-14T07:49:26Z", "event": "intake", "actor": "triage", "subject": "#62", "detail": "Lightweight OpenCrabs debug log scanner with stateful delta cursor"}
 {"n": 13, "ts": "2026-09-14T07:49:48Z", "event": "claim", "actor": "worker", "subject": "#62", "detail": "Worker lane 1122b15e claimed issue #62"}
 {"n": 14, "ts": "2026-09-14T08:03:52Z", "event": "close", "actor": "worker", "subject": "#62", "detail": "Lightweight OpenCrabs debug log scanner implemented with stateful delta cursor, rotation and truncation guards, and full test suite"}
+{"n": 15, "ts": "2026-09-14T09:55:32Z", "event": "intake", "actor": "worker", "subject": "63", "detail": "sync: wire log timeout scanner into sync_usage_logs and route True TPS discount"}
+{"n": 16, "ts": "2026-09-14T09:55:32Z", "event": "claim", "actor": "worker", "subject": "63", "detail": "Worker claiming Issue #63"}
+{"n": 17, "ts": "2026-09-14T10:47:38Z", "event": "close", "actor": "worker", "subject": "63", "detail": "Wired log timeout scanner into sync_usage_logs, persisted provider failures to Postgres, calculated True TPS discounting in auto_route_switch, and added unit tests"}

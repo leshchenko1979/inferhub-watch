@@ -144,6 +144,48 @@ class RouteCandidate:
     floor_price: float = 0.0  # projected/catalog floor basis
     realized_price: float | None = None  # billed basis (None = no billing)
     realized_samples: int = 0  # streaming samples behind realized_price
+    # Issue #63: True TPS failure / timeout discounting
+    raw_tps: float = 0.0
+    failure_count: int = 0
+    timeout_wait_s: float = 0.0
+    failure_penalty: float = 1.0  # 1.0 = no penalty, < 1.0 = discounted
+
+
+
+def calculate_true_tps(
+    raw_tps: float,
+    failure_count: int = 0,
+    wait_seconds: float = 0.0,
+    sample_count: int = 0,
+) -> tuple[float, float]:
+    """Calculate True TPS discounted for provider timeouts, retries, and failures (Issue #63).
+
+    Returns:
+        (true_tps, penalty_factor) where penalty_factor in (0.0, 1.0].
+
+    Formula:
+        Estimated useful active generation time:
+        active_time_s = max(sample_count * 10.0, 60.0)
+        Time dilution factor = wait_seconds / (active_time_s + wait_seconds)
+        Count penalty = 0.05 * failure_count
+        penalty_factor = max(0.10, 1.0 - min(0.90, time_dilution + count_penalty))
+        true_tps = raw_tps * penalty_factor
+    """
+    if raw_tps <= 0.0:
+        return 0.0, 1.0
+
+    if failure_count <= 0 and wait_seconds <= 0.0:
+        return raw_tps, 1.0
+
+    active_time_s = max(sample_count * 10.0, 60.0)
+    time_dilution = wait_seconds / (active_time_s + wait_seconds)
+    count_penalty = 0.05 * failure_count
+
+    total_discount = min(0.90, time_dilution + count_penalty)
+    penalty_factor = max(0.10, 1.0 - total_discount)
+
+    true_tps = raw_tps * penalty_factor
+    return true_tps, penalty_factor
 
 
 def calculate_value(
@@ -484,11 +526,13 @@ def evaluate_candidates(
     qual_runs: dict[str, Any] | None = None,
     use_proj: bool = True,
     tps_ref: float | None = None,
+    failure_stats: dict[str, dict] | None = None,
 ) -> dict[str, RouteCandidate]:
     """Evaluate and build RouteCandidate objects for all catalog models."""
     if tps_ref is None:
         tps_ref = resolve_fleet_tps_ref(pricing_payload)
 
+    failure_stats = failure_stats or {}
     candidates: dict[str, RouteCandidate] = {}
     for route, info in catalog_models.items():
         slug = resolve_slug(route, aa_map, intel_slugs)
@@ -514,12 +558,24 @@ def evaluate_candidates(
         realized_price, realized_samples = resolve_realized_price(
             route, pricing_payload=pricing_payload
         )
-        tps, tps_source = resolve_route_tps(
+        raw_tps, tps_source = resolve_route_tps(
             route, pricing_payload=pricing_payload, qual_runs=qual_runs, default_tps=tps_ref
         )
+
+        # Issue #63: True TPS discounting for provider timeouts and failures
+        f_stat = failure_stats.get(route, {})
+        f_count = int(f_stat.get("failures", 0))
+        f_wait_s = float(f_stat.get("wait_seconds", 0.0))
+        true_tps, penalty_factor = calculate_true_tps(
+            raw_tps,
+            failure_count=f_count,
+            wait_seconds=f_wait_s,
+            sample_count=realized_samples,
+        )
+
         # Provisional ranking is on the floor basis; find_best_route re-applies
         # whichever basis the WHOLE evaluation selects (issue #27 item 1).
-        val = calculate_value(iq or 0.0, eff_price=floor_price, tps=tps, tps_ref=tps_ref) if (iq is not None and floor_price > 0) else 0.0
+        val = calculate_value(iq or 0.0, eff_price=floor_price, tps=true_tps, tps_ref=tps_ref) if (iq is not None and floor_price > 0) else 0.0
 
         candidates[route] = RouteCandidate(
             route=route,
@@ -527,7 +583,7 @@ def evaluate_candidates(
             ask_in=ask_in,
             ask_out=ask_out,
             eff_price=floor_price,
-            tps=tps,
+            tps=true_tps,
             value=val,
             supports_tools=supports_tools,
             supports_cache=supports_cache,
@@ -535,6 +591,10 @@ def evaluate_candidates(
             floor_price=floor_price,
             realized_price=realized_price,
             realized_samples=realized_samples,
+            raw_tps=raw_tps,
+            failure_count=f_count,
+            timeout_wait_s=f_wait_s,
+            failure_penalty=penalty_factor,
         )
     return candidates
 
@@ -554,6 +614,7 @@ def find_best_route(
     qual_path: Path | None = None,
     tps_ref: float | None = None,
     out: dict[str, Any] | None = None,
+    failure_stats: dict[str, dict] | None = None,
 ) -> tuple[bool, RouteCandidate | None, RouteCandidate | None, str]:
     """Determine if a route switch is needed.
 
@@ -577,6 +638,7 @@ def find_best_route(
         qual_runs=qual_runs,
         use_proj=use_proj,
         tps_ref=tps_ref,
+        failure_stats=failure_stats,
     )
     current_cand = candidates.get(current_model)
 
@@ -1119,6 +1181,7 @@ def run_auto_route_switch(
     dwell_seconds: float = DWELL_SECONDS,
     override_gain: float = DWELL_OVERRIDE_GAIN,
     now: datetime | None = None,
+    failure_stats: dict[str, dict] | None = None,
 ) -> dict[str, Any]:
     """Main pipeline execution for auto route switching."""
     if db_paths is None:
@@ -1211,6 +1274,13 @@ def run_auto_route_switch(
         if api_key:
             client = InferHubClient(api_key)
 
+    if failure_stats is None:
+        try:
+            failure_stats = pgstore.load_24h_provider_failures()
+        except Exception as exc:
+            logger.debug(f"Live pgstore provider failure load skipped ({exc}).")
+            failure_stats = {}
+
     current_model = get_current_model(config_path)
     diag: dict[str, Any] = {}
     should_switch, best, current, reason = find_best_route(
@@ -1227,6 +1297,7 @@ def run_auto_route_switch(
         client=client,
         qual_path=qual_path,
         out=diag,
+        failure_stats=failure_stats,
     )
     basis_mode = diag.get("basis_mode", BASIS_FLOOR)
 

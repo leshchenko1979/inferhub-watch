@@ -38,9 +38,30 @@ RE_TIMEOUT_ERROR = re.compile(
     r"(timed out|deadline has elapsed|status: (?:504|408|502|503)|error sending request|request error|connection closed before message completed|connection reset by peer)",
     re.IGNORECASE,
 )
-RE_TOOL_BASH_TIMEOUT = re.compile(
-    r"Tool execution timed out after \d+s", re.IGNORECASE
+RE_STREAM_RETRY = re.compile(
+    r"run_tool_loop\{session_id=([^\s,}]+)\}.*?(?:Mid-stream error|Stream retry attempt).*?(?:timed out|deadline|error|HTTP|status)",
+    re.IGNORECASE,
 )
+RE_WAIT_MS = re.compile(r"after\s*(\d+(?:\.\d+)?)\s*ms", re.IGNORECASE)
+RE_WAIT_S = re.compile(r"(?:after:?|timed out after)\s*(\d+(?:\.\d+)?)\s*s\b", re.IGNORECASE)
+
+
+def extract_wait_seconds(line: str, kind: str) -> float:
+    """Extract wait time in seconds from log line or default sensibly."""
+    m_s = RE_WAIT_S.search(line)
+    if m_s:
+        return float(m_s.group(1))
+
+    m_ms = RE_WAIT_MS.search(line)
+    if m_ms:
+        return float(m_ms.group(1)) / 1000.0
+
+    # Sensible defaults based on error kind
+    if "timed out" in line.lower() or "deadline" in line.lower():
+        return 60.0  # OpenCrabs HTTP stream timeout default is 60s
+    if kind == "retry":
+        return 1.0  # Backoff wait default ~1s
+    return 5.0
 
 
 def get_current_log_path(log_dir: str = DEFAULT_LOG_DIR) -> str:
@@ -177,20 +198,29 @@ def scan_log_delta(
             # Filter for timeouts / error markers
             if has_err:
                 # Ignore bash tool execution timeouts (local shell commands, not provider hangs)
-                if RE_TOOL_BASH_TIMEOUT.search(line):
+                if "Tool execution timed out after" in line:
                     continue
 
                 err_match = RE_TIMEOUT_ERROR.search(line)
                 retry_match = RE_RETRY.search(line)
+                stream_match = RE_STREAM_RETRY.search(line)
 
-                if err_match or retry_match:
+                if err_match or retry_match or stream_match:
                     # Extract timestamp (standard ISO prefix: 2026-09-14T00:00:00...)
                     ts = line[:26] if len(line) >= 26 and line[10] == "T" else ""
                     model = session_models.get(session_id, "unknown") if session_id else "unknown"
 
-                    kind = "retry" if retry_match else "timeout_or_error"
+                    if retry_match or stream_match:
+                        kind = "retry"
+                    else:
+                        kind = "timeout_or_error"
+
+                    wait_seconds = extract_wait_seconds(line, kind)
+
                     if retry_match:
                         detail = retry_match.group(3).strip()
+                    elif stream_match:
+                        detail = line[line.find("Mid-stream") if "Mid-stream" in line else line.find("Stream retry"):].strip()
                     elif err_match:
                         start_pos = err_match.start()
                         detail = line[start_pos:].strip()
@@ -201,7 +231,9 @@ def scan_log_delta(
                         "ts": ts,
                         "session_id": session_id,
                         "model": model,
+                        "route": model,  # Canonical alias
                         "kind": kind,
+                        "wait_seconds": wait_seconds,
                         "detail": detail,
                         "raw_line": line.strip()[:300],
                     })

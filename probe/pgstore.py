@@ -155,6 +155,23 @@ create table if not exists predictor_scoreboard (
 );
 """
 
+# Tracked provider timeouts, retries, and failure events extracted from OpenCrabs debug logs (Issue #63).
+PROVIDER_FAILURES_DDL = """
+create table if not exists provider_failures (
+    id bigserial primary key,
+    ts timestamptz not null,
+    session_id text,
+    route text not null,
+    kind text not null,
+    wait_seconds numeric(8,3) default 0.0,
+    detail text,
+    raw_line text,
+    inserted_at timestamptz not null default now()
+);
+create index if not exists idx_pf_route_ts on provider_failures (route, ts);
+create index if not exists idx_pf_ts on provider_failures (ts);
+"""
+
 # The Grafana datasource reads as `inferhub_ro`, not as the owner role, so
 # every table a panel queries needs an explicit SELECT grant. Without it the
 # panel errors "permission denied for table ..." on the live dashboard while
@@ -166,7 +183,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'inferhub_ro') THEN
         EXECUTE 'grant select on usage_logs, route_metrics, projection_gate, '
-             || 'route_basis, predictor_scoreboard to inferhub_ro';
+             || 'route_basis, predictor_scoreboard, provider_failures to inferhub_ro';
     END IF;
 END $$;
 """
@@ -223,6 +240,7 @@ def ensure_schema(conn) -> None:
         cur.execute(GATE_DDL)
         cur.execute(ROUTE_BASIS_DDL)
         cur.execute(SCOREBOARD_DDL)
+        cur.execute(PROVIDER_FAILURES_DDL)
         cur.execute(GRANT_DDL)
     conn.commit()
 
@@ -609,3 +627,92 @@ def load_route_metrics(conn=None) -> tuple[dict[str, dict], datetime | None]:
     finally:
         if own and conn is not None:
             conn.close()
+
+
+def insert_provider_failures(conn, events: list[dict]) -> int:
+    """Insert provider failure / timeout events into provider_failures.
+
+    Deduplicates within the batch and avoids inserting rows with empty route or timestamp.
+    Returns the number of rows inserted.
+    """
+    if not events:
+        return 0
+
+    inserted = 0
+    with conn.cursor() as cur:
+        for ev in events:
+            route = ev.get("route") or ev.get("model")
+            ts = ev.get("ts")
+            if not route or route == "unknown" or not ts:
+                continue
+
+            # Ensure ts parses to ISO / datetime
+            if isinstance(ts, str):
+                try:
+                    ts_dt = datetime.fromisoformat(ts)
+                except ValueError:
+                    continue
+            else:
+                ts_dt = ts
+
+            session_id = ev.get("session_id")
+            kind = ev.get("kind", "timeout_or_error")
+            wait_s = float(ev.get("wait_seconds") or 0.0)
+            detail = str(ev.get("detail") or "")[:500]
+            raw_line = str(ev.get("raw_line") or "")[:500]
+
+            cur.execute(
+                """
+                insert into provider_failures (ts, session_id, route, kind, wait_seconds, detail, raw_line)
+                values (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (ts_dt, session_id, route, kind, wait_s, detail, raw_line),
+            )
+            inserted += 1
+    return inserted
+
+
+def load_24h_provider_failures(conn=None, hours: int = 24) -> dict[str, dict[str, Any]]:
+    """Aggregate provider failure count and total wait seconds per route over the last N hours.
+
+    Returns:
+        {
+            route: {
+                "failures": int,
+                "wait_seconds": float,
+            }
+        }
+    """
+    own = False
+    if conn is None:
+        own = True
+        env = load_env()
+        if not env.get("PGPASSWORD"):
+            return {}
+        try:
+            conn = _connect(env)
+        except Exception:
+            return {}
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                select route, count(*) as failure_count, coalesce(sum(wait_seconds), 0.0) as total_wait_s
+                from provider_failures
+                where ts >= now() - interval '%s hours'
+                group by route
+                """,
+                (hours,),
+            )
+            rows = cur.fetchall()
+            stats: dict[str, dict[str, Any]] = {}
+            for r, cnt, wait_s in rows:
+                stats[r] = {
+                    "failures": int(cnt),
+                    "wait_seconds": float(wait_s),
+                }
+            return stats
+    finally:
+        if own and conn is not None:
+            conn.close()
+
