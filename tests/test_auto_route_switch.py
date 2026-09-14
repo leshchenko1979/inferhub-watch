@@ -1000,3 +1000,43 @@ def test_auto_route_switch_stale_route_metrics_fallback(tmp_path):
         assert res["catalog_source"] == "data/catalog.json"
 
 
+def test_auto_route_switch_top_candidates_sorted_by_value(tmp_path):
+    catalog_data = {
+        "models": {
+            "current/m1": {"ask_in": 0.004, "ask_out": 0.02, "supports_tools": True},
+            "new/m2": {"ask_in": 0.001, "ask_out": 0.005, "supports_tools": True},
+            "new/m3": {"ask_in": 0.0005, "ask_out": 0.002, "supports_tools": True},
+        }
+    }
+    intel_data = {
+        "models": {
+            "m1": {"iq": 35.0},
+            "m2": {"iq": 40.0},
+            "m3": {"iq": 38.0},
+        }
+    }
+    data_dir = tmp_path / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "catalog.json").write_text(json.dumps(catalog_data))
+    (data_dir / "intelligence.json").write_text(json.dumps(intel_data))
+
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text('[agent]\ndefault_model = "current/m1"\n')
+
+    res = run_auto_route_switch(
+        root_dir=tmp_path,
+        config_path=cfg_file,
+        db_paths=[],
+        dry_run=True,
+        notify=False,
+        use_db_catalog=False,
+    )
+    assert "top_candidates" in res
+    cands = res["top_candidates"]
+    assert len(cands) == 3
+    values = [c["value"] for c in cands]
+    assert values == sorted(values, reverse=True)
+    assert cands[0]["route"] == "new/m3"
+
+
+

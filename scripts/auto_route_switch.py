@@ -707,6 +707,7 @@ def find_best_route(
         out["runner_up"] = (
             qualified_candidates[1].route if len(qualified_candidates) > 1 else None
         )
+        out["top_candidates"] = qualified_candidates[:5]
 
     if current_cand is None or current_cand.value <= 0:
         return True, best, current_cand, f"Current model {current_model} not evaluated or has 0 value; selecting top candidate {best.route} (basis={basis_mode})."
@@ -1330,6 +1331,21 @@ def run_auto_route_switch(
         "basis_mode": basis_mode,
         "basis_samples": diag.get("basis_samples", 0),
         "dwell": dwell,
+        "top_candidates": [
+            {
+                "route": c.route,
+                "value": round(c.value, 1),
+                "iq": c.iq,
+                "eff_price": round(c.eff_price, 6),
+                "tps": round(c.tps, 1),
+                "tps_source": c.tps_source,
+                "ask_in": c.ask_in,
+                "ask_out": c.ask_out,
+                "failure_count": c.failure_count,
+                "failure_penalty": round(c.failure_penalty, 3),
+            }
+            for c in diag.get("top_candidates", [])
+        ],
     }
     if not dwell["allowed"]:
         result["reason"] = f"{reason} | DWELL GATE: {dwell['detail']}"

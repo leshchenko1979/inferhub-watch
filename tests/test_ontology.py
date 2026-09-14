@@ -79,6 +79,12 @@ class SiteCopyTermsTest(unittest.TestCase):
         self.assertNotIn("error_stats", pricing)
         self.assertNotIn('"errors"', pricing)
 
+    def test_ontology_codifies_value_as_north_star(self) -> None:
+        text = ONTOLOGY.read_text()
+        self.assertIn("North Star metric", text)
+        self.assertIn("probe/value.py", text)
+        self.assertIn("calculate_value", text)
+
 
 if __name__ == "__main__":
     unittest.main()

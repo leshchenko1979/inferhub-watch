@@ -38,18 +38,20 @@ The project ships TWO distinct skills for two distinct audiences:
   4. Lane communication law (`session_notify` only for agent briefing; forum topics for human observation).
   5. Cleanliness law and ledger rotation rules (max 10 entries in `SKILL.md`, oldest evicted to `WORKLOG.md`).
 
-## Mission (owner order 2026-09-10 07:0xZ: "One of the aims of the project is to provide timely updates on routes with bigger IQ per projected price")
+## Mission (owner order 2026-09-10 07:0xZ: "One of the aims of the project is to provide timely updates on routes with bigger IQ per projected price"; aligned to North Star Value 2026-09-14)
 
-**The project exists to let the owner extract the best value/price ratio from the Inferhub inference auction.** Concretely: timely updates on **routes with bigger IQ per $** (per `ONTOLOGY.md`) — high-IQ routes at low ask are the candidates worth surfacing first.
+**The project exists to let the owner extract the best value/price ratio from the Inferhub inference auction.** Concretely: timely updates on **routes with highest Value** (per `ONTOLOGY.md` & `probe/value.py` North Star: capability ÷ effective price, scaled by true throughput and penalized for provider timeouts and failures) — high-Value routes are the candidates worth surfacing and routing to first.
 
-- **Value signal, not just health signal.** Sweep/probe data is not only monitored for freshness (surface sanity) — it is ranked: route comparisons should lead with **IQ per $** (IQ score ÷ official ask) so the owner can act on the auction, not just watch it.
+- **Value signal, not just health signal.** Sweep/probe data is not only monitored for freshness (surface sanity) — it is ranked: route comparisons and switcher candidate evaluations lead with the canonical **North Star Value** metric:
+  $$\text{Value} = \left(\frac{\text{IQ}}{\text{eff\_price}}\right) \times \left(\frac{\text{True TPS}}{\text{TPS}_{\text{ref}}}\right)^{0.50} \times \text{Reliability Penalty}$$
+  so the owner can act on the auction with true operational efficiency, not just raw unweighted IQ ÷ ask.
 - **Timeliness is part of the mission.** "Timely" binds the observation-surface cadence: dashboard data currency (cycle step 5 leg b, refreshed hourly by the `inferhub-usage-logs-sync` cron) and sweep health (step 3) are mission-critical, not hygiene — a stale ranking is a failed mission output even when all systems are green.
-- Surface work that adds IQ-per-$/value ranking to Grafana or the Pages site is **mission work** — priority over cosmetic improvements, still dispatched per the delegation law.
-- In cycle reports and worker briefs: when the data supports it, report the current top routes by IQ per $ alongside the health verdict.
+- Surface work that adds Value ranking to Grafana or the Pages site is **mission work** — priority over cosmetic improvements, still dispatched per the delegation law.
+- In cycle reports and worker briefs: when the data supports it, report the current top routes by **Value** (derived directly from `auto_route_switch.py` candidate evaluation) alongside the health verdict.
 
 ## Ontology law (hard)
 
-Every report, issue, and commit uses the codified terms from `ONTOLOGY.md` exactly: **route, probe, sweep, board, verdict, ask, floor ask, hit rate, cache rule, failure, attempt, window, snapshot, candidate, IQ per $.**
+Every report, issue, and commit uses the codified terms from `ONTOLOGY.md` exactly: **route, probe, sweep, board, verdict, ask, floor ask, hit rate, cache rule, failure, attempt, window, snapshot, candidate, Value, IQ per $.**
 Banned synonyms (enforced by `tests/test_ontology.py` in code; by review in prose): "error" → **failure**, "price" → **ask** / **official ask**, "list price" → **floor ask**, "hit ratio / cache rate" → **hit rate**. A route with red cells is not "down" — the JSON missed the documented [OI] shape.
 
 ## Observation surface law (owner order 2026-09-10 ~06:0xZ: "Our main surface for now is grafana")
