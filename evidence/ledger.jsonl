@@ -15,3 +15,4 @@
 {"n": 15, "ts": "2026-09-14T09:55:32Z", "event": "intake", "actor": "worker", "subject": "63", "detail": "sync: wire log timeout scanner into sync_usage_logs and route True TPS discount"}
 {"n": 16, "ts": "2026-09-14T09:55:32Z", "event": "claim", "actor": "worker", "subject": "63", "detail": "Worker claiming Issue #63"}
 {"n": 17, "ts": "2026-09-14T10:47:38Z", "event": "close", "actor": "worker", "subject": "63", "detail": "Wired log timeout scanner into sync_usage_logs, persisted provider failures to Postgres, calculated True TPS discounting in auto_route_switch, and added unit tests"}
+{"n": 18, "ts": "2026-09-14T10:48:12Z", "event": "run", "actor": "hq", "subject": "internal-self-audit", "detail": "duration=4s turns=0 outcome=accepted gate=all-pass yield=100%"}
