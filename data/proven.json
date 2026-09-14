@@ -28,7 +28,7 @@
     }
   },
   "cb/kimi-k3": {
-    "last_probe": "2026-09-05T10:00:43.572960+00:00",
+    "last_probe": "2026-09-14T07:56:27.502791+00:00",
     "statuses": {
       "cache": "skipped",
       "core": "fail"
@@ -83,8 +83,15 @@
       "core": "pass"
     }
   },
+  "cp/cline-pass/qwen3.8-max": {
+    "last_probe": "2026-09-14T07:56:27.502791+00:00",
+    "statuses": {
+      "cache": "pass",
+      "core": "pass"
+    }
+  },
   "cp/zai/glm-5.3-flash": {
-    "last_probe": "2026-09-08T09:09:40.269980+00:00",
+    "last_probe": "2026-09-14T07:56:27.502791+00:00",
     "statuses": {
       "cache": "fail",
       "core": "pass"

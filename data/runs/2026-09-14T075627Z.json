@@ -1,0 +1,856 @@
+{
+  "started_at": "2026-09-14T07:56:27.502791+00:00",
+  "finished_at": "2026-09-14T07:58:09.131376+00:00",
+  "origin": "github-actions",
+  "api": "https://api.inferhub.dev/v1/chat/completions",
+  "aliases": [
+    "ali/deepseek-v4-flash-0731",
+    "ali/deepseek-v4-pro-0813",
+    "ali/qwen3.8-max",
+    "ali/kimi-k3",
+    "zai/glm-5.3-flash",
+    "cx/gpt-5.6-terra",
+    "cx/gpt-5.6-sol",
+    "cx/gpt-5.6-luna",
+    "ag/gemini-3.7-flash-high",
+    "ag/gemini-3.8-flash-high"
+  ],
+  "candidates": [
+    "cp/zai/glm-5.3-flash",
+    "cb/kimi-k3",
+    "cp/cline-pass/qwen3.8-max"
+  ],
+  "checks": [
+    "core",
+    "cache"
+  ],
+  "cells": [
+    {
+      "check_id": "core",
+      "alias": "ali/deepseek-v4-flash-0731",
+      "resolved_model": "ali/deepseek-v4-flash-0731",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 54 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 1438.4,
+      "ttft_ms": 1185.8,
+      "tps": 106.9,
+      "evidence": {
+        "chunk_count": 15,
+        "empty_name_chunks": 12,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 3.441966e-05,
+          "prompt_tokens": 4660,
+          "completion_tokens": 27
+        },
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "deepseek-v4-flash",
+      "cost_usdc": "0.000034",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ali/deepseek-v4-flash-0731",
+      "resolved_model": "ali/deepseek-v4-flash-0731",
+      "status": "pass",
+      "summary": "Prompt cache hit on the identical repeat: 1024 of 1617 input tokens reused (63%).",
+      "http_status": 200,
+      "latency_ms": 1275.0,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 1024,
+        "prompt_tokens": 1617,
+        "chunk_count": 16,
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1617,
+          "completion_tokens": 61,
+          "cached_tokens": 1024
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.6332714904143476
+      },
+      "model": "deepseek-v4-flash",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "ali/deepseek-v4-pro-0813",
+      "resolved_model": "ali/deepseek-v4-pro-0813",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 12 chars, 5 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 2224.3,
+      "ttft_ms": 1965.1,
+      "tps": 54.02,
+      "evidence": {
+        "chunk_count": 8,
+        "empty_name_chunks": 5,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 4.65498e-05,
+          "prompt_tokens": 4660,
+          "completion_tokens": 14
+        },
+        "chars": 12,
+        "cyrillic_chars": 5,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 12,
+        "finish_reason": "tool_calls",
+        "sample": "\u0412 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "deepseek-v4-pro",
+      "cost_usdc": "0.000047",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ali/deepseek-v4-pro-0813",
+      "resolved_model": "ali/deepseek-v4-pro-0813",
+      "status": "pass",
+      "summary": "Prompt cache hit on the identical repeat: 1024 of 1617 input tokens reused (63%).",
+      "http_status": 200,
+      "latency_ms": 1832.5,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 1024,
+        "prompt_tokens": 1617,
+        "chunk_count": 9,
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1617,
+          "completion_tokens": 46,
+          "cached_tokens": 1024
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.6332714904143476
+      },
+      "model": "deepseek-v4-pro",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "ali/qwen3.8-max",
+      "resolved_model": "ali/qwen3.8-max",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 53 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 2263.7,
+      "ttft_ms": 1765.2,
+      "tps": 86.26,
+      "evidence": {
+        "chunk_count": 14,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 1.659e-05,
+          "prompt_tokens": 1530,
+          "completion_tokens": 43
+        },
+        "chars": 53,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 53,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443"
+      },
+      "model": "qwen3.8-max",
+      "cost_usdc": "0.000017",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ali/qwen3.8-max",
+      "resolved_model": "ali/qwen3.8-max",
+      "status": "pass",
+      "summary": "Prompt cache hit on the identical repeat: 1024 of 1530 input tokens reused (67%).",
+      "http_status": 200,
+      "latency_ms": 1682.3,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 1024,
+        "prompt_tokens": 1530,
+        "chunk_count": 14,
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1530,
+          "completion_tokens": 43,
+          "cached_tokens": 1024
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.6692810457516339
+      },
+      "model": "qwen3.8-max",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "ali/kimi-k3",
+      "resolved_model": "ali/kimi-k3",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 108 chars, 84 Cyrillic, as text content.",
+      "http_status": 200,
+      "latency_ms": 3006.8,
+      "ttft_ms": 1375.7,
+      "tps": 49.05,
+      "evidence": {
+        "chunk_count": 17,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 1.926e-05,
+          "prompt_tokens": 1740,
+          "completion_tokens": 80
+        },
+        "chars": 108,
+        "cyrillic_chars": 84,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 54,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443.\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "kimi-k3",
+      "cost_usdc": "0.000019",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ali/kimi-k3",
+      "resolved_model": "ali/kimi-k3",
+      "status": "pass",
+      "summary": "Prompt cache hit on the identical repeat: 1536 of 1740 input tokens reused (88%).",
+      "http_status": 200,
+      "latency_ms": 2952.7,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 1536,
+        "prompt_tokens": 1740,
+        "chunk_count": 17,
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1740,
+          "completion_tokens": 80,
+          "cached_tokens": 1536
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.8827586206896552
+      },
+      "model": "kimi-k3",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "zai/glm-5.3-flash",
+      "resolved_model": "zai/glm-5.3-flash",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 87 chars, 71 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 5252.8,
+      "ttft_ms": 5238.1,
+      "tps": 2387.97,
+      "evidence": {
+        "chunk_count": 3,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 2.2645e-05,
+          "prompt_tokens": 1393,
+          "completion_tokens": 35
+        },
+        "chars": 87,
+        "cyrillic_chars": 71,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 87,
+        "finish_reason": "tool_calls",
+        "sample": "\u0421\u043e\u0433\u043b\u0430\u0441\u043d\u043e \u043f\u0440\u0438\u0432\u0435\u0434\u0451\u043d\u043d\u043e\u043c\u0443 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u0443, \u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "glm-5.3-flash",
+      "cost_usdc": "0.000023",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "zai/glm-5.3-flash",
+      "resolved_model": "zai/glm-5.3-flash",
+      "status": "pass",
+      "summary": "Prompt cache hit on the identical repeat: 1344 of 1393 input tokens reused (96%).",
+      "http_status": 200,
+      "latency_ms": 4821.3,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 1344,
+        "prompt_tokens": 1393,
+        "chunk_count": 3,
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1393,
+          "completion_tokens": 29,
+          "cached_tokens": 1344
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.964824120603015
+      },
+      "model": "glm-5.3-flash",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "cx/gpt-5.6-terra",
+      "resolved_model": "cx/gpt-5.6-terra",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 54 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 9416.5,
+      "ttft_ms": 8963.7,
+      "tps": 117.03,
+      "evidence": {
+        "chunk_count": 26,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 7.7808e-05,
+          "prompt_tokens": 1303,
+          "completion_tokens": 53
+        },
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "gpt-5.6-terra",
+      "cost_usdc": "0.000078",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "cx/gpt-5.6-terra",
+      "resolved_model": "cx/gpt-5.6-terra",
+      "status": "fail",
+      "summary": "First identical repeat showed no prompt-cache hit (1303 input tokens): usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 5203.5,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 0,
+        "prompt_tokens": 1303,
+        "chunk_count": 26,
+        "usage": {
+          "cost": 7.7232e-05,
+          "prompt_tokens": 1303,
+          "completion_tokens": 51
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.0
+      },
+      "model": "gpt-5.6-terra",
+      "cost_usdc": "0.000077",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "cx/gpt-5.6-sol",
+      "resolved_model": "cx/gpt-5.6-sol",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 54 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 2986.8,
+      "ttft_ms": 2168.0,
+      "tps": 43.97,
+      "evidence": {
+        "chunk_count": 26,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 0.000220255,
+          "prompt_tokens": 1303,
+          "completion_tokens": 36
+        },
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "gpt-5.6-sol",
+      "cost_usdc": "0.000220",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "cx/gpt-5.6-sol",
+      "resolved_model": "cx/gpt-5.6-sol",
+      "status": "fail",
+      "summary": "First identical repeat showed no prompt-cache hit (1303 input tokens): usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 3191.3,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 0,
+        "prompt_tokens": 1303,
+        "chunk_count": 26,
+        "usage": {
+          "cost": 0.000220255,
+          "prompt_tokens": 1303,
+          "completion_tokens": 36
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.0
+      },
+      "model": "gpt-5.6-sol",
+      "cost_usdc": "0.000220",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "cx/gpt-5.6-luna",
+      "resolved_model": "cx/gpt-5.6-luna",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 54 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 8389.3,
+      "ttft_ms": 5296.4,
+      "tps": 11.64,
+      "evidence": {
+        "chunk_count": 26,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1303,
+          "completion_tokens": 36
+        },
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "gpt-5.6-luna",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "cx/gpt-5.6-luna",
+      "resolved_model": "cx/gpt-5.6-luna",
+      "status": "fail",
+      "summary": "First identical repeat showed no prompt-cache hit (1303 input tokens): usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 8821.0,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 0,
+        "prompt_tokens": 1303,
+        "chunk_count": 26,
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1303,
+          "completion_tokens": 36
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.0
+      },
+      "model": "gpt-5.6-luna",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "ag/gemini-3.7-flash-high",
+      "resolved_model": "ag/gemini-3.7-flash-high",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 54 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 2835.5,
+      "ttft_ms": 2809.0,
+      "tps": 6485.25,
+      "evidence": {
+        "chunk_count": 4,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1275,
+          "completion_tokens": 172
+        },
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "gemini-3.7-flash-high",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ag/gemini-3.7-flash-high",
+      "resolved_model": "ag/gemini-3.7-flash-high",
+      "status": "fail",
+      "summary": "First identical repeat showed no prompt-cache hit (1275 input tokens): usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 3107.5,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 0,
+        "prompt_tokens": 1275,
+        "chunk_count": 4,
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1275,
+          "completion_tokens": 195
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.0
+      },
+      "model": "gemini-3.7-flash-high",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "ag/gemini-3.8-flash-high",
+      "resolved_model": "ag/gemini-3.8-flash-high",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 54 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 1823.6,
+      "ttft_ms": 1803.4,
+      "tps": 8858.75,
+      "evidence": {
+        "chunk_count": 4,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1275,
+          "completion_tokens": 179
+        },
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "gemini-3.8-flash-high",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "cache",
+      "alias": "ag/gemini-3.8-flash-high",
+      "resolved_model": "ag/gemini-3.8-flash-high",
+      "status": "fail",
+      "summary": "First identical repeat showed no prompt-cache hit (1275 input tokens): usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 2812.6,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 0,
+        "prompt_tokens": 1275,
+        "chunk_count": 4,
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1275,
+          "completion_tokens": 242
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.0
+      },
+      "model": "gemini-3.8-flash-high",
+      "cost_usdc": "0.000010",
+      "cost_match": "tokens"
+    },
+    {
+      "check_id": "core",
+      "alias": "cp/zai/glm-5.3-flash",
+      "resolved_model": "cp/zai/glm-5.3-flash",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 54 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 4803.5,
+      "ttft_ms": 4706.0,
+      "tps": 297.33,
+      "evidence": {
+        "chunk_count": 11,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 4.2484e-05,
+          "prompt_tokens": 1394,
+          "completion_tokens": 29
+        },
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "glm-5.3-flash",
+      "candidate": true
+    },
+    {
+      "check_id": "cache",
+      "alias": "cp/zai/glm-5.3-flash",
+      "resolved_model": "cp/zai/glm-5.3-flash",
+      "status": "fail",
+      "summary": "First identical repeat showed no prompt-cache hit (1394 input tokens): usage.cached_tokens stayed 0.",
+      "http_status": 200,
+      "latency_ms": 1499.3,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 0,
+        "prompt_tokens": 1394,
+        "chunk_count": 18,
+        "usage": {
+          "cost": 4.4099e-05,
+          "prompt_tokens": 1394,
+          "completion_tokens": 46
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.0
+      },
+      "model": "glm-5.3-flash",
+      "candidate": true
+    },
+    {
+      "check_id": "core",
+      "alias": "cb/kimi-k3",
+      "resolved_model": "cb/kimi-k3",
+      "status": "fail",
+      "summary": "Stream ended without a non-empty tool name.",
+      "http_status": 200,
+      "latency_ms": 3809.3,
+      "ttft_ms": 2437.1,
+      "tps": 54.66,
+      "evidence": {
+        "chunk_count": 63,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [],
+        "last_finish_reason": "stop",
+        "usage": {
+          "cost": 1e-05,
+          "prompt_tokens": 1771,
+          "completion_tokens": 75
+        },
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 54,
+        "argument_chars": 0,
+        "finish_reason": "stop",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "kimi-k3",
+      "candidate": true
+    },
+    {
+      "check_id": "cache",
+      "alias": "cb/kimi-k3",
+      "resolved_model": "",
+      "status": "skipped",
+      "summary": "not run \u2014 earlier check failed",
+      "http_status": null,
+      "latency_ms": null,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {},
+      "model": "kimi-k3",
+      "candidate": true
+    },
+    {
+      "check_id": "core",
+      "alias": "cp/cline-pass/qwen3.8-max",
+      "resolved_model": "cp/cline-pass/qwen3.8-max",
+      "status": "pass",
+      "summary": "Streamed report_answer with a clean Russian answer \u2014 54 chars, 42 Cyrillic, in tool arguments.",
+      "http_status": 200,
+      "latency_ms": 12959.0,
+      "ttft_ms": 6274.9,
+      "tps": 18.1,
+      "evidence": {
+        "chunk_count": 100,
+        "empty_name_chunks": 0,
+        "empty_finish_chunks": 0,
+        "names": [
+          "report_answer"
+        ],
+        "last_finish_reason": "tool_calls",
+        "usage": {
+          "cost": 0.000936036,
+          "prompt_tokens": 1563,
+          "completion_tokens": 121
+        },
+        "chars": 54,
+        "cyrillic_chars": 42,
+        "replacement_chars": 0,
+        "u8_bigrams": 0,
+        "accented_chars": 0,
+        "cjk_chars": 0,
+        "content_chars": 0,
+        "argument_chars": 54,
+        "finish_reason": "tool_calls",
+        "sample": "\u0418\u0433\u043e\u0440\u044c \u0412\u0435\u043b\u0438\u043a\u0438\u0439 \u0430\u0442\u0430\u043a\u043e\u0432\u0430\u043b \u043a\u0430\u0442\u043e\u043b\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0438\u043d\u043a\u043e\u0432 \u0432 1187 \u0433\u043e\u0434\u0443."
+      },
+      "model": "qwen3.8-max",
+      "candidate": true
+    },
+    {
+      "check_id": "cache",
+      "alias": "cp/cline-pass/qwen3.8-max",
+      "resolved_model": "cp/cline-pass/qwen3.8-max",
+      "status": "pass",
+      "summary": "Prompt cache hit on the identical repeat: 1562 of 1563 input tokens reused (100%).",
+      "http_status": 200,
+      "latency_ms": 3192.1,
+      "ttft_ms": null,
+      "tps": null,
+      "evidence": {
+        "cached_tokens": 1562,
+        "prompt_tokens": 1563,
+        "chunk_count": 55,
+        "usage": {
+          "cost": 0.0001872072,
+          "prompt_tokens": 1563,
+          "completion_tokens": 76,
+          "cached_tokens": 1562
+        },
+        "usage_requested": true,
+        "hit_ratio": 0.999360204734485
+      },
+      "model": "qwen3.8-max",
+      "candidate": true
+    }
+  ],
+  "runner_errors": [],
+  "cache_status": "read-only",
+  "cost": {
+    "matched": 20,
+    "cells": 26,
+    "total_usdc": "0.000845",
+    "source": "usage-logs"
+  }
+}
