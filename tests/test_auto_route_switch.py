@@ -1039,4 +1039,111 @@ def test_auto_route_switch_top_candidates_sorted_by_value(tmp_path):
     assert cands[0]["route"] == "new/m3"
 
 
+def test_run_auto_route_switch_multi_target_local_configs_and_dbs(tmp_path):
+    """Verify run_auto_route_switch updates all target configs and database sessions."""
+    from scripts.auto_route_switch import update_remote_target
+
+    catalog_data = {
+        "models": {
+            "ag/gemini-3.7-flash-high": {"ask_in": 0.00075, "ask_out": 0.00075, "supports_tools": True},
+            "ag/gemini-3.8-flash-high": {"ask_in": 0.00075, "ask_out": 0.00075, "supports_tools": True},
+            "cbcn/glm-5.3-flash": {"ask_in": 0.0050, "ask_out": 0.0050, "supports_tools": True},
+        }
+    }
+    intel_data = {
+        "models": {
+            "gemini-3-7-flash-high": {"iq": 39.4},
+            "gemini-3-8-flash-high": {"iq": 41.2},
+            "glm-5-3-flash": {"iq": 32.0},
+        }
+    }
+    data_dir = tmp_path / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "catalog.json").write_text(json.dumps(catalog_data))
+    (data_dir / "intelligence.json").write_text(json.dumps(intel_data))
+
+    # Create 3 config targets (simulating ops, default, family)
+    cfg1 = tmp_path / "ops_config.toml"
+    cfg2 = tmp_path / "default_config.toml"
+    cfg3 = tmp_path / "family_config.toml"
+    for cfg in [cfg1, cfg2, cfg3]:
+        cfg.write_text(
+            '[agent]\ndefault_model = "cbcn/glm-5.3-flash"\n\n'
+            '[providers.custom.inferhub]\ndefault_model = "cbcn/glm-5.3-flash"\nmodels = ["cbcn/glm-5.3-flash"]\n'
+        )
+
+    # Create 2 DB targets
+    db1 = tmp_path / "ops.db"
+    db2 = tmp_path / "default.db"
+    for db in [db1, db2]:
+        conn = sqlite3.connect(str(db))
+        conn.execute("CREATE TABLE sessions (id TEXT, model TEXT, provider_name TEXT, archived_at TEXT)")
+        conn.execute("INSERT INTO sessions VALUES ('s1', 'cbcn/glm-5.3-flash', 'custom:inferhub', NULL)")
+        conn.execute("INSERT INTO sessions VALUES ('s2', 'cbcn/glm-5.3-flash', 'custom:inferhub', '2026-09-01')")
+        conn.commit()
+        conn.close()
+
+    res = run_auto_route_switch(
+        root_dir=tmp_path,
+        config_path=cfg1,
+        config_paths=[cfg1, cfg2, cfg3],
+        db_paths=[db1, db2],
+        remote_targets=[],
+        dry_run=False,
+        notify=False,
+        use_db_catalog=False,
+    )
+    assert res["should_switch"] is True
+    assert res["config_updated"] is True
+    assert len(res["updated_configs"]) == 3
+    assert res["sessions_updated"] == 2  # 1 active session in each DB
+
+    # Check all configs updated to winner
+    for cfg in [cfg1, cfg2, cfg3]:
+        text = cfg.read_text()
+        assert 'default_model = "ag/gemini-3.8-flash-high"' in text or 'default_model = "ag/gemini-3.7-flash-high"' in text
+        assert "[providers.custom.inferhub-alt]" in text
+
+    # Check DBs updated
+    for db in [db1, db2]:
+        conn = sqlite3.connect(str(db))
+        row_active = conn.execute("SELECT model FROM sessions WHERE id = 's1'").fetchone()
+        row_archived = conn.execute("SELECT model FROM sessions WHERE id = 's2'").fetchone()
+        conn.close()
+        assert row_active[0] in ["ag/gemini-3.8-flash-high", "ag/gemini-3.7-flash-high"]
+        assert row_archived[0] == "cbcn/glm-5.3-flash"
+
+
+def test_update_remote_target_mock(monkeypatch):
+    """Verify update_remote_target executes SSH commands to fetch, update, and migrate remote targets."""
+    import subprocess
+    from scripts.auto_route_switch import update_remote_target
+
+    calls = []
+
+    def mock_run(cmd, *args, **kwargs):
+        calls.append(cmd)
+        class MockProc:
+            returncode = 0
+            stdout = "1"
+            stderr = ""
+        if "cat /path/to/config.toml" in " ".join(cmd):
+            MockProc.stdout = '[agent]\ndefault_model = "old-model"\n[providers.custom.inferhub]\ndefault_model = "old-model"\n'
+        return MockProc()
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+
+    res = update_remote_target(
+        host="apps",
+        remote_config_path="/path/to/config.toml",
+        remote_db_path="/path/to/opencrabs.db",
+        new_model="ag/gemini-3.7-flash-high",
+        alt_model="ag/gemini-3.8-flash-high",
+    )
+    assert res["config_updated"] is True
+    assert res["sessions_updated"] == 1
+    assert len(calls) == 3
+
+
+
 

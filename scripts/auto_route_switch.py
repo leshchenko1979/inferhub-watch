@@ -55,6 +55,26 @@ DEFAULT_KEYS_PATH = Path("/root/.opencrabs/profiles/ops/keys.toml")
 DEFAULT_DB_PATH = Path("/root/.opencrabs/profiles/ops/opencrabs.db")
 DEFAULT_ROOT_DB_PATH = Path("/root/.opencrabs/opencrabs.db")
 
+# Managed local & remote OpenCrabs targets
+DEFAULT_CONFIG_TARGETS = [
+    Path("/root/.opencrabs/profiles/ops/config.toml"),
+    Path("/root/.opencrabs/config.toml"),
+    Path("/root/.opencrabs/profiles/family/config.toml"),
+]
+DEFAULT_SESSION_DB_TARGETS = [
+    Path("/root/.opencrabs/profiles/ops/opencrabs.db"),
+    Path("/root/.opencrabs/opencrabs.db"),
+    Path("/root/.opencrabs/profiles/family/opencrabs.db"),
+]
+REMOTE_TARGETS = [
+    {
+        "host": "apps",
+        "config_path": "/data/projects/miidas/pool/trial-oc/config.toml",
+        "db_path": "/data/projects/miidas/pool/trial-oc/opencrabs.db",
+        "name": "miidas-trial",
+    }
+]
+
 # --- Issue #49: the fallback chain carries the runner-up -------------------
 # OpenCrabs' `[providers.fallback]` is a chain of PROVIDER names; a model can
 # enter it only as a provider's own `default_model` (src/config/types.rs:2303,
@@ -880,6 +900,82 @@ def update_opencrabs_config(
     return True
 
 
+def update_remote_target(
+    host: str,
+    remote_config_path: str,
+    remote_db_path: str,
+    new_model: str,
+    alt_model: str | None = None,
+    alt_api_key: str | None = None,
+) -> dict[str, Any]:
+    """Update remote config.toml and opencrabs.db via SSH."""
+    res = {"config_updated": False, "sessions_updated": 0, "error": None}
+    import subprocess
+    import tempfile
+
+    # 1. Fetch remote config
+    try:
+        fetch_cmd = ["ssh", host, f"cat {remote_config_path}"]
+        proc = subprocess.run(fetch_cmd, capture_output=True, text=True, timeout=15)
+        if proc.returncode != 0:
+            res["error"] = f"Failed to fetch remote config from {host}:{remote_config_path}: {proc.stderr}"
+            logger.warning(res["error"])
+            return res
+
+        with tempfile.NamedTemporaryFile("w+", encoding="utf-8", delete=False) as tf:
+            tf.write(proc.stdout)
+            tmp_cfg = Path(tf.name)
+
+        # 2. Modify locally using identical update logic
+        cfg_ok = update_opencrabs_config(
+            tmp_cfg,
+            new_model=new_model,
+            alt_model=alt_model,
+            alt_api_key=alt_api_key,
+        )
+        if cfg_ok:
+            updated_text = tmp_cfg.read_text(encoding="utf-8")
+            # Push back via SSH
+            push_proc = subprocess.run(
+                ["ssh", host, f"cat > {remote_config_path}"],
+                input=updated_text,
+                text=True,
+                capture_output=True,
+                timeout=15,
+            )
+            if push_proc.returncode == 0:
+                res["config_updated"] = True
+            else:
+                res["error"] = f"Failed to push remote config: {push_proc.stderr}"
+                logger.warning(res["error"])
+        tmp_cfg.unlink(missing_ok=True)
+    except Exception as exc:
+        res["error"] = f"Remote config update exception: {exc}"
+        logger.warning(res["error"])
+
+    # 3. Update remote DB sessions
+    try:
+        sql = (
+            "UPDATE sessions "
+            f"SET model = '{new_model}' "
+            "WHERE archived_at IS NULL "
+            "AND (provider_name = 'custom:inferhub' OR provider_name = 'custom.inferhub' "
+            "OR provider_name = 'inferhub' OR provider_name IS NULL OR provider_name = '');"
+        )
+        db_cmd = ["ssh", host, f"sqlite3 {remote_db_path} \"{sql}\" && sqlite3 {remote_db_path} \"SELECT changes();\""]
+        db_proc = subprocess.run(db_cmd, capture_output=True, text=True, timeout=15)
+        if db_proc.returncode == 0:
+            out = db_proc.stdout.strip()
+            if out.isdigit():
+                res["sessions_updated"] = int(out)
+        else:
+            logger.warning(f"Failed to update remote DB on {host}: {db_proc.stderr}")
+    except Exception as exc:
+        logger.warning(f"Remote DB update exception: {exc}")
+
+    return res
+
+
 def update_active_sessions(db_path: Path, new_model: str, target_provider: str = "custom:inferhub") -> int:
     """Update active unarchived sessions in opencrabs.db to point to new_model."""
     if not db_path.exists():
@@ -1170,7 +1266,9 @@ def check_dwell_gate(
 def run_auto_route_switch(
     root_dir: Path = ROOT_DIR,
     config_path: Path = DEFAULT_CONFIG_PATH,
+    config_paths: list[Path] | None = None,
     db_paths: list[Path] | None = None,
+    remote_targets: list[dict[str, Any]] | None = None,
     dry_run: bool = False,
     notify: bool = True,
     notify_db_path: Path = DEFAULT_DB_PATH,
@@ -1184,9 +1282,28 @@ def run_auto_route_switch(
     now: datetime | None = None,
     failure_stats: dict[str, dict] | None = None,
 ) -> dict[str, Any]:
-    """Main pipeline execution for auto route switching."""
-    if db_paths is None:
-        db_paths = [DEFAULT_DB_PATH, DEFAULT_ROOT_DB_PATH]
+    """Main pipeline execution for auto route switching across local & remote OpenCrabs targets."""
+    if config_paths is not None:
+        target_configs = config_paths
+    elif config_path != DEFAULT_CONFIG_PATH:
+        target_configs = [config_path]
+    else:
+        target_configs = [p for p in DEFAULT_CONFIG_TARGETS if p.exists()] or [DEFAULT_CONFIG_PATH]
+
+    if db_paths is not None:
+        target_dbs = db_paths
+    elif config_path != DEFAULT_CONFIG_PATH and config_paths is None:
+        target_dbs = [DEFAULT_DB_PATH]
+    else:
+        target_dbs = [p for p in DEFAULT_SESSION_DB_TARGETS if p.exists()] or [DEFAULT_DB_PATH, DEFAULT_ROOT_DB_PATH]
+
+    if remote_targets is not None:
+        target_remotes = remote_targets
+    elif config_path != DEFAULT_CONFIG_PATH and config_paths is None:
+        target_remotes = []
+    else:
+        target_remotes = REMOTE_TARGETS
+
     if now is None:
         now = datetime.now(timezone.utc)
 
@@ -1358,29 +1475,63 @@ def run_auto_route_switch(
         logger.info(f"[DRY-RUN] Would switch from {current_model} to {best.route}: {reason}")
         return result
 
-    # 1. Update config.toml — the default routes AND the fallback chain (#49).
+    # 1. Update config.toml targets — the default routes AND the fallback chain (#49).
     # The runner-up (2nd-best on the same basis) becomes the first model in the
     # chain through a second InferHub entry; the key is the one this switcher
     # already authenticates with.
     alt_model = diag.get("runner_up")
-    cfg_ok = update_opencrabs_config(
-        config_path,
-        best.route,
-        alt_model=alt_model,
-        alt_api_key=resolve_inferhub_key(config_path=config_path),
-    )
-    result["config_updated"] = cfg_ok
+    inferhub_api_key = resolve_inferhub_key(config_path=config_path)
+
+    updated_configs: list[str] = []
+    for cfg in target_configs:
+        if cfg.exists():
+            cfg_ok = update_opencrabs_config(
+                cfg,
+                best.route,
+                alt_model=alt_model,
+                alt_api_key=resolve_inferhub_key(config_path=cfg) or inferhub_api_key,
+            )
+            if cfg_ok:
+                updated_configs.append(str(cfg))
+
+    result["config_updated"] = len(updated_configs) > 0
+    result["updated_configs"] = updated_configs
     result["alt_model"] = alt_model
 
-    # 2. Update active sessions in databases
+    # 2. Update active sessions in local databases
     total_sessions = 0
-    for db_p in db_paths:
+    updated_dbs: list[str] = []
+    for db_p in target_dbs:
         if db_p.exists():
             cnt = update_active_sessions(db_p, best.route)
             total_sessions += cnt
+            updated_dbs.append(str(db_p))
     result["sessions_updated"] = total_sessions
+    result["updated_dbs"] = updated_dbs
 
-    # 3. Record the switch for dwell bookkeeping (issue #27 item 2). This runs
+    # 3. Update remote targets via SSH (e.g. miidas-trial on apps)
+    remote_results: list[dict[str, Any]] = []
+    for r in target_remotes:
+        r_host = r.get("host")
+        r_cfg = r.get("config_path")
+        r_db = r.get("db_path")
+        r_name = r.get("name", r_host)
+        if r_host and r_cfg and r_db:
+            r_res = update_remote_target(
+                host=r_host,
+                remote_config_path=r_cfg,
+                remote_db_path=r_db,
+                new_model=best.route,
+                alt_model=alt_model,
+                alt_api_key=inferhub_api_key,
+            )
+            r_res["name"] = r_name
+            r_res["host"] = r_host
+            remote_results.append(r_res)
+            total_sessions += r_res.get("sessions_updated", 0)
+    result["remote_results"] = remote_results
+
+    # 4. Record the switch for dwell bookkeeping (issue #27 item 2). This runs
     # BEFORE the notification so a notify failure cannot lose the dwell state.
     state_path = save_switcher_state(
         root_dir,
@@ -1391,18 +1542,25 @@ def run_auto_route_switch(
     )
     result["switcher_state_path"] = str(state_path)
 
-    # 4. Notification via opencrabs session notify (Issue #14).
+    # 5. Notification via opencrabs session notify (Issue #14).
     if notify:
         gain_pct = ((best.value - current.value) / current.value * 100) if (current and current.value > 0) else 0.0
+        configs_str = ", ".join(f"`{c}`" for c in updated_configs) if updated_configs else f"`{config_path}`"
+        remote_str = ""
+        if remote_results:
+            remote_items = [f"{r['name']} (cfg={'OK' if r.get('config_updated') else 'FAIL'}, {r.get('sessions_updated', 0)} sessions)" for r in remote_results]
+            remote_str = f"\n• *Remote Targets:* {', '.join(remote_items)}"
+
         msg = (
             f"🔀 *Inferhub Route Auto-Switched*\n\n"
             f"• *Old Model:* `{current_model}` (IQ={current.iq if current else 0:.1f}, In=${current.ask_in if current else 0:.5f}, Out=${current.ask_out if current else 0:.5f}, Val={current.value if current else 0:.1f})\n"
             f"• *New Model:* `{best.route}` (IQ={best.iq:.1f}, In=${best.ask_in:.5f}, Out=${best.ask_out:.5f}, Val={best.value:.1f})\n"
+            f"• *Alt (Fallback):* `{alt_model}`\n"
             f"• *Value Gain:* `+{gain_pct:.1f}%`\n"
             f"• *Basis:* `{basis_mode}` (both candidates on one basis, min {diag.get('basis_samples', 0)} streaming samples)\n"
             f"• *Dwell:* `{dwell['detail']}`\n"
             f"• *Active Sessions Migrated:* `{total_sessions}`\n"
-            f"• *Config Updated:* `{config_path}`"
+            f"• *Configs Updated:* {configs_str}{remote_str}"
         )
         try:
             target_session = resolve_notify_session(config_path, db_path=notify_db_path)
