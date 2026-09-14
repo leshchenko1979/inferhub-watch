@@ -13,5 +13,7 @@ site/dist/
 data/switcher_state.json
 data/qual_runs.json
 data/scoreboard.json
+data/log_scan_state.json
+data/log_scan_summary.json
 .ledger.lock
 
