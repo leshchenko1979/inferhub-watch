@@ -157,36 +157,37 @@ def test_calculate_value():
 
 
 def test_is_qualified_iq_floor():
-    # Floor is 35.0
+    # Floor is 70.0 (Coding IQ)
     info = {"supports_tools": True, "ask_in": 0.002, "ask_out": 0.01}
-    assert is_qualified("test/model", info, 35.0) is True
-    assert is_qualified("test/model", info, 40.0) is True
-    assert is_qualified("test/model", info, 34.9) is False
+    assert is_qualified("test/model", info, 70.0) is True
+    assert is_qualified("test/model", info, 75.0) is True
+    assert is_qualified("test/model", info, 69.9) is False
     assert is_qualified("test/model", info, None) is False
 
 
 def test_is_qualified_tools():
     info_no_tools = {"supports_tools": False, "ask_in": 0.002, "ask_out": 0.01}
-    assert is_qualified("test/model", info_no_tools, 40.0) is False
+    assert is_qualified("test/model", info_no_tools, 75.0) is False
 
     info_tools = {"supports_tools": True, "ask_in": 0.002, "ask_out": 0.01}
-    assert is_qualified("test/model", info_tools, 40.0) is True
+    assert is_qualified("test/model", info_tools, 75.0) is True
 
 
 def test_is_qualified_deepseek_guard():
     info = {"supports_tools": True, "ask_in": 0.002, "ask_out": 0.01}
     # DeepSeek-v4 without date tag -> disqualified
-    assert is_qualified("cbcn/deepseek-v4-flash", info, 40.0) is False
-    assert is_qualified("deepseek/deepseek-v4", info, 40.0) is False
+    assert is_qualified("cbcn/deepseek-v4-flash", info, 75.0) is False
+    assert is_qualified("deepseek/deepseek-v4", info, 75.0) is False
 
     # DeepSeek-v4 with date tag -> qualified
-    assert is_qualified("cbcn/deepseek-v4-flash-0731", info, 40.0) is True
-    assert is_qualified("cbcn/deepseek-v4-0813", info, 40.0) is True
+    assert is_qualified("cbcn/deepseek-v4-flash-0731", info, 75.0) is True
+    assert is_qualified("cbcn/deepseek-v4-0813", info, 75.0) is True
 
     # DeepSeek-v4.1+ -> qualified without date tag
-    assert is_qualified("cbcn/deepseek-v4.1-flash", info, 40.0) is True
-    assert is_qualified("cbcn/deepseek-v4-1", info, 40.0) is True
-    assert is_qualified("cbcn/deepseek-v4.2", info, 40.0) is True
+    assert is_qualified("cbcn/deepseek-v4.1-flash", info, 75.0) is True
+    assert is_qualified("cbcn/deepseek-v4-1", info, 75.0) is True
+    assert is_qualified("cbcn/deepseek-v4.2", info, 75.0) is True
+
 
 
 def test_find_best_route_hysteresis():
@@ -877,7 +878,7 @@ def test_orthogonal_constraints():
     """Verify that IQ floor, tool support, and TPS/value calculation are completely orthogonal."""
     catalog_models = {
         "current/m1": {"ask_in": 0.004, "ask_out": 0.02, "supports_tools": True},
-        # High TPS and cheap price, but fails IQ floor (< 35.0) -> must NOT qualify
+        # High TPS and cheap price, but fails Coding IQ floor (< 70.0) -> must NOT qualify
         "sub_floor/m2": {"ask_in": 0.0001, "ask_out": 0.0005, "supports_tools": True},
         # High IQ and cheap price, but lacks tool support -> must NOT qualify
         "no_tools/m3": {"ask_in": 0.0001, "ask_out": 0.0005, "supports_tools": False},
@@ -885,18 +886,19 @@ def test_orthogonal_constraints():
         "valid/m4": {"ask_in": 0.002, "ask_out": 0.01, "supports_tools": True},
     }
     intel_slugs = {
-        "m1": {"iq": 38.0},
-        "m2": {"iq": 32.0},  # Below 35.0 floor
-        "m3": {"iq": 45.0},  # High IQ but no tools
-        "m4": {"iq": 40.0},
+        "m1": {"coding": 76.0},
+        "m2": {"coding": 65.0},  # Below 70.0 floor
+        "m3": {"coding": 85.0},  # High IQ but no tools
+        "m4": {"coding": 78.0},
     }
     aa_map = {}
 
     should_switch, best, current, reason = find_best_route(
-        catalog_models, intel_slugs, aa_map, current_model="current/m1", floor_iq=35.0, threshold=0.15
+        catalog_models, intel_slugs, aa_map, current_model="current/m1", floor_iq=70.0, threshold=0.15
     )
     assert should_switch is True
     assert best.route == "valid/m4"
+
 
 
 def test_qualification_gates():
@@ -1029,11 +1031,12 @@ def test_auto_route_switch_top_candidates_sorted_by_value(tmp_path):
     }
     intel_data = {
         "models": {
-            "m1": {"iq": 35.0},
-            "m2": {"iq": 40.0},
-            "m3": {"iq": 38.0},
+            "m1": {"coding": 70.0},
+            "m2": {"coding": 76.0},
+            "m3": {"coding": 74.0},
         }
     }
+
     data_dir = tmp_path / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     (data_dir / "catalog.json").write_text(json.dumps(catalog_data))

@@ -10,7 +10,7 @@ Configuration is a TOML table named `[inferhub_auto_route]` (or an equivalent JS
 
 | Key | Type and validation | Default | Meaning |
 |---|---|---:|---|
-| `iq_floor` | finite number, `0 <= value <= 100` | `35.0` | Inclusive Artificial Analysis IQ floor. This is the only model-quality filter. |
+| `iq_floor` | finite number, `0 <= value <= 100` | `70.0` | Inclusive Artificial Analysis Coding IQ floor. This is the model-quality filter. |
 | `input_weight` | finite number, `> 0` | `0.99` | Weight for projected input ask in value denominator. |
 | `output_weight` | finite number, `> 0` | `0.01` | Weight for projected output ask. The two weights must sum to `1.0 +/- 1e-9`. |
 | `switch_threshold` | finite number, `>= 0` | `0.15` | Required relative value gain. A candidate must exceed current value by `>` this fraction. |

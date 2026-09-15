@@ -88,9 +88,11 @@ ALT_PROVIDER_NAME = "inferhub-alt"
 ALT_PROVIDER_SECTION = f"providers.custom.{ALT_PROVIDER_NAME}"
 INFERHUB_SECTION = "providers.custom.inferhub"
 FALLBACK_SECTION = "providers.fallback"
-IQ_FLOOR = 35.0
+CODING_FLOOR = 70.0
+IQ_FLOOR = CODING_FLOOR  # Canonical fleet qualification floor: Coding IQ >= 70.0
 SWITCH_THRESHOLD = 0.15  # >15% higher value
 DEFAULT_TPS_REF = 50.0  # Fallback reference baseline TPS when fleet prior is unavailable
+
 TPS_REF = DEFAULT_TPS_REF  # Backwards compatibility alias
 TPS_WEIGHT_EXPONENT = 0.50  # Square-root power-law exponent for TPS weight
 
@@ -563,13 +565,15 @@ def evaluate_candidates(
 
     failure_stats = failure_stats or {}
     candidates: dict[str, RouteCandidate] = {}
+    from probe.intelligence import resolve_coding_iq
+
     for route, info in catalog_models.items():
         slug = resolve_slug(route, aa_map, intel_slugs)
-        iq = (intel_slugs.get(slug) or {}).get("iq") if slug else None
-        if iq is not None:
-            iq = float(iq)
+        intel_entry = intel_slugs.get(slug) if slug else None
+        iq = resolve_coding_iq(intel_entry)
 
         supports_tools = bool(info.get("supports_tools", True))
+
         supports_cache = bool(info.get("supports_cache", False))
         try:
             ask_in = float(info.get("ask_in") or 0.0)

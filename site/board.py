@@ -15,7 +15,7 @@ import rundata
 from chrome import _viz_cell, docs_href, section_title
 from spend import DELTA_TIP, _ask_spark, ask_delta_bits, spend_block
 
-from probe import basis, official_compare, pricing, value
+from probe import basis, intelligence, official_compare, pricing, value
 from probe.registry import repo_root
 
 ROOT = repo_root()
@@ -143,7 +143,7 @@ def _iq_sort_key(intel: dict, dated: list | None, payload: dict,
             eff_val = float("inf")
         slug = rundata.aa_slug(str(row["route"]))
         entry = (intel.get("models") or {}).get(slug) if slug else None
-        iq = entry.get("iq") if entry else None
+        iq = intelligence.resolve_coding_iq(entry)
         iqps = None
         if iq is not None and eff:
             try:
@@ -209,7 +209,7 @@ def _marginal_cell(row: dict, runs: list[dict]) -> tuple[str, str] | None:
     )
 
 def _iq_raw(route: str, intel: dict | None) -> float | None:
-    """The route's raw IQ, or None when unmapped / no snapshot.
+    """The route's raw Coding IQ, or None when unmapped / no snapshot.
 
     Separate from `_iq_value`, which returns FORMATTED labels — Value needs
     the number, not the rendering, and parsing it back out of a label that
@@ -218,11 +218,7 @@ def _iq_raw(route: str, intel: dict | None) -> float | None:
         return None
     slug = rundata.aa_slug(route)
     entry = (intel.get("models") or {}).get(slug) if slug else None
-    iq = entry.get("iq") if entry else None
-    try:
-        return float(iq) if iq is not None else None
-    except (TypeError, ValueError):
-        return None
+    return intelligence.resolve_coding_iq(entry)
 
 
 def _value_cell(iq: float | None, route: str, eff: float | None,
@@ -534,7 +530,7 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
         basis_tag = tag
         slug = rundata.aa_slug(route)
         entry = (intel.get("models") or {}).get(slug) if slug else None
-        iq = entry.get("iq") if isinstance(entry, dict) else None
+        iq = intelligence.resolve_coding_iq(entry)
         if not isinstance(eff, (int, float)) or eff <= 0 or not isinstance(iq, (int, float)):
             skipped += 1
             continue
@@ -753,14 +749,14 @@ def scatter_section(payload: dict | None, intel: dict | None, runs: list[dict] |
     )
 
 def _iq_value(route: str, eff: float | None, intel: dict | None) -> tuple[str, str] | None:
-    """(IQ label, IQ-per-$ label), or None without an intelligence snapshot.
+    """(Coding IQ label, Coding IQ-per-$ label), or None without an intelligence snapshot.
 
     Em-dashes mark an unmapped route or a missing basis."""
     if not intel:
         return None
     slug = rundata.aa_slug(route)
     entry = (intel.get("models") or {}).get(slug) if slug else None
-    iq = entry.get("iq") if entry else None
+    iq = intelligence.resolve_coding_iq(entry)
     if iq is None:
         return ("&#8212;", "&#8212;")
     iq_per_dollar = f"{iq / eff:,.0f}" if eff else "&#8212;"

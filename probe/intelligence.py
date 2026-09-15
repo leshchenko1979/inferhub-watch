@@ -28,6 +28,44 @@ from probe.registry import atomic_write_text, repo_root
 AA_URL = "https://artificialanalysis.ai/api/v2/data/llms/models"
 USER_AGENT = "inferhub-watch/1.0"
 OUT_NAME = "intelligence.json"
+CODING_FLOOR = 70.0  # standard fleet qualification floor for Coding IQ
+GENERAL_IQ_TO_CODING_RATIO = 1.85  # empirical calibration factor (75/40) for unbenchmarked models
+
+
+def resolve_coding_iq(intel_entry: dict | None, fallback_iq: float | None = None) -> float | None:
+    """Resolve Coding IQ (0-100 scale) with calibrated fallback from General IQ.
+
+    Returns the direct artificial_analysis_coding_index when present, or falls back to
+    general_iq * 1.85 when only general composite IQ is available.
+    """
+    if intel_entry and isinstance(intel_entry, dict):
+        coding = intel_entry.get("coding")
+        if coding is not None:
+            try:
+                val = float(coding)
+                if val > 0:
+                    return val
+            except (TypeError, ValueError):
+                pass
+        iq = intel_entry.get("iq")
+        if iq is not None:
+            try:
+                val = float(iq)
+                if val > 0:
+                    return val * GENERAL_IQ_TO_CODING_RATIO
+            except (TypeError, ValueError):
+                pass
+
+    if fallback_iq is not None:
+        try:
+            val = float(fallback_iq)
+            if val > 0:
+                return val * GENERAL_IQ_TO_CODING_RATIO
+        except (TypeError, ValueError):
+            pass
+
+    return None
+
 
 
 def _models_from_body(body: dict) -> dict[str, dict]:

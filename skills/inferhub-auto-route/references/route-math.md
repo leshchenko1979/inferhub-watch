@@ -13,9 +13,9 @@ DeepSeek has no special date filter. A DeepSeek route with IQ at or above the co
 
 ## North Star Value & True TPS
 
-Value is computed using the canonical North Star formulation, scaling IQ per effective price by True TPS (corrected for timeout delays, retries, and failures) and penalizing operational unreliability:
+Value is computed using the canonical North Star formulation, scaling Coding IQ per effective price by True TPS (corrected for timeout delays, retries, and failures) and penalizing operational unreliability:
 
-$$\text{Value} = \left(\frac{\text{IQ}}{\text{eff\_price}}\right) \times \left(\frac{\text{True TPS}}{\text{TPS}_{\text{ref}}}\right)^{0.50} \times \text{Reliability Penalty}$$
+$$\text{Value} = \left(\frac{\text{Coding\_IQ}}{\text{eff\_price}}\right) \times \left(\frac{\text{True TPS}}{\text{TPS}_{\text{ref}}}\right)^{0.50} \times \text{Reliability Penalty}$$
 
 Where:
 - **$\text{eff\_price}$**: Effective blended price per token based on traffic profile:

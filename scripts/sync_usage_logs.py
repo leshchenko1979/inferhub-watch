@@ -92,10 +92,11 @@ def _norm_slug(name: str) -> str:
 
 
 def _pick_candidate(cands: list[str], slugs: dict) -> str | None:
-    """Choose among slug candidates: prefer one that actually carries an
-    iq score, then the shortest (closest to the base model), then
+    """Choose among slug candidates: prefer one that actually carries a
+    coding/iq score, then the shortest (closest to the base model), then
     lexically for determinism."""
-    with_iq = [s for s in cands if (slugs.get(s) or {}).get("iq") is not None]
+    from probe.intelligence import resolve_coding_iq
+    with_iq = [s for s in cands if resolve_coding_iq(slugs.get(s)) is not None]
     pool = with_iq or cands
     return min(pool, key=lambda s: (len(s), s))
 
@@ -237,9 +238,12 @@ def sync_route_metrics(conn, live_models: dict[str, dict] | None = None) -> int:
             r: (float(a) if a is not None else None) for r, a in cur.fetchall()
         }
         n = 0
+        from probe.intelligence import resolve_coding_iq
+
         for route, m in models.items():
             slug = resolve_slug(route, aa_map, slugs)
-            iq = (slugs.get(slug) or {}).get("iq") if slug else None
+            intel_entry = slugs.get(slug) if slug else None
+            iq = resolve_coding_iq(intel_entry)
             cur.execute("""
                 insert into route_metrics
                     (route, ask_in, ask_out, official_in, official_out,
@@ -260,6 +264,7 @@ def sync_route_metrics(conn, live_models: dict[str, dict] | None = None) -> int:
                   m.get("official_in"), m.get("official_out"),
                   m.get("supports_cache"), iq,
                   m.get("book_in"), m.get("book_out"), m.get("ladder_at")))
+
             # Floor-point receipt (#27 item 3): name the ladder point this
             # route's floor came from, so a floor that flips between pulls is
             # visible in the sync log instead of silently moving the ranking.

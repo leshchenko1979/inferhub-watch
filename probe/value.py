@@ -31,6 +31,8 @@ from __future__ import annotations
 
 TPS_WEIGHT_EXPONENT = 0.50   # owner-confirmed square-root power law
 DEFAULT_TPS_REF = 50.0       # fallback reference when no fleet prior exists
+CODING_FLOOR = 70.0          # standard fleet qualification floor for Coding IQ
+
 
 
 def fleet_tps_ref(payload: dict | None) -> float:

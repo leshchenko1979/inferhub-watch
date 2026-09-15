@@ -54,7 +54,7 @@ from scripts import auto_route_switch as ars  # noqa: E402
 INCIDENT_MODEL = "cb/deepseek-v4.1-flash"
 CHALLENGER = "ag/gemini-3.8-flash-high"
 
-FIXTURE_IQ = 38.0
+FIXTURE_IQ = 76.0
 FIXTURE_TPS = 240.0
 
 # Catalog asks -> floor basis (projection gate stays CLOSED here: the fixture
@@ -83,10 +83,11 @@ FIXTURE_CATALOG: dict[str, dict[str, Any]] = {
 # are the normalised tails of the two routes above.
 FIXTURE_INTEL = {
     "models": {
-        "deepseek-v4-1-flash": {"iq": FIXTURE_IQ},
-        "gemini-3-8-flash-high": {"iq": FIXTURE_IQ},
+        "deepseek-v4-1-flash": {"coding": FIXTURE_IQ},
+        "gemini-3-8-flash-high": {"coding": FIXTURE_IQ},
     }
 }
+
 
 FIXTURE_CONFIG = f'[agent]\ndefault_model = "{INCIDENT_MODEL}"\n'
 

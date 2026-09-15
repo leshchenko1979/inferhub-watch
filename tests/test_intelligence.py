@@ -86,19 +86,19 @@ class SlugMapTest(unittest.TestCase):
 class IqCellsTest(unittest.TestCase):
     def setUp(self):
         self.gen = _load_generate()
-        self.intel = {"models": {"glm-5-3-flash": {"iq": 57.5}}}
+        self.intel = {"models": {"glm-5-3-flash": {"coding": 78.5, "iq": 57.5}}}
 
     def test_iq_and_per_dollar_render(self):
         cells = self.gen._iq_cells("zai/glm-5.3-flash", 0.021, self.intel)
-        self.assertIn(">57.5</td>", cells)
-        self.assertIn(">2,738</td>", cells)
+        self.assertIn(">78.5</td>", cells)
+        self.assertIn(">3,738</td>", cells)
 
     def test_unmapped_route_renders_dashes(self):
         cells = self.gen._iq_cells("ghost/route", 0.5, self.intel)
         self.assertEqual(cells.count("&#8212;"), 2)
 
     def test_null_iq_renders_dashes(self):
-        intel = {"models": {"glm-5-3-flash": {"iq": None}}}
+        intel = {"models": {"glm-5-3-flash": {"coding": None, "iq": None}}}
         cells = self.gen._iq_cells("zai/glm-5.3-flash", 0.021, intel)
         self.assertEqual(cells.count("&#8212;"), 2)
 
@@ -108,7 +108,7 @@ class IqCellsTest(unittest.TestCase):
 
     def test_zero_eff_renders_dash_not_crash(self):
         cells = self.gen._iq_cells("zai/glm-5.3-flash", None, self.intel)
-        self.assertIn(">57.5</td>", cells)
+        self.assertIn(">78.5</td>", cells)
         self.assertIn("&#8212;</td>", cells)
 
 
@@ -125,6 +125,25 @@ class SnapshotFormatTest(unittest.TestCase):
         self.assertEqual(payload["source"], "artificialanalysis.ai")
         self.assertIn("generated_at", payload)
         self.assertEqual(payload["models"]["glm-5-3-flash"]["iq"], 57.5)
+
+
+class ResolveCodingIqTest(unittest.TestCase):
+    def test_prefers_direct_coding_index(self):
+        entry = {"iq": 41.2, "coding": 76.3}
+        self.assertEqual(intelligence.resolve_coding_iq(entry), 76.3)
+
+    def test_falls_back_to_scaled_general_iq(self):
+        entry = {"iq": 40.0, "coding": None}
+        self.assertAlmostEqual(intelligence.resolve_coding_iq(entry), 74.0)
+
+    def test_fallback_with_float_arg(self):
+        self.assertAlmostEqual(intelligence.resolve_coding_iq(None, fallback_iq=40.0), 74.0)
+
+    def test_returns_none_when_empty_or_zero(self):
+        self.assertIsNone(intelligence.resolve_coding_iq(None))
+        self.assertIsNone(intelligence.resolve_coding_iq({"iq": 0.0, "coding": None}))
+        self.assertIsNone(intelligence.resolve_coding_iq({}, fallback_iq=0.0))
+
 
 
 if __name__ == "__main__":
