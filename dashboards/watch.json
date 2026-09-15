@@ -1752,7 +1752,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH g AS (\n  SELECT COALESCE((SELECT pass FROM projection_gate WHERE id = 'projection_gate'), false) AS use_proj\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), u30 AS (\n  SELECT model, sum(prompt_tokens + completion_tokens)::float AS tok30,\n         sum(cost_usdc)::float AS cost30\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '30 days' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.iq,\n    COALESCE(b.realized, CASE WHEN COALESCE(u30.tok30,0) > 0\n      THEN round((u30.cost30/u30.tok30*1e6)::numeric, 4) END) AS realized,\n    CASE WHEN g.use_proj THEN b.projected END AS projected\n  FROM route_metrics rm\n  CROSS JOIN g\n  LEFT JOIN route_basis b ON b.route = rm.route\n  LEFT JOIN u30 ON u30.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0 AND COALESCE(u24.req,0) >= 100\n), ranked AS (\n  SELECT base.*,\n    COALESCE(projected, realized) AS basis_per_m,\n    CASE WHEN projected IS NOT NULL THEN 'projected' ELSE 'realized' END AS basis\n  FROM base\n  WHERE COALESCE(projected, realized) IS NOT NULL\n)\nSELECT ranked.route AS \"Route\"\nFROM ranked\nORDER BY ranked.iq/NULLIF(ranked.basis_per_m,0) DESC NULLS LAST LIMIT 1",
+          "rawSql": "SELECT route AS \"Route\"\nFROM v_model_catalog_metrics\nWHERE tier = 'in use'\nORDER BY value_score DESC NULLS LAST LIMIT 1",
           "refId": "A"
         }
       ],
@@ -1764,14 +1764,15 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "AA IQ per $ for the best value route, on the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the backtest gate is closed, projected once it passes. The value names the basis in use.",
+      "description": "North Star Value score for the best value route.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "fixedColor": "green",
             "mode": "fixed"
           },
-          "decimals": 0
+          "decimals": 0,
+          "unit": "short"
         },
         "overrides": []
       },
@@ -1789,7 +1790,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^IQ per \\$$/",
+          "fields": "/^Value$/",
           "values": false
         },
         "textMode": "auto",
@@ -1804,11 +1805,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH g AS (\n  SELECT COALESCE((SELECT pass FROM projection_gate WHERE id = 'projection_gate'), false) AS use_proj\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), u30 AS (\n  SELECT model, sum(prompt_tokens + completion_tokens)::float AS tok30,\n         sum(cost_usdc)::float AS cost30\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '30 days' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.iq,\n    COALESCE(b.realized, CASE WHEN COALESCE(u30.tok30,0) > 0\n      THEN round((u30.cost30/u30.tok30*1e6)::numeric, 4) END) AS realized,\n    CASE WHEN g.use_proj THEN b.projected END AS projected\n  FROM route_metrics rm\n  CROSS JOIN g\n  LEFT JOIN route_basis b ON b.route = rm.route\n  LEFT JOIN u30 ON u30.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0 AND COALESCE(u24.req,0) >= 100\n), ranked AS (\n  SELECT base.*,\n    COALESCE(projected, realized) AS basis_per_m,\n    CASE WHEN projected IS NOT NULL THEN 'projected' ELSE 'realized' END AS basis\n  FROM base\n  WHERE COALESCE(projected, realized) IS NOT NULL\n)\nSELECT to_char(round(ranked.iq/NULLIF(ranked.basis_per_m,0)), 'FM999,999,999,999')\n       || ' \u00b7 ' || ranked.basis AS \"IQ per $\"\nFROM ranked\nORDER BY ranked.iq/NULLIF(ranked.basis_per_m,0) DESC NULLS LAST LIMIT 1",
+          "rawSql": "SELECT value_score AS \"Value\"\nFROM v_model_catalog_metrics\nWHERE tier = 'in use'\nORDER BY value_score DESC NULLS LAST LIMIT 1",
           "refId": "A"
         }
       ],
-      "title": "Best IQ per $",
+      "title": "Best Value",
       "type": "stat"
     },
     {
@@ -1856,7 +1857,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH g AS (\n  SELECT COALESCE((SELECT pass FROM projection_gate WHERE id = 'projection_gate'), false) AS use_proj\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), u30 AS (\n  SELECT model, sum(prompt_tokens + completion_tokens)::float AS tok30,\n         sum(cost_usdc)::float AS cost30\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '30 days' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.iq,\n    COALESCE(b.realized, CASE WHEN COALESCE(u30.tok30,0) > 0\n      THEN round((u30.cost30/u30.tok30*1e6)::numeric, 4) END) AS realized,\n    CASE WHEN g.use_proj THEN b.projected END AS projected\n  FROM route_metrics rm\n  CROSS JOIN g\n  LEFT JOIN route_basis b ON b.route = rm.route\n  LEFT JOIN u30 ON u30.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0 AND COALESCE(u24.req,0) >= 100\n), ranked AS (\n  SELECT base.*,\n    COALESCE(projected, realized) AS basis_per_m,\n    CASE WHEN projected IS NOT NULL THEN 'projected' ELSE 'realized' END AS basis\n  FROM base\n  WHERE COALESCE(projected, realized) IS NOT NULL\n)\nSELECT ranked.route AS \"Route\"\nFROM ranked\nORDER BY ranked.iq/NULLIF(ranked.basis_per_m,0) DESC NULLS LAST OFFSET 1 LIMIT 1",
+          "rawSql": "SELECT route AS \"Route\"\nFROM v_model_catalog_metrics\nWHERE tier = 'in use'\nORDER BY value_score DESC NULLS LAST OFFSET 1 LIMIT 1",
           "refId": "A"
         }
       ],
@@ -1868,14 +1869,15 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "AA IQ per $ for the alternate route, on the gated $/M basis. Price is the board's money-basis owner, published per route, gated: realized $/M while the backtest gate is closed, projected once it passes. The value names the basis in use.",
+      "description": "North Star Value score for the alternate route.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "fixedColor": "#8b939f",
             "mode": "fixed"
           },
-          "decimals": 0
+          "decimals": 0,
+          "unit": "short"
         },
         "overrides": []
       },
@@ -1893,7 +1895,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^IQ per \\$$/",
+          "fields": "/^Value$/",
           "values": false
         },
         "textMode": "auto",
@@ -1908,11 +1910,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH g AS (\n  SELECT COALESCE((SELECT pass FROM projection_gate WHERE id = 'projection_gate'), false) AS use_proj\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), u30 AS (\n  SELECT model, sum(prompt_tokens + completion_tokens)::float AS tok30,\n         sum(cost_usdc)::float AS cost30\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '30 days' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.iq,\n    COALESCE(b.realized, CASE WHEN COALESCE(u30.tok30,0) > 0\n      THEN round((u30.cost30/u30.tok30*1e6)::numeric, 4) END) AS realized,\n    CASE WHEN g.use_proj THEN b.projected END AS projected\n  FROM route_metrics rm\n  CROSS JOIN g\n  LEFT JOIN route_basis b ON b.route = rm.route\n  LEFT JOIN u30 ON u30.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0 AND COALESCE(u24.req,0) >= 100\n), ranked AS (\n  SELECT base.*,\n    COALESCE(projected, realized) AS basis_per_m,\n    CASE WHEN projected IS NOT NULL THEN 'projected' ELSE 'realized' END AS basis\n  FROM base\n  WHERE COALESCE(projected, realized) IS NOT NULL\n)\nSELECT to_char(round(ranked.iq/NULLIF(ranked.basis_per_m,0)), 'FM999,999,999,999')\n       || ' \u00b7 ' || ranked.basis AS \"IQ per $\"\nFROM ranked\nORDER BY ranked.iq/NULLIF(ranked.basis_per_m,0) DESC NULLS LAST OFFSET 1 LIMIT 1",
+          "rawSql": "SELECT value_score AS \"Value\"\nFROM v_model_catalog_metrics\nWHERE tier = 'in use'\nORDER BY value_score DESC NULLS LAST OFFSET 1 LIMIT 1",
           "refId": "A"
         }
       ],
-      "title": "Alt IQ per $",
+      "title": "Alt Value",
       "type": "stat"
     },
     {

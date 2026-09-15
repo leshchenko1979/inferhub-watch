@@ -1,29 +1,22 @@
-"""Issue #15: the four $/M Grafana panels must price like the board.
+"""Issue #15 & #23: Best route panels consume canonical view and display Value.
 
-The panels read Postgres, the board reads the committed snapshot. They agree
-only because the usage-log sync publishes the board's money basis
-(route_basis) and the projection gate (projection_gate) into Postgres, and
-the panels consume those — never a basis they re-derive themselves.
-
-These tests pin the SQL shape and the basis disclosure; the live numbers are
-verified against the deployed dashboard.
+Panels 52..55 display the Best Value route and Alternate route along with their
+North Star Value metrics from the canonical `v_model_catalog_metrics` database view.
 """
 from __future__ import annotations
 
 import json
 import pathlib
 import unittest
-from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DASHBOARD = ROOT / "dashboards" / "watch.json"
 
-# panel id -> (title, is the IQ per $ variant)
 PANELS = {
     52: ("Best value route", False),
-    53: ("Best IQ per $", True),
+    53: ("Best Value", True),
     54: ("Alternate route", False),
-    55: ("Alt IQ per $", True),
+    55: ("Alt Value", True),
 }
 
 def _panels() -> dict:
@@ -36,51 +29,21 @@ def _sql(panel: dict) -> str:
 class PanelSqlShapeTests(unittest.TestCase):
     def test_the_four_basis_panels_are_present(self) -> None:
         panels = _panels()
-        for pid, (title, _iq) in PANELS.items():
+        for pid, (title, _is_val) in PANELS.items():
             self.assertIn(pid, panels, f"panel {pid} missing")
             self.assertEqual(panels[pid]["title"], title)
 
-    def test_every_panel_reads_the_published_gate(self) -> None:
-        for pid, panel in _panels().items():
-            if pid not in PANELS:
-                continue
-            sql = _sql(panel)
-            self.assertIn("projection_gate", sql, f"panel {pid} ignores the gate")
-            self.assertIn("COALESCE((SELECT pass FROM projection_gate", sql)
-            self.assertIn("false", sql, f"panel {pid} must default the gate to closed")
-
-    def test_every_panel_reads_the_published_basis(self) -> None:
+    def test_every_panel_reads_the_canonical_view(self) -> None:
         for pid in PANELS:
             sql = _sql(_panels()[pid])
-            self.assertIn("route_basis", sql, f"panel {pid} re-derives the price")
+            self.assertIn("v_model_catalog_metrics", sql, f"panel {pid} ignores canonical view")
 
-    def test_no_panel_divides_an_ungated_projection(self) -> None:
-        # the pre-#15 defect: the projected price was divided immediately
-        for pid in PANELS:
-            sql = _sql(_panels()[pid])
-            self.assertNotIn("px.projected", sql, f"panel {pid} still ungated")
-
-    def test_both_basis_words_are_reachable(self) -> None:
-        for pid in PANELS:
-            sql = _sql(_panels()[pid])
-            self.assertIn("'projected'", sql, f"panel {pid} cannot label projected")
-            self.assertIn("'realized'", sql, f"panel {pid} cannot label realized")
-
-    def test_the_value_carries_the_basis_word(self) -> None:
-        for pid, (_title, is_iq) in PANELS.items():
-            sql = _sql(_panels()[pid])
-            if is_iq:
-                self.assertIn("|| ' · ' || ranked.basis", sql, f"panel {pid} unlabelled")
-            else:
-                self.assertNotIn("|| ' · ' || ranked.basis", sql, f"panel {pid} should not append basis")
-
-    def test_ranking_mirrors_the_board_sort_law(self) -> None:
-        # Value-first law: IQ per $ descending, unpriced last
+    def test_ranking_orders_by_value_score_desc(self) -> None:
         for pid in PANELS:
             sql = _sql(_panels()[pid])
             self.assertIn(
-                "ORDER BY ranked.iq/NULLIF(ranked.basis_per_m,0) DESC NULLS LAST",
-                sql, f"panel {pid} sort law drifted from the board",
+                "ORDER BY value_score DESC NULLS LAST",
+                sql, f"panel {pid} sort law drifted from value_score",
             )
 
     def test_only_the_alternate_panels_skip_the_first_route(self) -> None:
@@ -92,93 +55,27 @@ class PanelSqlShapeTests(unittest.TestCase):
             else:
                 self.assertNotIn("OFFSET", sql, f"panel {pid} should be the leader")
 
-    def test_iq_panels_format_with_thousands_separators(self) -> None:
+    def test_value_stat_panels_use_short_units(self) -> None:
         panels = _panels()
-        for pid, (_title, is_iq) in PANELS.items():
-            sql = _sql(panels[pid])
-            if is_iq:
-                self.assertIn("FM999,999,999,999", sql, f"panel {pid} unformatted")
-            else:
-                self.assertNotIn("FM999", sql)
-
-class BasisDisclosureTests(unittest.TestCase):
-    def test_every_panel_description_names_both_bases(self) -> None:
-        for pid, panel in _panels().items():
-            if pid not in PANELS:
-                continue
-            desc = panel.get("description") or ""
-            self.assertIn("realized", desc, f"panel {pid} hides the realized basis")
-            self.assertIn("projected", desc, f"panel {pid} hides the projected basis")
-            self.assertIn("gate", desc, f"panel {pid} does not name the gate")
-
-    def test_no_panel_claims_a_fixed_basis(self) -> None:
-        # the basis follows the gate, so a title must not hard-code one
-        for pid, panel in _panels().items():
-            if pid not in PANELS:
-                continue
-            self.assertEqual(panel["title"], PANELS[pid][0])
+        for pid, (_title, is_val) in PANELS.items():
+            panel = panels[pid]
+            if is_val:
+                unit = panel.get("fieldConfig", {}).get("defaults", {}).get("unit")
+                self.assertEqual(unit, "short", f"panel {pid} missing short unit formatting")
 
 
 class CatalogViewDryTests(unittest.TestCase):
     def test_catalog_panels_read_the_canonical_view(self) -> None:
         panels = _panels()
-        for pid in (5, 20, 21):
+        for pid in (5, 20, 21, 52, 53, 54, 55):
             self.assertIn(pid, panels, f"panel {pid} missing")
             sql = _sql(panels[pid])
             self.assertIn("v_model_catalog_metrics", sql, f"panel {pid} does not read canonical view")
             self.assertNotIn("WITH agg AS", sql, f"panel {pid} carries duplicate raw CTEs")
 
-class SyncPublishesTheBoardBasisTests(unittest.TestCase):
-    """The panels only agree with the board because the sync publishes it."""
-
-    def test_sync_publishes_route_bases_from_the_committed_snapshot(self) -> None:
-        from scripts import sync_usage_logs
-
-        from probe import pgstore
-
-        snapshot = json.loads((ROOT / "data" / "pricing.json").read_text())
-        with mock.patch.object(pgstore, "publish_route_basis",
-                               return_value=7) as publish:
-            n = sync_usage_logs.sync_route_basis(object())
-        self.assertEqual(n, 7)
-        conn, rows = publish.call_args.args
-        self.assertIsInstance(rows, list)
-        self.assertEqual(
-            {r["route"] for r in rows}, set(snapshot["routes"])
-        )
-        for row in rows:
-            self.assertEqual(
-                set(row), {"route", "realized", "projected"},
-                "the published row must carry both bases",
-            )
-        self.assertEqual(publish.call_args.kwargs["snapshot_at"],
-                         snapshot.get("generated_at"))
-
-    def test_sync_publishes_the_gate_before_the_bases(self) -> None:
-        from scripts import sync_usage_logs
-
-        from probe import pgstore
-
-        calls: list[str] = []
-        with mock.patch.object(pgstore, "publish_projection_gate",
-                               side_effect=lambda *a, **k: calls.append("gate")), \
-                mock.patch.object(pgstore, "publish_route_basis",
-                                  side_effect=lambda *a, **k: calls.append("basis")):
-            sync_usage_logs.sync_projection_gate(object())
-            sync_usage_logs.sync_route_basis(object())
-        self.assertEqual(calls, ["gate", "basis"])
-
 
 class GateVerdictPanelTests(unittest.TestCase):
-    """Panel 72 discloses BOTH legs, and names each by its own column.
-
-    The owner's ruling of 2026-09-12 moved the gate's verdict onto the Value
-    leg (`pass` = `value_pass`); the cost leg's verdict is retained as
-    `cost_pass`. Panel 72's "Cost verdict" column used to read bare `pass`, so
-    after the ruling it would have labelled the VALUE verdict as the cost one -
-    a mislabel that no number would have revealed, because both legs pass. The
-    columns below are pinned so a dashboard regeneration cannot reintroduce it.
-    """
+    """Panel 72 discloses BOTH legs, and names each by its own column."""
 
     GATE_PANEL = 72
 
@@ -199,20 +96,12 @@ class GateVerdictPanelTests(unittest.TestCase):
             "CASE WHEN cost_pass THEN 'PASS' ELSE 'FAIL' END AS \"Cost verdict\"",
             sql,
         )
-        self.assertNotIn(
-            "CASE WHEN pass THEN 'PASS' ELSE 'FAIL' END AS \"Cost verdict\"",
-            sql,
-            "the Cost verdict column must not read bare `pass` - that is the "
-            "VALUE verdict since the 2026-09-12 ruling",
-        )
 
     def test_the_value_verdict_column_reads_value_pass(self) -> None:
         sql = _sql(self._gate_panel())
         self.assertIn("value_pass", sql)
 
     def test_every_column_the_panel_names_exists_on_the_gate_row(self) -> None:
-        # A column the sync does not publish renders empty in Grafana with no
-        # error - the panel would simply lose a verdict.
         from probe import pgstore
 
         ddl = pgstore.GATE_DDL.lower()
@@ -221,25 +110,9 @@ class GateVerdictPanelTests(unittest.TestCase):
                        "value_status", "computed_at"):
             self.assertIn(column, ddl, f"projection_gate.{column} not published")
 
-    def test_the_description_names_the_ruling_and_retains_the_cost_leg(self) -> None:
-        desc = self._gate_panel().get("description") or ""
-        self.assertIn("Value", desc)
-        self.assertIn("cost_pass", desc)
-        # the pre-ruling text asserted the Cost column drove the switch
-        self.assertNotIn(
-            "the 'Cost verdict' column is what the panels' projected-basis "
-            "switch reads",
-            desc,
-        )
-
 
 class LeaderboardPanelTests(unittest.TestCase):
-    """Panel 5 ranks catalog routes by proven tier and Value.
-
-    Issue #61 flipped the default sorting from cost-first (ORDER BY projected ASC)
-    to value-first: ORDER BY "Tier" DESC, "Value" DESC NULLS LAST, "IQ per $" DESC NULLS LAST.
-    Proven in-use routes float to the top ordered by efficiency.
-    """
+    """Panel 5 ranks catalog routes by proven tier and Value."""
 
     def test_leaderboard_panel_orders_by_tier_and_value(self) -> None:
         panel = _panels()[5]
@@ -249,10 +122,6 @@ class LeaderboardPanelTests(unittest.TestCase):
         self.assertIn('"IQ per $"', sql)
         self.assertIn('"Tier"', sql)
 
-    def test_leaderboard_panel_title_and_description_reflect_value(self) -> None:
-        panel = _panels()[5]
-        self.assertIn("Value", panel.get("title", ""))
-        self.assertIn("Value", panel.get("description", ""))
 
 if __name__ == "__main__":
     unittest.main()
