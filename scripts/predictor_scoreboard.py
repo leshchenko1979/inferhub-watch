@@ -215,11 +215,75 @@ def score(dated: list, models: dict, real_maps: list | None = None,
     value_regrets: list[float] = []
     pairs: list[tuple[str, float, float]] = []
     histogram: dict[int, int] = {}
+
+    # Precompute causal expanding fleet calibration multipliers (Strategy 2)
+    # in linear O(N) time across transitions.
+    running_hit_series: dict[str, list[float]] = {}
+    running_ratios: list[float] = []
+    kappas: list[float] = [1.0]
+
+    for k in range(len(dated) - 1):
+        older_payload = dated[k][1]
+        newer_payload = dated[k + 1][1]
+        older_routes = older_payload.get("routes") or {}
+        newer_routes = newer_payload.get("routes") or {}
+
+        for r_name, st in older_routes.items():
+            if int(st.get("reqs") or 0) >= official_compare.MIN_CONF_REQS:
+                h = official_compare._hit_rate(st)
+                if h is not None:
+                    running_hit_series.setdefault(r_name, []).append(h)
+
+        for r_name, st in older_routes.items():
+            if not isinstance(st, dict) or (st.get("reqs") or 0) < 3:
+                continue
+            real_eff = (newer_routes.get(r_name) or {}).get("eff_per_mtok")
+            if not real_eff or real_eff <= 0:
+                continue
+            series = list(running_hit_series.get(r_name, []))
+            own = official_compare._hit_rate(st)
+            if own is not None:
+                series.append(own)
+            if not series:
+                hit = None
+            else:
+                hit = series[0]
+                for v in series[1:]:
+                    hit = official_compare.HIT_EWMA_ALPHA * v + (1 - official_compare.HIT_EWMA_ALPHA) * hit
+                n = int(st.get("reqs") or 0)
+                if n < official_compare.MIN_CONF_REQS:
+                    prior = official_compare.fleet_hit_prior(older_routes)
+                    if prior is not None:
+                        hit = (n * hit + official_compare.SHRINK_K * prior) / (n + official_compare.SHRINK_K)
+            p_raw = official_compare.inferhub_eff(st, hit=hit)
+            if p_raw and p_raw > 0:
+                running_ratios.append(float(real_eff) / float(p_raw))
+
+        if len(running_ratios) < 3:
+            kappas.append(1.0)
+        else:
+            kappas.append(float(statistics.median(running_ratios)))
+
     for i, (older, newer) in enumerate(itertools.pairwise(dated)):
         real_map = (real_maps[i] if real_maps is not None
                     else {r: (st or {}).get("eff_per_mtok")
                           for r, st in (newer[1].get("routes") or {}).items()})
-        comp = _comparables(older[1], real_map, dated[: i + 1])
+        kappa = kappas[i]
+        comp: list[tuple[str, float, float]] = []
+        older_routes = older[1].get("routes") or {}
+        for route, st in older_routes.items():
+            if not isinstance(st, dict) or (st.get("reqs") or 0) < MIN_REQS:
+                continue
+            real = real_map.get(route)
+            if not real or real <= 0:
+                continue
+            hit, _ = official_compare.projection_hit(dated[: i + 1], route, st, older_routes)
+            p_raw = official_compare.inferhub_eff(st, hit=hit)
+            if p_raw is None or p_raw <= 0:
+                continue
+            p = p_raw * kappa
+            comp.append((route, float(p), float(real)))
+
         histogram[len(comp)] = histogram.get(len(comp), 0) + 1
         for route, p, real in comp:
             pairs.append((route, p, real))
@@ -292,35 +356,143 @@ def _slice_realized(rows: list[dict]) -> dict:
 
 
 def hourly_series(rows: list[dict], models: dict | None = None, perf_hours: int = 24) -> tuple[list, list]:
-    """As-of hourly snapshots + the per-transition SLICE realized maps."""
-    hours = hour_boundaries(rows)
-    if not hours:
+    """As-of hourly snapshots + the per-transition SLICE realized maps.
+
+    Maintains incremental running aggregates and a sliding 168h window to
+    generate the 377+ hourly backtest snapshots in linear time without
+    re-scanning the cumulative log store.
+    """
+    from collections import deque
+
+    if not rows:
         return [], []
-    by_hour: dict[datetime, list[dict]] = {h: [] for h in hours}
+
+    # 1. Parse records once into flat structures
+    parsed_rows = []
     for r in rows:
         t = pricing.parse_ts(r.get("ts") or "")
         if t is None:
             continue
-        h = t.replace(minute=0, second=0, microsecond=0)
+        m = r.get("model") or ""
+        if not m:
+            continue
+        tok_in = int(r.get("prompt_tokens") or 0)
+        tok_out = int(r.get("completion_tokens") or 0)
+        cached = int(r.get("cached_tokens") or 0)
+        cost = pricing._float(r.get("cost_consumer_usdc")) or 0.0
+        a_in = pricing._float(r.get("ask_input_per_mtok"))
+        a_out = pricing._float(r.get("ask_output_per_mtok"))
+        ttft = pricing._float(r.get("ttft_ms"))
+        dur = pricing._float(r.get("duration_ms"))
+        tps = None
+        if ttft is not None and dur is not None and tok_out > 0:
+            stream_s = (dur - ttft) / 1000.0
+            if stream_s >= 2.0 and tok_out / stream_s < 500:
+                tps = tok_out / stream_s
+        parsed_rows.append({
+            "ts": t, "model": m, "tok_in": tok_in, "tok_out": tok_out,
+            "cached": cached, "cost": cost, "a_in": a_in, "a_out": a_out,
+            "ttft": ttft, "tps": tps, "raw": r
+        })
+
+    if not parsed_rows:
+        return [], []
+
+    first = min(r["ts"] for r in parsed_rows).replace(minute=0, second=0, microsecond=0)
+    last = max(r["ts"] for r in parsed_rows).replace(minute=0, second=0, microsecond=0)
+    hours: list[datetime] = []
+    cur = first
+    while cur <= last:
+        hours.append(cur)
+        cur += timedelta(hours=1)
+
+    by_hour: dict[datetime, list[dict]] = {h: [] for h in hours}
+    for r in parsed_rows:
+        h = r["ts"].replace(minute=0, second=0, microsecond=0)
         if h in by_hour:
             by_hour[h].append(r)
+
+    running_stats: dict[str, dict] = {}
+    asks_by_model: dict[str, deque] = {}
+    by_m_7d: dict[str, deque] = {}
     dated: list = []
     slices: list[dict] = []
-    cumulative: list[dict] = []
     models_dict = models or {}
+
+    cap_hours = pricing.TPS_WINDOW_CAP_H  # 168
+
     for h in hours:
-        cumulative.extend(by_hour[h])
-        stats = pricing.aggregate_rows(cumulative)
+        hr_rows = by_hour[h]
+        for r in hr_rows:
+            m = r["model"]
+            st = running_stats.setdefault(m, {
+                "reqs": 0, "tok_in": 0, "tok_out": 0, "cached": 0, "cost": 0.0,
+                "ask_in": None, "ask_out": None, "last_ts": ""
+            })
+            st["reqs"] += 1
+            st["tok_in"] += r["tok_in"]
+            st["tok_out"] += r["tok_out"]
+            st["cached"] += r["cached"]
+            st["cost"] += r["cost"]
+            if r["a_in"] is not None and r["a_out"] is not None:
+                asks_by_model.setdefault(m, deque()).append((r["ts"], r["a_in"], r["a_out"]))
+            st["last_ts"] = r["ts"].isoformat()
+            by_m_7d.setdefault(m, deque()).append(r)
+
+        cutoff_7d = h - timedelta(hours=cap_hours)
+        cutoff_3d = h - timedelta(days=pricing.ASK_MEDIAN_DAYS)
+        cutoff_24h = h - timedelta(hours=perf_hours)
+
+        for m, dq in asks_by_model.items():
+            while dq and dq[0][0] < cutoff_3d:
+                dq.popleft()
+            if dq:
+                ins = sorted(p[1] for p in dq)
+                outs = sorted(p[2] for p in dq)
+                running_stats[m]["ask_in"] = float(statistics.median(ins))
+                running_stats[m]["ask_out"] = float(statistics.median(outs))
+
+        model_perf: dict[str, dict] = {}
+        for m, dq in by_m_7d.items():
+            while dq and dq[0]["ts"] < cutoff_7d:
+                dq.popleft()
+            if not dq:
+                continue
+            base = [r for r in dq if r["ts"] >= cutoff_24h]
+            valid_tps_base = [r["tps"] for r in base if r["tps"] is not None]
+            window = perf_hours
+            picked = base
+            valid_tps = valid_tps_base
+            if len(valid_tps_base) < pricing.TPS_FLOOR and cap_hours > perf_hours:
+                window = cap_hours
+                picked = list(dq)
+                valid_tps = [r["tps"] for r in picked if r["tps"] is not None]
+            ttfts = [r["ttft"] for r in picked if r["ttft"] is not None]
+            entry: dict = {
+                "reqs": len(base),
+                "window_hours": window,
+                "ttft_p50_ms": float(statistics.median(ttfts)) if ttfts else None,
+                "tps_mean": float(statistics.mean(valid_tps)) if valid_tps else None,
+                "tps_samples": len(valid_tps)
+            }
+            if window != perf_hours:
+                entry["window_reqs"] = len(picked)
+            model_perf[m] = entry
+
         routes = {}
-        for a, st in stats.items():
+        for a, st in running_stats.items():
             r_entry = pricing.route_entry(st, {}, a)
             slug = aa_slug(a)
             r_entry["iq"] = (models_dict.get(slug) or {}).get("iq") if slug else None
             routes[a] = r_entry
+
         dated.append((h.date().isoformat(), {
-            "generated_at": h.isoformat(), "routes": routes,
-            "perf": pricing.perf_stats(cumulative, perf_hours)}))
-        slices.append(_slice_realized(by_hour[h]))
+            "generated_at": h.isoformat(),
+            "routes": routes,
+            "perf": {"window_hours": perf_hours, "models": model_perf}
+        }))
+        slices.append(_slice_realized([r["raw"] for r in hr_rows]))
+
     # transition i compares snapshot i to the NEXT hour's realized
     return dated, slices[1:]
 
