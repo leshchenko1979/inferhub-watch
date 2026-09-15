@@ -138,6 +138,7 @@ def _production_guards() -> tuple[list[Any], dict[str, Any]]:
     )
     guards = [
         mock.patch.object(pgstore, "window_rows", return_value=[]),
+        mock.patch.object(pgstore, "load_24h_provider_failures", return_value={}),
         mock.patch.object(ars, "resolve_inferhub_key", return_value=""),
         mock.patch.object(ars, "update_opencrabs_config", config_write),
         mock.patch.object(ars, "update_active_sessions", session_write),
