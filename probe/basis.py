@@ -32,14 +32,60 @@ def marginal(payload: dict, route: str) -> float | None:
     return route_stats(payload, route).get("marginal_per_mtok")
 
 
-def projected(payload: dict, route: str, dated: list) -> float | None:
+def fleet_calibration_multiplier(dated: list, min_pairs: int = 3) -> float:
+    """Causal expanding fleet median calibration multiplier (Strategy 2).
+
+    Computes the historical median ratio (realized / raw_projected) strictly
+    across past snapshot transitions available in `dated` up to the as-of moment.
+    Returns 1.0 if fewer than `min_pairs` historical transitions are available.
+    Preserves 100% of relative cost/value ordering while centering the level ratio.
+    """
+    if not isinstance(dated, list) or len(dated) < 2:
+        return 1.0
+    ratios: list[float] = []
+    for k in range(len(dated) - 1):
+        older = dated[k][1] if isinstance(dated[k], (tuple, list)) else None
+        newer = dated[k + 1][1] if isinstance(dated[k + 1], (tuple, list)) else None
+        if not isinstance(older, dict) or not isinstance(newer, dict):
+            continue
+        older_routes = older.get("routes") or {}
+        newer_routes = newer.get("routes") or {}
+        hist_k = dated[: k + 1]
+        for r_name, st in older_routes.items():
+            if not isinstance(st, dict) or (st.get("reqs") or 0) < 3:
+                continue
+            real_eff = (newer_routes.get(r_name) or {}).get("eff_per_mtok")
+            if not real_eff or real_eff <= 0:
+                continue
+            hit_k, _ = official_compare.projection_hit(hist_k, r_name, st, older_routes)
+            p_raw = official_compare.inferhub_eff(st, hit=hit_k)
+            if not p_raw or p_raw <= 0:
+                continue
+            ratios.append(float(real_eff) / float(p_raw))
+    if len(ratios) < min_pairs:
+        return 1.0
+    import statistics
+    return float(statistics.median(ratios))
+
+
+def projected(payload: dict, route: str, dated: list, *,
+              calibrated: bool = True) -> float | None:
     """Forward $/M at the smoothed projection hit rate; None without
-    hit evidence or asks (callers fall back to realized)."""
+    hit evidence or asks (callers fall back to realized).
+
+    When calibrated=True (default), scales by the causal online fleet median
+    multiplier (Strategy 2) to correct historical floor-to-realized level bias
+    without distorting relative route rankings.
+    """
     stats = route_stats(payload, route)
     hit, _conf = official_compare.projection_hit(
         dated, route, stats, payload.get("routes") or {}
     )
-    return official_compare.inferhub_eff(stats, hit=hit)
+    p_raw = official_compare.inferhub_eff(stats, hit=hit)
+    if p_raw is None or not calibrated:
+        return p_raw
+    kappa = fleet_calibration_multiplier(dated)
+    return p_raw * kappa
 
 
 def board_basis(payload: dict, route: str, dated: list, *,

@@ -108,6 +108,53 @@ class IncumbentBarTests(unittest.TestCase):
         self.assertIsNone(basis.incumbent_bar(routes, ["a"]))
 
 
+class FleetCalibrationTests(unittest.TestCase):
+    """fleet_calibration_multiplier: online causal median level correction (Strategy 2)."""
+
+    def test_empty_or_single_snapshot_returns_one(self) -> None:
+        self.assertEqual(basis.fleet_calibration_multiplier([]), 1.0)
+        self.assertEqual(basis.fleet_calibration_multiplier([("2026-09-01", {})]), 1.0)
+
+    def test_causal_multiplier_scales_projection_and_preserves_ranking(self) -> None:
+        # Construct snapshots where realized is consistently 1.5x projected
+        d1 = ("2026-09-01", {
+            "routes": {
+                "r/a": {"ask_in": 0.01, "ask_out": 0.02, "tok_in": 1000, "tok_out": 1000, "cache_pct": 0, "reqs": 10},
+                "r/b": {"ask_in": 0.02, "ask_out": 0.04, "tok_in": 1000, "tok_out": 1000, "cache_pct": 0, "reqs": 10},
+            }
+        })
+        d2 = ("2026-09-02", {
+            "routes": {
+                "r/a": {"ask_in": 0.01, "ask_out": 0.02, "tok_in": 1000, "tok_out": 1000, "cache_pct": 0, "reqs": 10, "eff_per_mtok": 0.0225},  # raw proj is 0.015 -> ratio 1.5
+                "r/b": {"ask_in": 0.02, "ask_out": 0.04, "tok_in": 1000, "tok_out": 1000, "cache_pct": 0, "reqs": 10, "eff_per_mtok": 0.0450},  # raw proj is 0.030 -> ratio 1.5
+            }
+        })
+        d3 = ("2026-09-03", {
+            "routes": {
+                "r/a": {"ask_in": 0.01, "ask_out": 0.02, "tok_in": 1000, "tok_out": 1000, "cache_pct": 0, "reqs": 10, "eff_per_mtok": 0.0225},
+                "r/b": {"ask_in": 0.02, "ask_out": 0.04, "tok_in": 1000, "tok_out": 1000, "cache_pct": 0, "reqs": 10, "eff_per_mtok": 0.0450},
+            }
+        })
+        d4 = ("2026-09-04", {
+            "routes": {
+                "r/a": {"eff_per_mtok": 0.0225},
+                "r/b": {"eff_per_mtok": 0.0450},
+            }
+        })
+        dated = [d1, d2, d3, d4]
+        # At min_pairs=3, ratio should be exactly 1.5
+        kappa = basis.fleet_calibration_multiplier(dated, min_pairs=3)
+        self.assertAlmostEqual(kappa, 1.5, places=3)
+
+        # Verify projected() uses calibrated=True by default and scales by kappa
+        p_uncal = basis.projected(d1[1], "r/a", dated, calibrated=False)
+        p_cal = basis.projected(d1[1], "r/a", dated, calibrated=True)
+        self.assertIsNotNone(p_uncal)
+        self.assertIsNotNone(p_cal)
+        self.assertAlmostEqual(p_cal, p_uncal * kappa, places=4)
+
+
+
 
 
 
