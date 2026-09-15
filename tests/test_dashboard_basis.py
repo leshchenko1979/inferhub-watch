@@ -67,9 +67,12 @@ class PanelSqlShapeTests(unittest.TestCase):
             self.assertIn("'realized'", sql, f"panel {pid} cannot label realized")
 
     def test_the_value_carries_the_basis_word(self) -> None:
-        for pid in PANELS:
+        for pid, (_title, is_iq) in PANELS.items():
             sql = _sql(_panels()[pid])
-            self.assertIn("|| ' · ' || ranked.basis", sql, f"panel {pid} unlabelled")
+            if is_iq:
+                self.assertIn("|| ' · ' || ranked.basis", sql, f"panel {pid} unlabelled")
+            else:
+                self.assertNotIn("|| ' · ' || ranked.basis", sql, f"panel {pid} should not append basis")
 
     def test_ranking_mirrors_the_board_sort_law(self) -> None:
         # Value-first law: IQ per $ descending, unpriced last
