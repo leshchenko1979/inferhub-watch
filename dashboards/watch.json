@@ -813,7 +813,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "AA IQ"
+              "options": "Coding IQ"
             },
             "properties": [
               {
@@ -848,23 +848,23 @@
                     },
                     {
                       "color": "red",
-                      "value": 20
+                      "value": 50
                     },
                     {
                       "color": "orange",
-                      "value": 30
+                      "value": 65
                     },
                     {
                       "color": "yellow",
-                      "value": 38
+                      "value": 70
                     },
                     {
                       "color": "light-green",
-                      "value": 43
+                      "value": 75
                     },
                     {
                       "color": "green",
-                      "value": 48
+                      "value": 80
                     }
                   ]
                 }
@@ -1070,7 +1070,7 @@
             "uid": "inferhub-pg"
           },
           "format": "table",
-          "rawSql": "SELECT\n  route AS \"Route\",\n  tier_rank AS \"Tier\",\n  value_score AS \"Value\",\n  iq_per_dollar AS \"IQ per $\",\n  projected_dollar_per_m AS \"Projected $/M\",\n  ask_in AS \"Ask in $/M\",\n  ask_out AS \"Ask out $/M\",\n  aa_iq AS \"AA IQ\",\n  reqs_7d AS \"Reqs (7d)\",\n  tokens_7d AS \"Tokens (7d)\",\n  cache_pct AS \"Cache %\",\n  ttft_ms AS \"TTFT ms\",\n  tps AS \"TPS\",\n  cost_7d AS \"Cost $\",\n  realized_dollar_per_m AS \"Realized $/M\"\nFROM v_model_catalog_metrics\nORDER BY \"Tier\" DESC, \"Value\" DESC NULLS LAST, \"IQ per $\" DESC NULLS LAST",
+          "rawSql": "SELECT\n  route AS \"Route\",\n  tier_rank AS \"Tier\",\n  value_score AS \"Value\",\n  iq_per_dollar AS \"IQ per $\",\n  projected_dollar_per_m AS \"Projected $/M\",\n  ask_in AS \"Ask in $/M\",\n  ask_out AS \"Ask out $/M\",\n  coding_iq AS \"Coding IQ\",\n  reqs_7d AS \"Reqs (7d)\",\n  tokens_7d AS \"Tokens (7d)\",\n  cache_pct AS \"Cache %\",\n  ttft_ms AS \"TTFT ms\",\n  tps AS \"TPS\",\n  cost_7d AS \"Cost $\",\n  realized_dollar_per_m AS \"Realized $/M\"\nFROM v_model_catalog_metrics\nORDER BY \"Tier\" DESC, \"Value\" DESC NULLS LAST, \"IQ per $\" DESC NULLS LAST",
           "refId": "A"
         }
       ],
@@ -1568,12 +1568,12 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "AA IQ"
+              "options": "Coding IQ"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "AA IQ Score"
+                "value": "Coding IQ Score"
               },
               {
                 "id": "decimals",
@@ -1643,7 +1643,7 @@
             "y": {
               "matcher": {
                 "id": "byName",
-                "options": "AA IQ"
+                "options": "Coding IQ"
               }
             },
             "size": {
@@ -1674,7 +1674,7 @@
           "mode": "linear"
         },
         "yAxis": {
-          "label": "Quality Index (AA IQ)",
+          "label": "Quality Index (Coding IQ)",
           "mode": "linear"
         }
       },
@@ -1687,7 +1687,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  projected_dollar_per_m::float AS \"projected $/M\",\n  aa_iq::float AS \"AA IQ\",\n  reqs_24h::float AS \"Reqs 24h\",\n  route AS \"Route\",\n  tier_rank::float AS \"Tier\"\nFROM v_model_catalog_metrics\nORDER BY projected_dollar_per_m",
+          "rawSql": "SELECT\n  projected_dollar_per_m::float AS \"projected $/M\",\n  coding_iq::float AS \"Coding IQ\",\n  reqs_24h::float AS \"Reqs 24h\",\n  route AS \"Route\",\n  tier_rank::float AS \"Tier\"\nFROM v_model_catalog_metrics\nORDER BY projected_dollar_per_m",
           "refId": "A"
         }
       ],
@@ -2021,7 +2021,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(u.created_at,'1d'), round(avg(COALESCE(NULLIF(u.ask_input_per_mtok, 0), rm.ask_in))::numeric,5) AS avg_price, u.model AS metric FROM usage_logs u LEFT JOIN route_metrics rm ON rm.route = u.model WHERE $__timeFilter(u.created_at) AND u.is_probe = false AND COALESCE(NULLIF(u.ask_input_per_mtok, 0), rm.ask_in) > 0 AND u.model NOT LIKE '%grok%' GROUP BY 1, u.model ORDER BY 1",
+          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round(avg(COALESCE(NULLIF(u.ask_input_per_mtok, 0), rm.ask_in))::numeric, 5) AS avg_price FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model LEFT JOIN route_metrics rm ON rm.route = u.model WHERE $__timeFilter(u.created_at) AND u.is_probe = false AND COALESCE(NULLIF(u.ask_input_per_mtok, 0), rm.ask_in) > 0 GROUP BY 1, 2 ORDER BY 1",
           "refId": "A"
         }
       ],
@@ -2085,7 +2085,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(u.created_at,'1d'), round(avg(COALESCE(NULLIF(u.ask_output_per_mtok, 0), rm.ask_out))::numeric,5) AS avg_price, u.model AS metric FROM usage_logs u LEFT JOIN route_metrics rm ON rm.route = u.model WHERE $__timeFilter(u.created_at) AND u.is_probe = false AND COALESCE(NULLIF(u.ask_output_per_mtok, 0), rm.ask_out) > 0 AND u.model NOT LIKE '%grok%' GROUP BY 1, u.model ORDER BY 1",
+          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round(avg(COALESCE(NULLIF(u.ask_output_per_mtok, 0), rm.ask_out))::numeric, 5) AS avg_price FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model LEFT JOIN route_metrics rm ON rm.route = u.model WHERE $__timeFilter(u.created_at) AND u.is_probe = false AND COALESCE(NULLIF(u.ask_output_per_mtok, 0), rm.ask_out) > 0 GROUP BY 1, 2 ORDER BY 1",
           "refId": "A"
         }
       ],

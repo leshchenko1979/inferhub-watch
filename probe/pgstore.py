@@ -174,7 +174,8 @@ create index if not exists idx_pf_ts on provider_failures (ts);
 
 # Canonical model catalog & projected metrics view for Grafana dashboards & SQL consumers (DRY standard).
 MODEL_CATALOG_METRICS_VIEW_DDL = """
-create or replace view v_model_catalog_metrics as
+drop view if exists v_model_catalog_metrics;
+create view v_model_catalog_metrics as
 with agg as (
   select model,
          sum(prompt_tokens)::float as tin,
@@ -227,6 +228,7 @@ select
   round(ask_in::numeric, 4) as ask_in,
   round(ask_out::numeric, 4) as ask_out,
   round(iq) as aa_iq,
+  round(iq) as coding_iq,
   reqs_24h,
   reqs_7d,
   tokens_7d,
