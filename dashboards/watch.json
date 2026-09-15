@@ -195,7 +195,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "All catalog routes ranked by proven tier and Value (IQ per $ scaled by relative TPS; in-use >=100 billed reqs/7d, light/probed >0, catalog unprobed). Value measures throughput-adjusted intelligence efficiency. Projected $/Bln uses 7-day token mix (cached input at 10%, unprobed 0.75/0.25).",
+      "description": "All catalog routes ranked by proven tier and Value (IQ per $ scaled by relative TPS; in-use >=100 billed reqs/7d, light/probed >0, catalog unprobed). Value measures throughput-adjusted intelligence efficiency. Projected $/M uses 7-day token mix (cached input at 10%, unprobed 0.75/0.25).",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -211,7 +211,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Projected $/Bln"
+              "options": "Projected $/M"
             },
             "properties": [
               {
@@ -220,14 +220,59 @@
               },
               {
                 "id": "decimals",
-                "value": 2
+                "value": 4
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "light-green",
+                      "value": 0.005
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.02
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.1
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.5
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 1.5
+                    }
+                  ]
+                }
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "Ask in $/Bln"
+              "options": "Ask in $/M"
             },
             "properties": [
               {
@@ -236,14 +281,59 @@
               },
               {
                 "id": "decimals",
-                "value": 2
+                "value": 4
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "light-green",
+                      "value": 0.005
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.02
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.1
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.5
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 1.5
+                    }
+                  ]
+                }
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "Ask out $/Bln"
+              "options": "Ask out $/M"
             },
             "properties": [
               {
@@ -252,14 +342,59 @@
               },
               {
                 "id": "decimals",
-                "value": 2
+                "value": 4
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "light-green",
+                      "value": 0.02
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.08
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.3
+                    },
+                    {
+                      "color": "red",
+                      "value": 1.0
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 3.0
+                    }
+                  ]
+                }
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "Realized $/Bln"
+              "options": "Realized $/M"
             },
             "properties": [
               {
@@ -268,7 +403,52 @@
               },
               {
                 "id": "decimals",
-                "value": 2
+                "value": 4
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "light-green",
+                      "value": 0.005
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.02
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.1
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.5
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 1.5
+                    }
+                  ]
+                }
               }
             ]
           },
@@ -285,6 +465,51 @@
               {
                 "id": "decimals",
                 "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "blue",
+                      "value": 0.01
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.1
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.5
+                    },
+                    {
+                      "color": "red",
+                      "value": 1.0
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 3.0
+                    }
+                  ]
+                }
               }
             ]
           },
@@ -484,6 +709,47 @@
               {
                 "id": "decimals",
                 "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "blue",
+                      "value": 10
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 100
+                    },
+                    {
+                      "color": "light-green",
+                      "value": 1000
+                    },
+                    {
+                      "color": "green",
+                      "value": 10000
+                    }
+                  ]
+                }
               }
             ]
           },
@@ -500,6 +766,108 @@
               {
                 "id": "decimals",
                 "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "blue",
+                      "value": 10000
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1000000
+                    },
+                    {
+                      "color": "light-green",
+                      "value": 50000000
+                    },
+                    {
+                      "color": "green",
+                      "value": 500000000
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "AA IQ"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "dark-red",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 20
+                    },
+                    {
+                      "color": "orange",
+                      "value": 30
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 38
+                    },
+                    {
+                      "color": "light-green",
+                      "value": 43
+                    },
+                    {
+                      "color": "green",
+                      "value": 48
+                    }
+                  ]
+                }
               }
             ]
           },
@@ -702,11 +1070,11 @@
             "uid": "inferhub-pg"
           },
           "format": "table",
-          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.route AS \"Route\",\n  CASE px.tier WHEN 'in use' THEN 2 WHEN 'probed' THEN 1 ELSE 0 END AS \"Tier\",\n  round((px.iq / NULLIF(px.projected,0)) * sqrt(COALESCE(NULLIF(u.tps, 0), 50.0) / 50.0)) AS \"Value\",\n  round(px.iq / NULLIF(px.projected,0)) AS \"IQ per $\",\n  round((px.projected * 1e6)::numeric,2) AS \"Projected $/Bln\",\n  round((px.ask_in * 1e6)::numeric,2) AS \"Ask in $/Bln\",\n  round((px.ask_out * 1e6)::numeric,2) AS \"Ask out $/Bln\",\n  round(px.iq) AS \"AA IQ\",\n  u.reqs AS \"Reqs (7d)\",\n  u.tok AS \"Tokens (7d)\",\n  u.cache_pct AS \"Cache %\",\n  u.ttft AS \"TTFT ms\",\n  u.tps AS \"TPS\",\n  u.cost AS \"Cost $\",\n  round((u.realized_per_tok * 1e9)::numeric,2) AS \"Realized $/Bln\"\nFROM px\nLEFT JOIN (\n  SELECT model,\n    count(*) FILTER (WHERE NOT is_probe) AS reqs,\n    sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe) AS tok,\n    round(100.0*sum(cached_tokens) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens) FILTER (WHERE NOT is_probe),0),1) AS cache_pct,\n    round(avg(ttft_ms) FILTER (WHERE NOT is_probe)) AS ttft,\n    round(percentile_cont(0.5) WITHIN GROUP (ORDER BY (completion_tokens / ((duration_ms - ttft_ms)/1000.0))) FILTER (WHERE NOT is_probe AND duration_ms > ttft_ms + 50 AND ttft_ms > 0 AND completion_tokens > 0 AND (completion_tokens / ((duration_ms - ttft_ms)/1000.0)) <= 500)::numeric, 1) AS tps,\n    round(sum(cost_usdc) FILTER (WHERE NOT is_probe)::numeric,4) AS cost,\n    sum(cost_usdc) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe),0) AS realized_per_tok\n  FROM usage_logs WHERE created_at > now() - interval '7 days' GROUP BY 1\n) u ON u.model = px.route\nORDER BY \"Tier\" DESC, \"Value\" DESC NULLS LAST, \"IQ per $\" DESC NULLS LAST",
+          "rawSql": "WITH agg AS (\n  SELECT model, sum(prompt_tokens)::float AS tin, sum(completion_tokens)::float AS tout,\n         sum(cached_tokens)::float/NULLIF(sum(prompt_tokens),0) AS hr\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '7 days' GROUP BY 1\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,\n    COALESCE(agg.tin,0) AS tin, COALESCE(agg.tout,0) AS tout, COALESCE(agg.hr,0) AS hr,\n    COALESCE(u24.req,0) AS req24,\n    CASE WHEN COALESCE(u24.req,0) >= 100 THEN 'in use'\n         WHEN COALESCE(u24.req,0) > 0 THEN 'probed'\n         ELSE 'catalog' END AS tier\n  FROM route_metrics rm\n  LEFT JOIN agg ON agg.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0\n), px AS (\n  SELECT base.*,\n    CASE WHEN tin+tout > 0\n      THEN ( tin*((1-hr)*ask_in + hr*0.1*ask_in) + tout*ask_out ) / (tin+tout)\n      ELSE 0.75*ask_in + 0.25*ask_out END AS projected\n  FROM base\n  WHERE true\n)\nSELECT px.route AS \"Route\",\n  CASE px.tier WHEN 'in use' THEN 2 WHEN 'probed' THEN 1 ELSE 0 END AS \"Tier\",\n  round((px.iq / NULLIF(px.projected,0)) * sqrt(COALESCE(NULLIF(u.tps, 0), 50.0) / 50.0)) AS \"Value\",\n  round(px.iq / NULLIF(px.projected,0)) AS \"IQ per $\",\n  round(px.projected::numeric,4) AS \"Projected $/M\",\n  round(px.ask_in::numeric,4) AS \"Ask in $/M\",\n  round(px.ask_out::numeric,4) AS \"Ask out $/M\",\n  round(px.iq) AS \"AA IQ\",\n  u.reqs AS \"Reqs (7d)\",\n  u.tok AS \"Tokens (7d)\",\n  u.cache_pct AS \"Cache %\",\n  u.ttft AS \"TTFT ms\",\n  u.tps AS \"TPS\",\n  u.cost AS \"Cost $\",\n  u.realized AS \"Realized $/M\"\nFROM px\nLEFT JOIN (\n  SELECT model,\n    count(*) FILTER (WHERE NOT is_probe) AS reqs,\n    sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe) AS tok,\n    round(100.0*sum(cached_tokens) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens) FILTER (WHERE NOT is_probe),0),1) AS cache_pct,\n    round(avg(ttft_ms) FILTER (WHERE NOT is_probe)) AS ttft,\n    round(percentile_cont(0.5) WITHIN GROUP (ORDER BY (completion_tokens / ((duration_ms - ttft_ms)/1000.0))) FILTER (WHERE NOT is_probe AND duration_ms > ttft_ms + 50 AND ttft_ms > 0 AND completion_tokens > 0 AND (completion_tokens / ((duration_ms - ttft_ms)/1000.0)) <= 500)::numeric, 1) AS tps,\n    round(sum(cost_usdc) FILTER (WHERE NOT is_probe)::numeric,4) AS cost,\n    round((sum(cost_usdc) FILTER (WHERE NOT is_probe)/NULLIF(sum(prompt_tokens + completion_tokens) FILTER (WHERE NOT is_probe),0)*1e6)::numeric,4) AS realized\n  FROM usage_logs WHERE created_at > now() - interval '7 days' GROUP BY 1\n) u ON u.model = px.route\nORDER BY \"Tier\" DESC, \"Value\" DESC NULLS LAST, \"IQ per $\" DESC NULLS LAST",
           "refId": "A"
         }
       ],
-      "title": "Model leaderboard — catalog routes by Value (Tier and IQ per $)",
+      "title": "Model leaderboard \u2014 catalog routes by Value (Tier and IQ per $)",
       "type": "table"
     },
     {
@@ -1072,7 +1440,7 @@
           "format": "table"
         }
       ],
-      "title": "Catalog Ask-In $/M — colored by tier, cheapest first",
+      "title": "Catalog Ask-In $/M \u2014 colored by tier, cheapest first",
       "type": "barchart"
     },
     {
@@ -1436,7 +1804,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH g AS (\n  SELECT COALESCE((SELECT pass FROM projection_gate WHERE id = 'projection_gate'), false) AS use_proj\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), u30 AS (\n  SELECT model, sum(prompt_tokens + completion_tokens)::float AS tok30,\n         sum(cost_usdc)::float AS cost30\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '30 days' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.iq,\n    COALESCE(b.realized, CASE WHEN COALESCE(u30.tok30,0) > 0\n      THEN round((u30.cost30/u30.tok30*1e6)::numeric, 4) END) AS realized,\n    CASE WHEN g.use_proj THEN b.projected END AS projected\n  FROM route_metrics rm\n  CROSS JOIN g\n  LEFT JOIN route_basis b ON b.route = rm.route\n  LEFT JOIN u30 ON u30.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0 AND COALESCE(u24.req,0) >= 100\n), ranked AS (\n  SELECT base.*,\n    COALESCE(projected, realized) AS basis_per_m,\n    CASE WHEN projected IS NOT NULL THEN 'projected' ELSE 'realized' END AS basis\n  FROM base\n  WHERE COALESCE(projected, realized) IS NOT NULL\n)\nSELECT to_char(round(ranked.iq/NULLIF(ranked.basis_per_m,0)), 'FM999,999,999,999')\n       || ' · ' || ranked.basis AS \"IQ per $\"\nFROM ranked\nORDER BY ranked.iq/NULLIF(ranked.basis_per_m,0) DESC NULLS LAST LIMIT 1",
+          "rawSql": "WITH g AS (\n  SELECT COALESCE((SELECT pass FROM projection_gate WHERE id = 'projection_gate'), false) AS use_proj\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), u30 AS (\n  SELECT model, sum(prompt_tokens + completion_tokens)::float AS tok30,\n         sum(cost_usdc)::float AS cost30\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '30 days' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.iq,\n    COALESCE(b.realized, CASE WHEN COALESCE(u30.tok30,0) > 0\n      THEN round((u30.cost30/u30.tok30*1e6)::numeric, 4) END) AS realized,\n    CASE WHEN g.use_proj THEN b.projected END AS projected\n  FROM route_metrics rm\n  CROSS JOIN g\n  LEFT JOIN route_basis b ON b.route = rm.route\n  LEFT JOIN u30 ON u30.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0 AND COALESCE(u24.req,0) >= 100\n), ranked AS (\n  SELECT base.*,\n    COALESCE(projected, realized) AS basis_per_m,\n    CASE WHEN projected IS NOT NULL THEN 'projected' ELSE 'realized' END AS basis\n  FROM base\n  WHERE COALESCE(projected, realized) IS NOT NULL\n)\nSELECT to_char(round(ranked.iq/NULLIF(ranked.basis_per_m,0)), 'FM999,999,999,999')\n       || ' \u00b7 ' || ranked.basis AS \"IQ per $\"\nFROM ranked\nORDER BY ranked.iq/NULLIF(ranked.basis_per_m,0) DESC NULLS LAST LIMIT 1",
           "refId": "A"
         }
       ],
@@ -1540,7 +1908,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH g AS (\n  SELECT COALESCE((SELECT pass FROM projection_gate WHERE id = 'projection_gate'), false) AS use_proj\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), u30 AS (\n  SELECT model, sum(prompt_tokens + completion_tokens)::float AS tok30,\n         sum(cost_usdc)::float AS cost30\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '30 days' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.iq,\n    COALESCE(b.realized, CASE WHEN COALESCE(u30.tok30,0) > 0\n      THEN round((u30.cost30/u30.tok30*1e6)::numeric, 4) END) AS realized,\n    CASE WHEN g.use_proj THEN b.projected END AS projected\n  FROM route_metrics rm\n  CROSS JOIN g\n  LEFT JOIN route_basis b ON b.route = rm.route\n  LEFT JOIN u30 ON u30.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0 AND COALESCE(u24.req,0) >= 100\n), ranked AS (\n  SELECT base.*,\n    COALESCE(projected, realized) AS basis_per_m,\n    CASE WHEN projected IS NOT NULL THEN 'projected' ELSE 'realized' END AS basis\n  FROM base\n  WHERE COALESCE(projected, realized) IS NOT NULL\n)\nSELECT to_char(round(ranked.iq/NULLIF(ranked.basis_per_m,0)), 'FM999,999,999,999')\n       || ' · ' || ranked.basis AS \"IQ per $\"\nFROM ranked\nORDER BY ranked.iq/NULLIF(ranked.basis_per_m,0) DESC NULLS LAST OFFSET 1 LIMIT 1",
+          "rawSql": "WITH g AS (\n  SELECT COALESCE((SELECT pass FROM projection_gate WHERE id = 'projection_gate'), false) AS use_proj\n), u24 AS (\n  SELECT model, count(*) AS req FROM usage_logs\n  WHERE is_probe = false AND created_at > now() - interval '24 hours' GROUP BY 1\n), u30 AS (\n  SELECT model, sum(prompt_tokens + completion_tokens)::float AS tok30,\n         sum(cost_usdc)::float AS cost30\n  FROM usage_logs WHERE is_probe = false AND created_at > now() - interval '30 days' GROUP BY 1\n), base AS (\n  SELECT rm.route, rm.iq,\n    COALESCE(b.realized, CASE WHEN COALESCE(u30.tok30,0) > 0\n      THEN round((u30.cost30/u30.tok30*1e6)::numeric, 4) END) AS realized,\n    CASE WHEN g.use_proj THEN b.projected END AS projected\n  FROM route_metrics rm\n  CROSS JOIN g\n  LEFT JOIN route_basis b ON b.route = rm.route\n  LEFT JOIN u30 ON u30.model = rm.route\n  LEFT JOIN u24 ON u24.model = rm.route\n  WHERE rm.iq IS NOT NULL AND rm.ask_in > 0 AND COALESCE(u24.req,0) >= 100\n), ranked AS (\n  SELECT base.*,\n    COALESCE(projected, realized) AS basis_per_m,\n    CASE WHEN projected IS NOT NULL THEN 'projected' ELSE 'realized' END AS basis\n  FROM base\n  WHERE COALESCE(projected, realized) IS NOT NULL\n)\nSELECT to_char(round(ranked.iq/NULLIF(ranked.basis_per_m,0)), 'FM999,999,999,999')\n       || ' \u00b7 ' || ranked.basis AS \"IQ per $\"\nFROM ranked\nORDER BY ranked.iq/NULLIF(ranked.basis_per_m,0) DESC NULLS LAST OFFSET 1 LIMIT 1",
           "refId": "A"
         }
       ],
@@ -1633,7 +2001,7 @@
     {
       "id": 61,
       "type": "timeseries",
-      "title": "Price history — ask-in $/M (observed, non-probe)",
+      "title": "Price history \u2014 ask-in $/M (observed, non-probe)",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
@@ -1697,7 +2065,7 @@
     {
       "id": 62,
       "type": "timeseries",
-      "title": "Price history — ask-out $/M (observed, non-probe)",
+      "title": "Price history \u2014 ask-out $/M (observed, non-probe)",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
@@ -1964,7 +2332,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "inferhub-pg"
       },
-      "description": "How well the route predictor ranks and levels, at three cadences (issue #30). ORDERING (the verdict) = the crown backtest's regret share: of the transitions where the board would have crowned a route, what share realized within GATE_TOL (15%) of the cheapest. LEVEL (the diagnostic) = realized / projected ratio. The VALUE leg is the North Star metric (probe/value.py) scored on realized outcomes. DAILY is measured — each snapshot's own as-of IQ stamp, backfilled from the git-tracked data/intelligence.json history (D3): real historical values, never interpolated. The HOURLY legs read 'n/a' by design, NOT as a failure: the hourly series is rebuilt from usage_logs and carries no D3 iq stamp, and IQ's own resolution is a day, so there is no as-of IQ to read at an hourly boundary. The daily leg is the leg that can be scored.",
+      "description": "How well the route predictor ranks and levels, at three cadences (issue #30). ORDERING (the verdict) = the crown backtest's regret share: of the transitions where the board would have crowned a route, what share realized within GATE_TOL (15%) of the cheapest. LEVEL (the diagnostic) = realized / projected ratio. The VALUE leg is the North Star metric (probe/value.py) scored on realized outcomes. DAILY is measured \u2014 each snapshot's own as-of IQ stamp, backfilled from the git-tracked data/intelligence.json history (D3): real historical values, never interpolated. The HOURLY legs read 'n/a' by design, NOT as a failure: the hourly series is rebuilt from usage_logs and carries no D3 iq stamp, and IQ's own resolution is a day, so there is no as-of IQ to read at an hourly boundary. The daily leg is the leg that can be scored.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -2151,7 +2519,7 @@
           "refId": "A"
         }
       ],
-      "title": "Predictor scoreboard — ordering accuracy (verdict) + level ratio (diagnostic)",
+      "title": "Predictor scoreboard \u2014 ordering accuracy (verdict) + level ratio (diagnostic)",
       "type": "table"
     },
     {
@@ -2237,7 +2605,7 @@
           "refId": "A"
         }
       ],
-      "title": "Projection gate — gate verdict (Value) + retained cost verdict",
+      "title": "Projection gate \u2014 gate verdict (Value) + retained cost verdict",
       "type": "table"
     }
   ],
