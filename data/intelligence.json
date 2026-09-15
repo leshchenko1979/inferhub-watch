@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-14T07:58:19Z",
+ "generated_at": "2026-09-15T07:53:00Z",
  "source": "artificialanalysis.ai",
  "endpoint": "https://artificialanalysis.ai/api/v2/data/llms/models",
  "models": {
@@ -507,13 +507,6 @@
    "aa_in": 5,
    "aa_out": 25
   },
-  "kimi-k2-6": {
-   "name": "Kimi K2.6",
-   "iq": 31.3,
-   "coding": 61.8,
-   "aa_in": 0.95,
-   "aa_out": 4
-  },
   "muse-spark": {
    "name": "Muse Spark",
    "iq": 31.3,
@@ -665,8 +658,8 @@
    "name": "Nex-N2-Pro",
    "iq": 28.2,
    "coding": 59.1,
-   "aa_in": 0.5,
-   "aa_out": 2.5
+   "aa_in": 0,
+   "aa_out": 0
   },
   "solar-pro4": {
    "name": "Solar Pro 4",
@@ -716,6 +709,13 @@
    "coding": null,
    "aa_in": 2.5,
    "aa_out": 15
+  },
+  "kimi-k2-6": {
+   "name": "Kimi K2.6",
+   "iq": 27.5,
+   "coding": 61.8,
+   "aa_in": 0.95,
+   "aa_out": 4
   },
   "jt-4-1-flash-236b-a21b": {
    "name": "JT-4.1 Flash 236B A21B",
@@ -826,8 +826,8 @@
    "name": "Hy3",
    "iq": 25.8,
    "coding": 58.8,
-   "aa_in": 0.136,
-   "aa_out": 0.554
+   "aa_in": 0.14,
+   "aa_out": 0.58
   },
   "k2-mova-36b-mid5": {
    "name": "K2 Horizon MoVA 36B A4B",
@@ -878,12 +878,12 @@
    "aa_in": 0,
    "aa_out": 0
   },
-  "ling-3-0-flash": {
-   "name": "Ling 3.0 Flash",
-   "iq": 24.9,
-   "coding": 50.6,
-   "aa_in": 0.075,
-   "aa_out": 0.22
+  "ling-3-0-flash-vl": {
+   "name": "Ling-3.0-flash-VL",
+   "iq": 25,
+   "coding": 57,
+   "aa_in": 0,
+   "aa_out": 0
   },
   "gpt-5-codex": {
    "name": "GPT-5 Codex (high)",
@@ -905,13 +905,6 @@
    "coding": null,
    "aa_in": 1.25,
    "aa_out": 2.5
-  },
-  "ling-3-0-flash-vl": {
-   "name": "Ling-3.0-flash-VL",
-   "iq": 24.8,
-   "coding": 57,
-   "aa_in": 0,
-   "aa_out": 0
   },
   "claude-sonnet-5-low": {
    "name": "Claude Sonnet 5 (Adaptive Reasoning, Low Effort)",
@@ -1023,7 +1016,7 @@
    "iq": 23.4,
    "coding": 49.3,
    "aa_in": 0.6,
-   "aa_out": 2.6
+   "aa_out": 2.4
   },
   "claude-sonnet-4-6-non-reasoning-low-effort": {
    "name": "Claude Sonnet 4.6 (Non-reasoning, Low Effort)",
@@ -1290,6 +1283,13 @@
    "coding": null,
    "aa_in": 15,
    "aa_out": 75
+  },
+  "ling-3-0-flash": {
+   "name": "Ling 3.0 Flash",
+   "iq": 20.6,
+   "coding": 50.6,
+   "aa_in": 0.075,
+   "aa_out": 0.22
   },
   "gpt-5-mini-medium": {
    "name": "GPT-5 mini (medium)",

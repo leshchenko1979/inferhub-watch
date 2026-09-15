@@ -14,16 +14,16 @@
     }
   },
   "cb/gpt-5.6-sol": {
-    "last_probe": "2026-09-07T19:20:44.711534+00:00",
+    "last_probe": "2026-09-15T07:49:13.337041+00:00",
     "statuses": {
       "cache": "pass",
       "core": "pass"
     }
   },
   "cb/gpt-5.6-terra": {
-    "last_probe": "2026-09-07T19:20:44.711534+00:00",
+    "last_probe": "2026-09-15T07:49:13.337041+00:00",
     "statuses": {
-      "cache": "pass",
+      "cache": "fail",
       "core": "pass"
     }
   },
@@ -56,7 +56,7 @@
     }
   },
   "cbcn/glm-5.3-flash": {
-    "last_probe": "2026-09-07T19:20:44.711534+00:00",
+    "last_probe": "2026-09-15T07:49:13.337041+00:00",
     "statuses": {
       "cache": "pass",
       "core": "pass"
@@ -91,7 +91,7 @@
     }
   },
   "cp/zai/glm-5.3-flash": {
-    "last_probe": "2026-09-14T07:56:27.502791+00:00",
+    "last_probe": "2026-09-15T07:49:13.337041+00:00",
     "statuses": {
       "cache": "fail",
       "core": "pass"
