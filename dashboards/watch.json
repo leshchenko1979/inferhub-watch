@@ -2021,7 +2021,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round(avg(COALESCE(NULLIF(u.ask_input_per_mtok, 0), rm.ask_in))::numeric, 5) AS avg_price FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model LEFT JOIN route_metrics rm ON rm.route = u.model WHERE $__timeFilter(u.created_at) AND u.is_probe = false AND COALESCE(NULLIF(u.ask_input_per_mtok, 0), rm.ask_in) > 0 GROUP BY 1, 2 ORDER BY 1",
+          "rawSql": "SELECT date_trunc('hour', u.created_at) AS \"time\", u.model AS model, round(avg(COALESCE(NULLIF(u.ask_input_per_mtok, 0), rm.ask_in))::numeric, 5) AS avg_price FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model LEFT JOIN route_metrics rm ON rm.route = u.model WHERE $__timeFilter(u.created_at) AND u.is_probe = false AND COALESCE(NULLIF(u.ask_input_per_mtok, 0), rm.ask_in) > 0 GROUP BY 1, 2 ORDER BY 1",
           "refId": "A"
         }
       ],
@@ -2085,7 +2085,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT to_timestamp(floor(extract(epoch from u.created_at) / ($__interval_ms/500.0)) * ($__interval_ms/500.0)) AS \"time\", u.model AS model, round(avg(COALESCE(NULLIF(u.ask_output_per_mtok, 0), rm.ask_out))::numeric, 5) AS avg_price FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model LEFT JOIN route_metrics rm ON rm.route = u.model WHERE $__timeFilter(u.created_at) AND u.is_probe = false AND COALESCE(NULLIF(u.ask_output_per_mtok, 0), rm.ask_out) > 0 GROUP BY 1, 2 ORDER BY 1",
+          "rawSql": "SELECT date_trunc('hour', u.created_at) AS \"time\", u.model AS model, round(avg(COALESCE(NULLIF(u.ask_output_per_mtok, 0), rm.ask_out))::numeric, 5) AS avg_price FROM usage_logs u JOIN (SELECT model AS m2 FROM usage_logs WHERE is_probe = false AND $__timeFilter(created_at) GROUP BY 1 HAVING count(*) >= 100) f ON f.m2 = u.model LEFT JOIN route_metrics rm ON rm.route = u.model WHERE $__timeFilter(u.created_at) AND u.is_probe = false AND COALESCE(NULLIF(u.ask_output_per_mtok, 0), rm.ask_out) > 0 GROUP BY 1, 2 ORDER BY 1",
           "refId": "A"
         }
       ],
