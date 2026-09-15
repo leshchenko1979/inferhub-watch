@@ -118,6 +118,16 @@ class BasisDisclosureTests(unittest.TestCase):
                 continue
             self.assertEqual(panel["title"], PANELS[pid][0])
 
+
+class CatalogViewDryTests(unittest.TestCase):
+    def test_catalog_panels_read_the_canonical_view(self) -> None:
+        panels = _panels()
+        for pid in (5, 20, 21):
+            self.assertIn(pid, panels, f"panel {pid} missing")
+            sql = _sql(panels[pid])
+            self.assertIn("v_model_catalog_metrics", sql, f"panel {pid} does not read canonical view")
+            self.assertNotIn("WITH agg AS", sql, f"panel {pid} carries duplicate raw CTEs")
+
 class SyncPublishesTheBoardBasisTests(unittest.TestCase):
     """The panels only agree with the board because the sync publishes it."""
 

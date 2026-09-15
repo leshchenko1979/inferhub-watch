@@ -123,15 +123,18 @@ class PublishTests(unittest.TestCase):
         pgstore.ensure_schema(conn)
         cur = conn.cursor.return_value.__enter__.return_value
         executed = [c.args[0] for c in cur.execute.call_args_list]
-        self.assertEqual(len(executed), 6)
+        self.assertEqual(len(executed), 7)
         for ddl in (pgstore.DDL, pgstore.GATE_DDL, pgstore.ROUTE_BASIS_DDL,
-                    pgstore.SCOREBOARD_DDL, pgstore.PROVIDER_FAILURES_DDL, pgstore.GRANT_DDL):
+                    pgstore.SCOREBOARD_DDL, pgstore.PROVIDER_FAILURES_DDL,
+                    pgstore.MODEL_CATALOG_METRICS_VIEW_DDL, pgstore.GRANT_DDL):
             self.assertIn(ddl, executed)
-        # The grant must run AFTER the table it grants on, or a fresh
+        # The grant must run AFTER the table and views it grants on, or a fresh
         # database raises "relation does not exist" during provisioning.
         self.assertLess(executed.index(pgstore.SCOREBOARD_DDL),
                         executed.index(pgstore.GRANT_DDL))
         self.assertLess(executed.index(pgstore.PROVIDER_FAILURES_DDL),
+                        executed.index(pgstore.GRANT_DDL))
+        self.assertLess(executed.index(pgstore.MODEL_CATALOG_METRICS_VIEW_DDL),
                         executed.index(pgstore.GRANT_DDL))
 
     def test_grant_ddl_is_role_guarded(self) -> None:

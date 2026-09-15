@@ -172,6 +172,72 @@ create index if not exists idx_pf_route_ts on provider_failures (route, ts);
 create index if not exists idx_pf_ts on provider_failures (ts);
 """
 
+# Canonical model catalog & projected metrics view for Grafana dashboards & SQL consumers (DRY standard).
+MODEL_CATALOG_METRICS_VIEW_DDL = """
+create or replace view v_model_catalog_metrics as
+with agg as (
+  select model,
+         sum(prompt_tokens)::float as tin,
+         sum(completion_tokens)::float as tout,
+         sum(cached_tokens)::float/nullif(sum(prompt_tokens),0) as hr,
+         count(*) filter (where not is_probe) as reqs_7d,
+         sum(prompt_tokens + completion_tokens) filter (where not is_probe) as tokens_7d,
+         round(100.0*sum(cached_tokens) filter (where not is_probe)/nullif(sum(prompt_tokens) filter (where not is_probe),0),1) as cache_pct,
+         round(avg(ttft_ms) filter (where not is_probe)) as ttft_ms,
+         round(percentile_cont(0.5) within group (order by (completion_tokens / ((duration_ms - ttft_ms)/1000.0))) filter (where not is_probe and duration_ms > ttft_ms + 50 and ttft_ms > 0 and completion_tokens > 0 and (completion_tokens / ((duration_ms - ttft_ms)/1000.0)) <= 500)::numeric, 1) as tps,
+         round(sum(cost_usdc) filter (where not is_probe)::numeric, 4) as cost_7d,
+         round((sum(cost_usdc) filter (where not is_probe)/nullif(sum(prompt_tokens + completion_tokens) filter (where not is_probe),0)*1e6)::numeric, 4) as realized_dollar_per_m
+  from usage_logs
+  where created_at > now() - interval '7 days'
+  group by 1
+), u24 as (
+  select model, count(*) as reqs_24h
+  from usage_logs
+  where is_probe = false and created_at > now() - interval '24 hours'
+  group by 1
+), base as (
+  select rm.route, rm.ask_in, rm.ask_out, rm.iq, rm.supports_cache,
+    coalesce(agg.tin, 0) as tin, coalesce(agg.tout, 0) as tout, coalesce(agg.hr, 0) as hr,
+    coalesce(u24.reqs_24h, 0) as reqs_24h,
+    case when coalesce(u24.reqs_24h, 0) >= 100 then 'in use'
+         when coalesce(u24.reqs_24h, 0) > 0 then 'probed'
+         else 'catalog' end as tier,
+    case when coalesce(u24.reqs_24h, 0) >= 100 then 2
+         when coalesce(u24.reqs_24h, 0) > 0 then 1
+         else 0 end as tier_rank,
+    agg.reqs_7d, agg.tokens_7d, agg.cache_pct, agg.ttft_ms, agg.tps, agg.cost_7d, agg.realized_dollar_per_m
+  from route_metrics rm
+  left join agg on agg.model = rm.route
+  left join u24 on u24.model = rm.route
+  where rm.iq is not null and rm.ask_in > 0
+), px as (
+  select base.*,
+    case when tin+tout > 0
+      then ( tin*((1-hr)*ask_in + hr*(case when supports_cache then 0.1 else 1.0 end)*ask_in) + tout*ask_out ) / (tin+tout)
+      else 0.99*ask_in + 0.01*ask_out end as projected_dollar_per_m
+  from base
+)
+select
+  route,
+  tier,
+  tier_rank,
+  round((iq / nullif(projected_dollar_per_m, 0)) * sqrt(coalesce(nullif(tps, 0), 50.0) / 50.0)) as value_score,
+  round(iq / nullif(projected_dollar_per_m, 0)) as iq_per_dollar,
+  round(projected_dollar_per_m::numeric, 4) as projected_dollar_per_m,
+  round(ask_in::numeric, 4) as ask_in,
+  round(ask_out::numeric, 4) as ask_out,
+  round(iq) as aa_iq,
+  reqs_24h,
+  reqs_7d,
+  tokens_7d,
+  cache_pct,
+  ttft_ms,
+  tps,
+  cost_7d,
+  realized_dollar_per_m
+from px;
+"""
+
 # The Grafana datasource reads as `inferhub_ro`, not as the owner role, so
 # every table a panel queries needs an explicit SELECT grant. Without it the
 # panel errors "permission denied for table ..." on the live dashboard while
@@ -183,7 +249,8 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'inferhub_ro') THEN
         EXECUTE 'grant select on usage_logs, route_metrics, projection_gate, '
-             || 'route_basis, predictor_scoreboard, provider_failures to inferhub_ro';
+             || 'route_basis, predictor_scoreboard, provider_failures, '
+             || 'v_model_catalog_metrics to inferhub_ro';
     END IF;
 END $$;
 """
@@ -267,6 +334,7 @@ def ensure_schema(conn) -> None:
         cur.execute(ROUTE_BASIS_DDL)
         cur.execute(SCOREBOARD_DDL)
         cur.execute(PROVIDER_FAILURES_DDL)
+        cur.execute(MODEL_CATALOG_METRICS_VIEW_DDL)
         cur.execute(GRANT_DDL)
     conn.commit()
 
