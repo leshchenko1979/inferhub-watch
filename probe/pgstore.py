@@ -699,13 +699,15 @@ def insert_provider_failures(conn, events: list[dict]) -> int:
 
 
 def load_24h_provider_failures(conn=None, hours: int = 24) -> dict[str, dict[str, Any]]:
-    """Aggregate provider failure count and total wait seconds per route over the last N hours.
+    """Aggregate provider failure count, wait seconds, total requests, and active duration per route over the last N hours.
 
     Returns:
         {
             route: {
                 "failures": int,
                 "wait_seconds": float,
+                "total_requests": int,
+                "active_seconds": float,
             }
         }
     """
@@ -723,19 +725,39 @@ def load_24h_provider_failures(conn=None, hours: int = 24) -> dict[str, dict[str
         with conn.cursor() as cur:
             cur.execute(
                 """
-                select route, count(*) as failure_count, coalesce(sum(wait_seconds), 0.0) as total_wait_s
-                from provider_failures
-                where ts >= now() - interval '%s hours'
-                group by route
+                with fails as (
+                    select route, count(*) as failure_count, coalesce(sum(wait_seconds), 0.0) as total_wait_s
+                    from provider_failures
+                    where ts >= now() - interval '%s hours'
+                    group by route
+                ),
+                usage as (
+                    select model as route, count(*) as req_count, coalesce(sum(duration_ms)/1000.0, 0.0) as total_dur_s
+                    from usage_logs
+                    where created_at >= now() - interval '%s hours'
+                    group by model
+                )
+                select
+                    coalesce(f.route, u.route) as route,
+                    coalesce(f.failure_count, 0) as failure_count,
+                    coalesce(f.total_wait_s, 0.0) as total_wait_s,
+                    coalesce(u.req_count, 0) as req_count,
+                    coalesce(u.total_dur_s, 0.0) as total_dur_s
+                from fails f
+                full outer join usage u on f.route = u.route
                 """,
-                (hours,),
+                (hours, hours),
             )
             rows = cur.fetchall()
             stats: dict[str, dict[str, Any]] = {}
-            for r, cnt, wait_s in rows:
+            for r, cnt, wait_s, req_cnt, dur_s in rows:
+                if not r:
+                    continue
                 stats[r] = {
                     "failures": int(cnt),
                     "wait_seconds": float(wait_s),
+                    "total_requests": int(req_cnt),
+                    "active_seconds": float(dur_s),
                 }
             return stats
     finally:

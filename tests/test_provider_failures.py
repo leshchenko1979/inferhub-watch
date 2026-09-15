@@ -41,13 +41,27 @@ class ProviderFailuresTests(unittest.TestCase):
         self.assertEqual(tps, 50.0)
         self.assertEqual(penalty, 1.0)
 
-        # Failures with wait seconds: True TPS strictly discounted
+        # Failures with wait seconds (scaled by total_requests and active duration)
         tps_disc, penalty_disc = auto_route_switch.calculate_true_tps(
-            raw_tps=50.0, failure_count=5, wait_seconds=120.0, sample_count=10
+            raw_tps=50.0, failure_count=5, wait_seconds=120.0, total_requests=100, active_seconds=500.0
         )
         self.assertLess(tps_disc, 50.0)
         self.assertLess(penalty_disc, 1.0)
         self.assertGreater(tps_disc, 0.0)
+
+        # High volume low failure rate has mild penalty (e.g. 10 failures out of 10,000 requests)
+        tps_mild, pen_mild = auto_route_switch.calculate_true_tps(
+            raw_tps=100.0, failure_count=10, wait_seconds=60.0, total_requests=10000, active_seconds=50000.0
+        )
+        self.assertGreater(pen_mild, 0.95)
+        self.assertGreater(tps_mild, 95.0)
+
+        # High failure rate (e.g. 50 failures out of 50 requests) hits floor clamp
+        tps_severe, pen_severe = auto_route_switch.calculate_true_tps(
+            raw_tps=100.0, failure_count=50, wait_seconds=3000.0, total_requests=0, active_seconds=0.0
+        )
+        self.assertEqual(pen_severe, 0.10)
+        self.assertEqual(tps_severe, 10.0)
 
         # Zero or negative raw TPS returns 0.0
         tps_zero, penalty_zero = auto_route_switch.calculate_true_tps(raw_tps=0.0, failure_count=5, wait_seconds=60.0)
@@ -76,12 +90,14 @@ class ProviderFailuresTests(unittest.TestCase):
 
         # Mock loading 24h failures
         cur.fetchall.return_value = [
-            ("ag/gemini-3.8-flash-high", 3, 120.0)
+            ("ag/gemini-3.8-flash-high", 3, 120.0, 500, 2500.0)
         ]
         stats = pgstore.load_24h_provider_failures(conn)
         self.assertIn("ag/gemini-3.8-flash-high", stats)
         self.assertEqual(stats["ag/gemini-3.8-flash-high"]["failures"], 3)
         self.assertEqual(stats["ag/gemini-3.8-flash-high"]["wait_seconds"], 120.0)
+        self.assertEqual(stats["ag/gemini-3.8-flash-high"]["total_requests"], 500)
+        self.assertEqual(stats["ag/gemini-3.8-flash-high"]["active_seconds"], 2500.0)
 
 
     def test_evaluate_candidates_applies_failure_discount(self) -> None:

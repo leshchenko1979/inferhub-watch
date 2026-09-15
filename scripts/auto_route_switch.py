@@ -176,19 +176,22 @@ def calculate_true_tps(
     raw_tps: float,
     failure_count: int = 0,
     wait_seconds: float = 0.0,
+    total_requests: int = 0,
+    active_seconds: float = 0.0,
     sample_count: int = 0,
 ) -> tuple[float, float]:
-    """Calculate True TPS discounted for provider timeouts, retries, and failures (Issue #63).
+    """Calculate True TPS discounted for provider timeouts, retries, and failures (Issue #63, #64).
 
     Returns:
         (true_tps, penalty_factor) where penalty_factor in (0.0, 1.0].
 
     Formula:
-        Estimated useful active generation time:
-        active_time_s = max(sample_count * 10.0, 60.0)
-        Time dilution factor = wait_seconds / (active_time_s + wait_seconds)
-        Count penalty = 0.05 * failure_count
-        penalty_factor = max(0.10, 1.0 - min(0.90, time_dilution + count_penalty))
+        Total attempts = total_requests + failure_count
+        Empirical failure rate = failure_count / max(1, total_attempts)
+        Effective active generation time = active_seconds if active_seconds > 0 else max(sample_count * 10.0, 60.0)
+        Time dilution factor = wait_seconds / (effective_active_s + wait_seconds)
+        Total discount = min(0.90, time_dilution + failure_rate)
+        penalty_factor = max(0.10, 1.0 - total_discount)
         true_tps = raw_tps * penalty_factor
     """
     if raw_tps <= 0.0:
@@ -197,11 +200,17 @@ def calculate_true_tps(
     if failure_count <= 0 and wait_seconds <= 0.0:
         return raw_tps, 1.0
 
-    active_time_s = max(sample_count * 10.0, 60.0)
-    time_dilution = wait_seconds / (active_time_s + wait_seconds)
-    count_penalty = 0.05 * failure_count
+    total_attempts = total_requests + failure_count
+    if total_attempts > 0:
+        failure_rate = failure_count / total_attempts
+    else:
+        failure_rate = min(1.0, 0.05 * failure_count)
 
-    total_discount = min(0.90, time_dilution + count_penalty)
+    effective_active_s = active_seconds if active_seconds > 0.0 else max(sample_count * 10.0, 60.0)
+    total_time_s = effective_active_s + wait_seconds
+    time_dilution = wait_seconds / total_time_s if total_time_s > 0.0 else 0.0
+
+    total_discount = min(0.90, time_dilution + failure_rate)
     penalty_factor = max(0.10, 1.0 - total_discount)
 
     true_tps = raw_tps * penalty_factor
@@ -582,14 +591,18 @@ def evaluate_candidates(
             route, pricing_payload=pricing_payload, qual_runs=qual_runs, default_tps=tps_ref
         )
 
-        # Issue #63: True TPS discounting for provider timeouts and failures
+        # Issue #63, #64: True TPS discounting for provider timeouts and failures normalized by volume
         f_stat = failure_stats.get(route, {})
         f_count = int(f_stat.get("failures", 0))
         f_wait_s = float(f_stat.get("wait_seconds", 0.0))
+        f_reqs = int(f_stat.get("total_requests", 0))
+        f_active_s = float(f_stat.get("active_seconds", 0.0))
         true_tps, penalty_factor = calculate_true_tps(
             raw_tps,
             failure_count=f_count,
             wait_seconds=f_wait_s,
+            total_requests=f_reqs,
+            active_seconds=f_active_s,
             sample_count=realized_samples,
         )
 
