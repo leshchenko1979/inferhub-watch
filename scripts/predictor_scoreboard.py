@@ -291,7 +291,7 @@ def _slice_realized(rows: list[dict]) -> dict:
     return {m: (v["cost"] / v["tok"] * 1e6 if v["tok"] else None) for m, v in agg.items()}
 
 
-def hourly_series(rows: list[dict], perf_hours: int = 24) -> tuple[list, list]:
+def hourly_series(rows: list[dict], models: dict | None = None, perf_hours: int = 24) -> tuple[list, list]:
     """As-of hourly snapshots + the per-transition SLICE realized maps."""
     hours = hour_boundaries(rows)
     if not hours:
@@ -307,10 +307,16 @@ def hourly_series(rows: list[dict], perf_hours: int = 24) -> tuple[list, list]:
     dated: list = []
     slices: list[dict] = []
     cumulative: list[dict] = []
+    models_dict = models or {}
     for h in hours:
         cumulative.extend(by_hour[h])
         stats = pricing.aggregate_rows(cumulative)
-        routes = {a: pricing.route_entry(st, {}, a) for a, st in stats.items()}
+        routes = {}
+        for a, st in stats.items():
+            r_entry = pricing.route_entry(st, {}, a)
+            slug = aa_slug(a)
+            r_entry["iq"] = (models_dict.get(slug) or {}).get("iq") if slug else None
+            routes[a] = r_entry
         dated.append((h.date().isoformat(), {
             "generated_at": h.isoformat(), "routes": routes,
             "perf": pricing.perf_stats(cumulative, perf_hours)}))
@@ -344,7 +350,7 @@ def main(argv: list[str] | None = None) -> int:
         if env.get("PGPASSWORD"):
             conn = _connect(env)
             rows = rows_since(datetime(2026, 8, 1, tzinfo=timezone.utc), conn=conn)
-            dated, slices = hourly_series(rows, args.perf_hours)
+            dated, slices = hourly_series(rows, models=models, perf_hours=args.perf_hours)
             artifact["hourly_cumulative"] = score(dated, models, iq_fallback=args.iq_fallback)
             artifact["hourly_slice"] = score(dated, models, real_maps=slices,
                                              iq_fallback=args.iq_fallback)
